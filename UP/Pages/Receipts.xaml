@@ -85,7 +85,7 @@
                                      Foreground="White"
                                      BorderBrush="#404040"
                                      Padding="10"
-                                     Height="35"
+                                     Height="37"
                                      Margin="0,0,0,10"/>
 
                             <Button Content="Добавить продукт" 
@@ -147,14 +147,16 @@
                                       Foreground="White"
                                       Margin="0,5"/>
 
-                            <TextBox x:Name="OtherAllergiesTextBox" 
+
+                            <Label Foreground="White" Content="Другие ограничения..." />
+                            <TextBox x:Name="OtherAllergiesTextBox"
                                      Background="#1E1E1E"
                                      Foreground="White"
                                      BorderBrush="#404040"
                                      Padding="10"
-                                     Height="35"
+                                     Height="39"
                                      Margin="0,10,0,0"
-                                     Text="Другие ограничения..."/>
+                                     TextChanged="OtherAllergiesTextBox_TextChanged"/>
                         </StackPanel>
                     </Border>
 

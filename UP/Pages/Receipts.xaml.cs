@@ -260,6 +260,11 @@ namespace UP.Pages
 
             NavigationService?.GoBack();
         }
+
+        private void OtherAllergiesTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+
+        }
     }
 
     // Окно для установки таймера
