@@ -11,7 +11,7 @@
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public User User { get; set; }
-        public ICollection<MenuPlanItem> MenuPlanItems { get; set; }
+        public ICollection<MenuPlanItem> MenuPlanItems { get; set; } = new List<MenuPlanItem>();
         public ShoppingList ShoppingList { get; set; }
     }
 
@@ -25,5 +25,13 @@
 
         public MenuPlan MenuPlan { get; set; }
         public Recipe Recipe { get; set; }
+    }
+
+    public enum MealType
+    {
+        Breakfast = 1,
+        Lunch = 2,
+        Dinner = 3,
+        Snack = 4
     }
 }
