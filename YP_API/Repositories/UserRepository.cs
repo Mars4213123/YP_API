@@ -12,8 +12,6 @@ namespace YP_API.Repositories
         public async Task<User> GetUserByUsernameAsync(string username)
         {
             return await _context.Users
-                .Include(u => u.UserAllergies)
-                    .ThenInclude(ua => ua.Allergy)
                 .FirstOrDefaultAsync(u => u.Username == username);
         }
 
@@ -21,15 +19,6 @@ namespace YP_API.Repositories
         {
             return await _context.Users
                 .FirstOrDefaultAsync(u => u.Email == email);
-        }
-
-        public async Task<IEnumerable<Allergy>> GetUserAllergiesAsync(int userId)
-        {
-            return await _context.UserAllergies
-                .Where(ua => ua.UserId == userId)
-                .Include(ua => ua.Allergy)
-                .Select(ua => ua.Allergy)
-                .ToListAsync();
         }
 
         public async Task<bool> UserExistsAsync(string username, string email)

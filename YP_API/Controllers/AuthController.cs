@@ -4,7 +4,9 @@ using YP_API.Services;
 
 namespace YP_API.Controllers
 {
-    public class AuthController : BaseApiController
+    [ApiController]
+    [Route("api/[controller]")]
+    public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
 

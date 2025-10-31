@@ -22,29 +22,68 @@ namespace YP_API.Services
 
         public async Task<UserDto> Register(RegisterDto registerDto)
         {
+            // Валидация
+            if (string.IsNullOrWhiteSpace(registerDto.Username))
+                throw new Exception("Username is required");
+
+            if (string.IsNullOrWhiteSpace(registerDto.Email))
+                throw new Exception("Email is required");
+
+            if (string.IsNullOrWhiteSpace(registerDto.Password))
+                throw new Exception("Password is required");
+
             if (await _userRepository.UserExistsAsync(registerDto.Username, registerDto.Email))
                 throw new Exception("Username or email already exists");
 
-            using var hmac = new HMACSHA512();
-
-            var user = new User
+            try
             {
-                Username = registerDto.Username.ToLower(),
-                Email = registerDto.Email.ToLower(),
-                PasswordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(registerDto.Password)),
-                PasswordSalt = hmac.Key
-            };
+                // Создаем соль и хеш
+                using var hmac = new HMACSHA512();
 
-            await _userRepository.AddAsync(user);
-            await _userRepository.SaveAllAsync();
+                var passwordBytes = Encoding.UTF8.GetBytes(registerDto.Password);
+                var passwordHash = hmac.ComputeHash(passwordBytes);
+                var passwordSalt = hmac.Key;
 
-            return new UserDto
+                var user = new User
+                {
+                    Username = registerDto.Username.ToLower().Trim(),
+                    Email = registerDto.Email.ToLower().Trim(),
+                    FullName = registerDto.FullName?.Trim() ?? "",
+                    Allergies = registerDto.Allergies ?? new List<string>(),
+                    PasswordHash = passwordHash,
+                    PasswordSalt = passwordSalt,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                Console.WriteLine($"=== REGISTRATION DEBUG ===");
+                Console.WriteLine($"Username: {user.Username}");
+                Console.WriteLine($"PasswordHash length: {user.PasswordHash.Length}");
+                Console.WriteLine($"PasswordSalt length: {user.PasswordSalt.Length}");
+                Console.WriteLine($"==========================");
+
+                await _userRepository.AddAsync(user);
+                var result = await _userRepository.SaveAllAsync();
+
+                if (!result)
+                    throw new Exception("Failed to save user");
+
+                Console.WriteLine($"User created successfully with ID: {user.Id}");
+
+                return new UserDto
+                {
+                    Id = user.Id,
+                    Username = user.Username,
+                    Email = user.Email,
+                    FullName = user.FullName,
+                    Allergies = user.Allergies,
+                    Token = CreateToken(user)
+                };
+            }
+            catch (Exception ex)
             {
-                Id = user.Id,
-                Username = user.Username,
-                Email = user.Email,
-                Token = CreateToken(user)
-            };
+                Console.WriteLine($"Registration error: {ex}");
+                throw new Exception($"Registration failed: {ex.Message}");
+            }
         }
 
         public async Task<UserDto> Login(LoginDto loginDto)
@@ -54,23 +93,44 @@ namespace YP_API.Services
             if (user == null)
                 throw new Exception("Invalid username");
 
+            Console.WriteLine($"=== LOGIN DEBUG ===");
+            Console.WriteLine($"Username: {user.Username}");
+            Console.WriteLine($"Stored PasswordHash length: {user.PasswordHash?.Length ?? 0}");
+            Console.WriteLine($"Stored PasswordSalt length: {user.PasswordSalt?.Length ?? 0}");
+            Console.WriteLine($"===================");
+
+            if (user.PasswordHash == null || user.PasswordSalt == null)
+                throw new Exception("Invalid user data in database");
+
+            // Вычисляем хеш введенного пароля
             using var hmac = new HMACSHA512(user.PasswordSalt);
             var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(loginDto.Password));
+
+            // Сравниваем хеши
+            if (computedHash.Length != user.PasswordHash.Length)
+            {
+                Console.WriteLine($"Hash length mismatch: computed={computedHash.Length}, stored={user.PasswordHash.Length}");
+                throw new Exception("Invalid password");
+            }
 
             for (int i = 0; i < computedHash.Length; i++)
             {
                 if (computedHash[i] != user.PasswordHash[i])
+                {
+                    Console.WriteLine($"Hash mismatch at position {i}");
                     throw new Exception("Invalid password");
+                }
             }
 
-            var allergies = await _userRepository.GetUserAllergiesAsync(user.Id);
+            Console.WriteLine("Password verification successful!");
 
             return new UserDto
             {
                 Id = user.Id,
                 Username = user.Username,
                 Email = user.Email,
-                Allergies = allergies.Select(a => a.Code).ToList(),
+                FullName = user.FullName,
+                Allergies = user.Allergies,
                 Token = CreateToken(user)
             };
         }
@@ -83,8 +143,9 @@ namespace YP_API.Services
                 new Claim(ClaimTypes.Name, user.Username)
             };
 
+            // Используем HmacSha256 вместо HmacSha512
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JWT:Key"]));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
@@ -98,5 +159,12 @@ namespace YP_API.Services
 
             return tokenHandler.WriteToken(token);
         }
+    }
+
+    public interface IAuthService
+    {
+        Task<UserDto> Register(RegisterDto registerDto);
+        Task<UserDto> Login(LoginDto loginDto);
+        string CreateToken(User user);
     }
 }
