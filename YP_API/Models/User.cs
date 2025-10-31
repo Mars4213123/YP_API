@@ -15,6 +15,7 @@
         public ICollection<ShoppingList> ShoppingLists { get; set; } = new List<ShoppingList>();
         public ICollection<UserInventory> UserInventories { get; set; } = new List<UserInventory>();
     }
+
     public class UserAllergy
     {
         public int UserId { get; set; }

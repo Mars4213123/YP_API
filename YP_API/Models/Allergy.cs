@@ -7,9 +7,9 @@
         public string Code { get; set; }
         public string Description { get; set; }
 
-        public ICollection<RecipeAllergy> RecipeAllergies { get; set; }
-        public ICollection<IngredientAllergy> IngredientAllergies { get; set; }
-        public ICollection<UserAllergy> UserAllergies { get; set; }
+        public ICollection<RecipeAllergy> RecipeAllergies { get; set; } = new List<RecipeAllergy>();
+        public ICollection<IngredientAllergy> IngredientAllergies { get; set; } = new List<IngredientAllergy>();
+        public ICollection<UserAllergy> UserAllergies { get; set; } = new List<UserAllergy>();
     }
 
 }
