@@ -146,8 +146,6 @@ namespace UP.Pages
                 _shoppingList.Add(item);
             }
 
-            MessageBox.Show("Меню на неделю сгенерировано!", "Успех",
-                          MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void StartTimer_Click(object sender, RoutedEventArgs e)
@@ -303,7 +301,7 @@ namespace UP.Pages
 
             var valueText = new TextBlock
             {
-                Text = $"{SelectedMinutes} минут",
+                Text = $"{SelectedMinutes} мин.",
                 Foreground = Brushes.White,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Margin = new Thickness(0, 0, 0, 20)
@@ -313,7 +311,7 @@ namespace UP.Pages
             slider.ValueChanged += (s, e) =>
             {
                 SelectedMinutes = (int)e.NewValue;
-                valueText.Text = $"{SelectedMinutes} минут";
+                valueText.Text = $"{SelectedMinutes} мин.";
             };
 
             var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };

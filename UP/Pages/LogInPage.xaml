@@ -3,15 +3,13 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-      xmlns:local="clr-namespace:UP.Pages"
       mc:Ignorable="d" 
-      d:DesignHeight="650" d:DesignWidth="800"
-      Title="LogInPage">
+      Title="LogInPage"
+      Background="#1E1E1E">
 
     <Page.Resources>
-        <!-- Стиль для текстовых полей -->
         <Style x:Key="SimpleTextBox" TargetType="TextBox">
-            <Setter Property="Background" Value="#1E1E1E"/>
+            <Setter Property="Background" Value="#2D2D30"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderBrush" Value="#404040"/>
             <Setter Property="BorderThickness" Value="1"/>
@@ -25,7 +23,6 @@
             </Style.Triggers>
         </Style>
 
-        <!-- Стиль для кнопки входа -->
         <Style x:Key="LoginButton" TargetType="Button">
             <Setter Property="Background" Value="#4CAF50"/>
             <Setter Property="Foreground" Value="White"/>
@@ -42,13 +39,25 @@
         </Style>
     </Page.Resources>
 
+    <!-- Используем Grid с выравниванием по центру -->
     <Grid>
-        <Border Background="#1E1E1E" 
-                CornerRadius="10"
-                BorderBrush="#333333"
-                BorderThickness="1">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-            <StackPanel VerticalAlignment="Center" Margin="30">
+        <!-- Центральная панель -->
+        <Border Grid.Row="1"
+                Background="#2D2D30" 
+                CornerRadius="10"
+                BorderBrush="#404040"
+                BorderThickness="1"
+                Width="400"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+
+            <StackPanel Margin="30" VerticalAlignment="Center">
 
                 <!-- Заголовок -->
                 <TextBlock Text="Вход в систему" 
@@ -76,7 +85,7 @@
                                FontSize="12" 
                                Margin="0,0,0,5"/>
                     <PasswordBox x:Name="PasswordBox" 
-                                 Background="#1E1E1E"
+                                 Background="#2D2D30"
                                  Foreground="White"
                                  BorderBrush="#404040"
                                  BorderThickness="1"

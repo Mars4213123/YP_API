@@ -33,10 +33,18 @@ namespace UP
 
         public void OpenPages(Page page)
         {
-            frame.Content = page;
+            // Для Frame
+            frame.Navigate(page);
 
-            if (page is Pages.LogInPage mainPage)
-                CurrentMainPage = mainPage;
+            // Или для ContentControl
+            // MainContent.Content = page;
+
+            // Убедитесь, что страница растягивается на всю доступную область
+            if (page is FrameworkElement frameworkElement)
+            {
+                frameworkElement.HorizontalAlignment = HorizontalAlignment.Stretch;
+                frameworkElement.VerticalAlignment = VerticalAlignment.Stretch;
+            }
         }
     }
 }
