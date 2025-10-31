@@ -72,6 +72,8 @@ namespace UP.Pages
             {
                 ShowMessage("Вход выполнен успешно!");
                 // Здесь переход на главную форму
+
+                MainWindow.mainWindow.OpenPages(new Receipts());
             }
             else
             {
