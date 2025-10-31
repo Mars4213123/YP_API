@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.12.35527.113 d17.12
+VisualStudioVersion = 17.12.35527.113
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YP_API", "YP_API\YP_API.csproj", "{905E7BF4-81F3-4305-B626-FD3CEAFF3282}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UP", "UP\UP.csproj", "{2A158B96-531E-4407-B43F-390636EE88EA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{905E7BF4-81F3-4305-B626-FD3CEAFF3282}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{905E7BF4-81F3-4305-B626-FD3CEAFF3282}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{905E7BF4-81F3-4305-B626-FD3CEAFF3282}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2A158B96-531E-4407-B43F-390636EE88EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2A158B96-531E-4407-B43F-390636EE88EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2A158B96-531E-4407-B43F-390636EE88EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2A158B96-531E-4407-B43F-390636EE88EA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
