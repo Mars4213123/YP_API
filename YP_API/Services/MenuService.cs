@@ -9,21 +9,30 @@ namespace YP_API.Services
     {
         private readonly IMenuRepository _menuRepository;
         private readonly IRecipeRepository _recipeRepository;
-        private readonly IShoppingListService _shoppingListService;
+        private readonly ILogger<MenuService> _logger;
 
-        public MenuService(IMenuRepository menuRepository, IRecipeRepository recipeRepository, IShoppingListService shoppingListService)
+        public MenuService(IMenuRepository menuRepository, IRecipeRepository recipeRepository, ILogger<MenuService> logger)
         {
             _menuRepository = menuRepository;
             _recipeRepository = recipeRepository;
-            _shoppingListService = shoppingListService;
+            _logger = logger;
         }
 
         public async Task<WeeklyMenuDto> GenerateWeeklyMenuAsync(int userId, GenerateMenuRequestDto request, List<string> userAllergies)
         {
+            _logger.LogInformation($"Generating menu for user {userId}, days: {request.Days}");
+
             var availableRecipes = (await _recipeRepository.GetRecipesForMenuAsync(
                 userAllergies ?? new List<string>(),
                 request.CuisineTags ?? new List<string>(),
                 request.TargetCaloriesPerDay)).ToList();
+
+            _logger.LogInformation($"Found {availableRecipes.Count} available recipes");
+
+            if (!availableRecipes.Any())
+            {
+                throw new Exception("No recipes available for menu generation");
+            }
 
             var menu = new WeeklyMenu
             {
@@ -59,7 +68,6 @@ namespace YP_API.Services
                         });
 
                         totalCalories += selectedRecipe.Calories;
-
                         availableRecipes.Remove(selectedRecipe);
                     }
                 }
@@ -68,8 +76,9 @@ namespace YP_API.Services
             menu.TotalCalories = totalCalories;
 
             var createdMenu = await _menuRepository.CreateMenuAsync(menu);
-            await _shoppingListService.GenerateShoppingListFromMenuAsync(createdMenu.Id, userId);
             await _menuRepository.SaveAllAsync();
+
+            _logger.LogInformation($"Menu created successfully with ID: {createdMenu.Id}");
 
             return await GetMenuDtoAsync(createdMenu.Id);
         }
@@ -111,7 +120,7 @@ namespace YP_API.Services
                     MealType = m.MealType,
                     Calories = m.Recipe.Calories,
                     PrepTime = m.Recipe.PrepTime + m.Recipe.CookTime,
-                    ImageUrl = m.Recipe.ImageUrl
+                    ImageUrl = m.Recipe.ImageUrl ?? string.Empty
                 }).ToList()
             };
         }
@@ -128,8 +137,12 @@ namespace YP_API.Services
                 StartDate = menu.StartDate,
                 EndDate = menu.EndDate,
                 TotalCalories = menu.TotalCalories,
-                Days = new List<MenuDayDto>()
+                Days = new List<MenuDayDto>(),
+                ShoppingList = new ShoppingListDto()
             };
+
+            // ShoppingList всегда будет пустым, так как мы его не генерируем
+            // Но оставляем структуру для будущего использования
 
             var mealsByDate = menu.MenuMeals.GroupBy(m => m.MealDate.Date);
 
@@ -146,7 +159,7 @@ namespace YP_API.Services
                         MealType = m.MealType,
                         Calories = m.Recipe.Calories,
                         PrepTime = m.Recipe.PrepTime + m.Recipe.CookTime,
-                        ImageUrl = m.Recipe.ImageUrl
+                        ImageUrl = m.Recipe.ImageUrl ?? string.Empty
                     }).ToList()
                 };
 
@@ -158,6 +171,9 @@ namespace YP_API.Services
 
         private bool IsSuitableForMealType(Recipe recipe, string mealType)
         {
+            if (recipe.Tags == null || !recipe.Tags.Any())
+                return false;
+
             return mealType.ToLower() switch
             {
                 "breakfast" => recipe.Tags.Any(t => t.Contains("breakfast") || t.Contains("morning")),

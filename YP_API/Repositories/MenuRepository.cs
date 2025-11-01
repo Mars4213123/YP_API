@@ -12,15 +12,9 @@ namespace YP_API.Repositories
         public async Task<WeeklyMenu> GetCurrentMenuAsync(int userId)
         {
             var today = DateTime.Today;
-
             return await _context.WeeklyMenus
                 .Include(wm => wm.MenuMeals)
                     .ThenInclude(mm => mm.Recipe)
-                        .ThenInclude(r => r.RecipeIngredients)
-                            .ThenInclude(ri => ri.Ingredient)
-                .Include(wm => wm.ShoppingList)
-                    .ThenInclude(sl => sl.Items)
-                        .ThenInclude(sli => sli.Ingredient)
                 .Where(wm => wm.UserId == userId && wm.StartDate <= today && wm.EndDate >= today)
                 .OrderByDescending(wm => wm.CreatedAt)
                 .FirstOrDefaultAsync();
@@ -50,9 +44,6 @@ namespace YP_API.Repositories
                     .ThenInclude(mm => mm.Recipe)
                         .ThenInclude(r => r.RecipeIngredients)
                             .ThenInclude(ri => ri.Ingredient)
-                .Include(wm => wm.ShoppingList)
-                    .ThenInclude(sl => sl.Items)
-                        .ThenInclude(sli => sli.Ingredient)
                 .FirstOrDefaultAsync(wm => wm.Id == menuId);
         }
     }

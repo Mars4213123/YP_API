@@ -22,10 +22,28 @@ namespace YP_API.Repositories
                 query = query.Where(r => r.Title.Contains(searchParams.Name));
 
             if (searchParams.Tags.Any())
-                query = query.Where(r => searchParams.Tags.All(t => r.Tags.Contains(t)));
+            {
+                var allRecipes = await query.ToListAsync();
+                var filteredRecipes = allRecipes.Where(r => searchParams.Tags.All(t => r.Tags.Contains(t))).ToList();
+
+                return PagedList<RecipeDto>.Create(
+                    filteredRecipes.Select(r => MapToRecipeDto(r)),
+                    searchParams.PageNumber,
+                    searchParams.PageSize
+                );
+            }
 
             if (searchParams.ExcludedAllergens.Any())
-                query = query.Where(r => !r.Allergens.Any(a => searchParams.ExcludedAllergens.Contains(a)));
+            {
+                var allRecipes = await query.ToListAsync();
+                var filteredRecipes = allRecipes.Where(r => !r.Allergens.Any(a => searchParams.ExcludedAllergens.Contains(a))).ToList();
+
+                return PagedList<RecipeDto>.Create(
+                    filteredRecipes.Select(r => MapToRecipeDto(r)),
+                    searchParams.PageNumber,
+                    searchParams.PageSize
+                );
+            }
 
             if (searchParams.MaxPrepTime.HasValue)
                 query = query.Where(r => r.PrepTime <= searchParams.MaxPrepTime.Value);
@@ -34,7 +52,16 @@ namespace YP_API.Repositories
                 query = query.Where(r => r.Calories <= searchParams.MaxCalories.Value);
 
             if (searchParams.CuisineTypes.Any())
-                query = query.Where(r => searchParams.CuisineTypes.Contains(r.CuisineType));
+            {
+                var allRecipes = await query.ToListAsync();
+                var filteredRecipes = allRecipes.Where(r => searchParams.CuisineTypes.Contains(r.CuisineType)).ToList();
+
+                return PagedList<RecipeDto>.Create(
+                    filteredRecipes.Select(r => MapToRecipeDto(r)),
+                    searchParams.PageNumber,
+                    searchParams.PageSize
+                );
+            }
 
             query = searchParams.SortBy?.ToLower() switch
             {
@@ -74,21 +101,28 @@ namespace YP_API.Repositories
 
         public async Task<IEnumerable<Recipe>> GetRecipesForMenuAsync(List<string> excludedAllergens, List<string> cuisineTags, decimal? maxCalories)
         {
-            var query = _context.Recipes
+            var recipes = await _context.Recipes
                 .Include(r => r.RecipeIngredients)
                     .ThenInclude(ri => ri.Ingredient)
-                .Where(r => r.IsPublic);
+                .Where(r => r.IsPublic)
+                .ToListAsync();
 
             if (excludedAllergens != null && excludedAllergens.Any())
-                query = query.Where(r => !r.Allergens.Any(a => excludedAllergens.Contains(a)));
+            {
+                recipes = recipes.Where(r => !r.Allergens.Any(a => excludedAllergens.Contains(a))).ToList();
+            }
 
             if (cuisineTags != null && cuisineTags.Any())
-                query = query.Where(r => cuisineTags.Contains(r.CuisineType));
+            {
+                recipes = recipes.Where(r => cuisineTags.Contains(r.CuisineType)).ToList();
+            }
 
             if (maxCalories.HasValue)
-                query = query.Where(r => r.Calories <= maxCalories);
+            {
+                recipes = recipes.Where(r => r.Calories <= maxCalories.Value).ToList();
+            }
 
-            return await query.ToListAsync();
+            return recipes;
         }
 
         public async Task<Recipe> CreateRecipeAsync(CreateRecipeDto createRecipeDto)
@@ -194,26 +228,26 @@ namespace YP_API.Repositories
             return new RecipeDto
             {
                 Id = recipe.Id,
-                Title = recipe.Title,
-                Description = recipe.Description,
-                Instructions = recipe.Instructions,
+                Title = recipe.Title ?? string.Empty,
+                Description = recipe.Description ?? string.Empty,
+                Instructions = recipe.Instructions ?? string.Empty,
                 PrepTime = recipe.PrepTime,
                 CookTime = recipe.CookTime,
                 Servings = recipe.Servings,
                 Calories = recipe.Calories,
-                ImageUrl = recipe.ImageUrl,
-                Tags = recipe.Tags,
-                Allergens = recipe.Allergens,
-                CuisineType = recipe.CuisineType,
-                Difficulty = recipe.Difficulty,
-                Ingredients = recipe.RecipeIngredients.Select(ri => new RecipeIngredientDto
+                ImageUrl = recipe.ImageUrl ?? string.Empty,
+                Tags = recipe.Tags ?? new List<string>(),
+                Allergens = recipe.Allergens ?? new List<string>(),
+                CuisineType = recipe.CuisineType ?? string.Empty,
+                Difficulty = recipe.Difficulty ?? string.Empty,
+                Ingredients = recipe.RecipeIngredients?.Select(ri => new RecipeIngredientDto
                 {
                     IngredientId = ri.IngredientId,
-                    IngredientName = ri.Ingredient.Name,
-                    Category = ri.Ingredient.Category,
+                    IngredientName = ri.Ingredient?.Name ?? string.Empty,
+                    Category = ri.Ingredient?.Category ?? string.Empty,
                     Quantity = ri.Quantity,
-                    Unit = ri.Unit
-                }).ToList(),
+                    Unit = ri.Unit ?? string.Empty
+                }).ToList() ?? new List<RecipeIngredientDto>(),
                 IsFavorite = false
             };
         }

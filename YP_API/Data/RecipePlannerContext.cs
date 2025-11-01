@@ -42,22 +42,24 @@ namespace YP_API.Data
             {
                 entity.HasKey(r => r.Id);
                 entity.Property(r => r.Title).IsRequired().HasMaxLength(200);
-                entity.Property(r => r.Description).HasMaxLength(1000);
-                entity.Property(r => r.Instructions).HasColumnType("text"); // MySQL text type
-                entity.Property(r => r.ImageUrl).HasMaxLength(500);
+                entity.Property(r => r.Description).HasMaxLength(1000).HasDefaultValue("");
+                entity.Property(r => r.Instructions).HasColumnType("text").HasDefaultValue("");
+                entity.Property(r => r.ImageUrl).HasMaxLength(500).HasDefaultValue("");
                 entity.Property(r => r.Calories).HasPrecision(10, 2);
+                entity.Property(r => r.CuisineType).HasMaxLength(50).HasDefaultValue("");
+                entity.Property(r => r.Difficulty).HasMaxLength(20).HasDefaultValue("");
+
                 entity.Property(r => r.Tags)
                     .HasConversion(
                         v => string.Join(',', v),
                         v => v.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()
                     );
+
                 entity.Property(r => r.Allergens)
                     .HasConversion(
                         v => string.Join(',', v),
                         v => v.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()
                     );
-                entity.Property(r => r.CuisineType).HasMaxLength(50);
-                entity.Property(r => r.Difficulty).HasMaxLength(20);
             });
 
             modelBuilder.Entity<Ingredient>(entity =>
@@ -101,11 +103,6 @@ namespace YP_API.Data
                     .WithMany(u => u.WeeklyMenus)
                     .HasForeignKey(wm => wm.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
-
-                entity.HasOne(wm => wm.ShoppingList)
-                    .WithOne(sl => sl.WeeklyMenu)
-                    .HasForeignKey<ShoppingList>(sl => sl.MenuId)
-                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<MenuMeal>(entity =>
@@ -132,6 +129,7 @@ namespace YP_API.Data
                     .WithOne(wm => wm.ShoppingList)
                     .HasForeignKey<ShoppingList>(sl => sl.MenuId)
                     .OnDelete(DeleteBehavior.Cascade);
+
             });
 
             modelBuilder.Entity<ShoppingListItem>(entity =>

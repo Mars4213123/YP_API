@@ -5,11 +5,17 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using YP_API.Data;
 using YP_API.Interfaces;
+using YP_API.Models;
 using YP_API.Repositories;
 using YP_API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.Services.AddLogging(logging =>
+{
+    logging.AddConsole();
+    logging.AddDebug();
+    logging.SetMinimumLevel(LogLevel.Debug);
+});
 // Добавьте логирование
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
@@ -82,6 +88,8 @@ builder.Services.AddScoped<IMenuRepository, MenuRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IShoppingListRepository, ShoppingListRepository>();
 
+builder.Services.AddScoped<IRepository<ShoppingList>, Repository<ShoppingList>>();
+builder.Services.AddScoped<IRepository<ShoppingListItem>, Repository<ShoppingListItem>>();
 // Сервисы
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMenuService, MenuService>();
@@ -126,8 +134,12 @@ else
     app.UseExceptionHandler("/error");
     app.UseHsts();
 }
-
-// Глобальный обработчик ошибок
+app.Use(async (context, next) =>
+{
+    var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation($"Request: {context.Request.Method} {context.Request.Path}");
+    await next();
+});
 app.Use(async (context, next) =>
 {
     try
@@ -136,14 +148,17 @@ app.Use(async (context, next) =>
     }
     catch (Exception ex)
     {
-        var logger = app.Services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Unhandled exception occurred");
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Unhandled exception: {Message}", ex.Message);
+
+        logger.LogError("Stack trace: {StackTrace}", ex.StackTrace);
 
         context.Response.StatusCode = 500;
         await context.Response.WriteAsJsonAsync(new
         {
             error = "Internal server error",
-            message = ex.Message
+            message = ex.Message,
+            details = ex.StackTrace
         });
     }
 });
