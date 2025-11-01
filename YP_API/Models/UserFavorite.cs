@@ -1,4 +1,4 @@
-﻿namespace YP_API.Models
+namespace YP_API.Models
 {
     public class UserFavorite
     {
@@ -11,3 +11,4 @@
         public Recipe Recipe { get; set; }
     }
 }
+

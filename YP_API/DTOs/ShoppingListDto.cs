@@ -1,4 +1,4 @@
-﻿namespace YP_API.DTOs
+namespace YP_API.DTOs
 {
     public class ShoppingListDto
     {
@@ -24,3 +24,4 @@
         public bool IsPurchased { get; set; }
     }
 }
+

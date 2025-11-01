@@ -1,4 +1,4 @@
-﻿using YP_API.DTOs;
+using YP_API.DTOs;
 using YP_API.Interfaces;
 using YP_API.Models;
 using YP_API.Repositories;
@@ -141,8 +141,8 @@ namespace YP_API.Services
                 ShoppingList = new ShoppingListDto()
             };
 
-            // ShoppingList всегда будет пустым, так как мы его не генерируем
-            // Но оставляем структуру для будущего использования
+            
+            
 
             var mealsByDate = menu.MenuMeals.GroupBy(m => m.MealDate.Date);
 
@@ -193,4 +193,5 @@ namespace YP_API.Services
         Task<MenuDayDto> RegenerateDayAsync(int menuId, DateTime date, List<string> userAllergies);
     }
 }
+
 

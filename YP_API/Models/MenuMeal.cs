@@ -1,4 +1,4 @@
-﻿namespace YP_API.Models
+namespace YP_API.Models
 {
     public class MenuMeal
     {
@@ -20,3 +20,4 @@
         Snack = 4
     }
 }
+

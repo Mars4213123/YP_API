@@ -1,4 +1,4 @@
-﻿using YP_API.Models;
+using YP_API.Models;
 
 namespace YP_API.DTOs
 {
@@ -40,3 +40,4 @@ namespace YP_API.DTOs
         public string ImageUrl { get; set; }
     }
 }
+

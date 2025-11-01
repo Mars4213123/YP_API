@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using YP_API.DTOs;
 using YP_API.Interfaces;
@@ -65,3 +65,4 @@ namespace YP_API.Controllers
         public DateTime Date { get; set; }
     }
 }
+

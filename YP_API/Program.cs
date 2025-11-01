@@ -16,16 +16,16 @@ builder.Services.AddLogging(logging =>
     logging.AddDebug();
     logging.SetMinimumLevel(LogLevel.Debug);
 });
-// Добавьте логирование
+
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 
-// Сервисы
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// Swagger конфигурация
+
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
@@ -40,7 +40,7 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 
-    // JWT Authentication в Swagger
+    
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
@@ -66,11 +66,11 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 
-    // Игнорировать циклические ссылки для Swagger
+    
     c.CustomSchemaIds(x => x.FullName);
 });
 
-// База данных
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Server=localhost;Port=3306;Database=recipe_planner;Uid=root;Pwd=;";
 
@@ -81,7 +81,7 @@ builder.Services.AddDbContext<RecipePlannerContext>(options =>
     options.EnableDetailedErrors();
 });
 
-// Репозитории
+
 builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
 builder.Services.AddScoped<IIngredientRepository, IngredientRepository>();
 builder.Services.AddScoped<IMenuRepository, MenuRepository>();
@@ -90,12 +90,12 @@ builder.Services.AddScoped<IShoppingListRepository, ShoppingListRepository>();
 
 builder.Services.AddScoped<IRepository<ShoppingList>, Repository<ShoppingList>>();
 builder.Services.AddScoped<IRepository<ShoppingListItem>, Repository<ShoppingListItem>>();
-// Сервисы
+
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMenuService, MenuService>();
 builder.Services.AddScoped<IShoppingListService, ShoppingListService>();
 
-// JWT Authentication
+
 var jwtKey = builder.Configuration["JWT:Key"] ?? "fallback-super-secret-key-for-development-1234567890";
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -115,17 +115,17 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
+
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
 
-    // Swagger UI
+    
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "Recipe Planner API v1");
-        c.RoutePrefix = string.Empty; // Чтобы Swagger открывался на корневом URL
+        c.RoutePrefix = string.Empty; 
         c.DocumentTitle = "Recipe Planner API Documentation";
     });
 }
@@ -168,7 +168,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Проверка базы данных при запуске
+
 try
 {
     using var scope = app.Services.CreateScope();
@@ -195,3 +195,4 @@ catch (Exception ex)
 Console.WriteLine("Application started successfully");
 Console.WriteLine($"Swagger available at: {app.Urls.FirstOrDefault()}");
 app.Run();
+

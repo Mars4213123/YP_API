@@ -1,4 +1,4 @@
-﻿namespace YP_API.Helpers
+namespace YP_API.Helpers
 {
     public class PaginationParams
     {
@@ -37,3 +37,4 @@
         }
     }
 }
+

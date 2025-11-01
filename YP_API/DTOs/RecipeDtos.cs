@@ -1,4 +1,4 @@
-﻿namespace YP_API.DTOs
+namespace YP_API.DTOs
 {
     public class RecipeDto
     {
@@ -52,3 +52,4 @@
         public string Unit { get; set; }
     }
 }
+

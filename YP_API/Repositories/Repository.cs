@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using YP_API.Data;
 using YP_API.Interfaces;
 
@@ -44,3 +44,4 @@ namespace YP_API.Repositories
         }
     }
 }
+

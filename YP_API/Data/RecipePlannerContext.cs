@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using YP_API.Configurations;
 using YP_API.Models;
 
@@ -192,3 +192,4 @@ namespace YP_API.Data
         }
     }
 }
+

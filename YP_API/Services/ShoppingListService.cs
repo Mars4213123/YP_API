@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using YP_API.DTOs;
 using YP_API.Interfaces;
 using YP_API.Models;
@@ -35,7 +35,7 @@ namespace YP_API.Services
                 Console.WriteLine($"=== START GenerateShoppingListFromMenuAsync ===");
                 Console.WriteLine($"MenuId: {menuId}, UserId: {userId}");
 
-                // Проверим что меню существует
+                
                 var menu = await _menuRepository.GetByIdAsync(menuId);
                 Console.WriteLine($"Menu exists: {menu != null}");
 
@@ -51,7 +51,7 @@ namespace YP_API.Services
                     };
                 }
 
-                // Создаем список с установленным MenuId
+                
                 var shoppingList = new ShoppingList
                 {
                     MenuId = menuId,
@@ -62,22 +62,22 @@ namespace YP_API.Services
 
                 Console.WriteLine($"Created shopping list: MenuId={shoppingList.MenuId}, Name={shoppingList.Name}");
 
-                // Добавляем Items сразу
+                
                 shoppingList.Items = new List<ShoppingListItem>
         {
             new ShoppingListItem
             {
-                IngredientId = 1, // Куриная грудка существует
+                IngredientId = 1, 
                 Quantity = 1,
-                Unit = "шт",
-                Category = "Мясо",
+                Unit = "��",
+                Category = "����",
                 IsPurchased = false
             }
         };
 
                 Console.WriteLine($"Added {shoppingList.Items.Count} items");
 
-                // Сохраняем все вместе
+                
                 await _shoppingListRepository.AddAsync(shoppingList);
                 Console.WriteLine("ShoppingList added to repository");
 
@@ -102,7 +102,7 @@ namespace YP_API.Services
                     {
                         Id = i.Id,
                         IngredientId = i.IngredientId,
-                        IngredientName = "Куриная грудка",
+                        IngredientName = "������� ������",
                         Category = i.Category,
                         Quantity = i.Quantity,
                         Unit = i.Unit,
@@ -118,7 +118,7 @@ namespace YP_API.Services
                 Console.WriteLine($"Inner Exception Type: {ex.InnerException?.GetType()}");
                 Console.WriteLine($"Inner Stack Trace: {ex.InnerException?.StackTrace}");
 
-                // Рекурсивно логируем все внутренние исключения
+                
                 Exception current = ex;
                 int depth = 0;
                 while (current != null && depth < 5)
@@ -187,3 +187,4 @@ namespace YP_API.Services
         Task<bool> ToggleItemPurchasedAsync(int itemId, bool isPurchased);
     }
 }
+

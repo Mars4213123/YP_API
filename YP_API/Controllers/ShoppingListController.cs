@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using YP_API.DTOs;
 using YP_API.Helpers;
@@ -52,3 +52,4 @@ namespace YP_API.Controllers
         }
     }
 }
+

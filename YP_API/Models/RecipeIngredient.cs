@@ -1,4 +1,4 @@
-﻿namespace YP_API.Models
+namespace YP_API.Models
 {
     public class RecipeIngredient
     {
@@ -12,3 +12,4 @@
         public Ingredient Ingredient { get; set; }
     }
 }
+

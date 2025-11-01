@@ -1,4 +1,4 @@
-﻿namespace YP_API.DTOs
+namespace YP_API.DTOs
 {
     public class RegisterDto
     {
@@ -25,3 +25,4 @@
         public string Token { get; set; }
     }
 }
+

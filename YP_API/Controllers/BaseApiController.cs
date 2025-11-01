@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using YP_API.Models;
 
@@ -19,3 +19,4 @@ namespace YP_API.Controllers
         }
     }
 }
+

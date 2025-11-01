@@ -1,4 +1,4 @@
-﻿namespace YP_API.Helpers
+namespace YP_API.Helpers
 {
     public class RecipeSearchParams : PaginationParams
     {
@@ -23,3 +23,4 @@
         public bool SortDescending { get; set; } = false;
     }
 }
+

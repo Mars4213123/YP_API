@@ -1,4 +1,4 @@
-﻿using YP_API.DTOs;
+using YP_API.DTOs;
 using YP_API.Helpers;
 using YP_API.Models;
 
@@ -15,3 +15,4 @@ namespace YP_API.Interfaces
         Task<IEnumerable<Recipe>> SearchRecipesAsync(string query, List<string> tags, List<string> excludedAllergens);
     }
 }
+

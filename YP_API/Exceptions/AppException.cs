@@ -1,4 +1,4 @@
-﻿namespace YP_API.Exceptions
+namespace YP_API.Exceptions
 {
     public class AppException : Exception
     {
@@ -24,3 +24,4 @@
         public UnauthorizedException(string message) : base(message, 401) { }
     }
 }
+

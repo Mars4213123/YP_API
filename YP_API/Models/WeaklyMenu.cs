@@ -1,4 +1,4 @@
-﻿namespace YP_API.Models
+namespace YP_API.Models
 {
     public class WeeklyMenu
     {
@@ -15,3 +15,4 @@
         public ICollection<MenuMeal> MenuMeals { get; set; } = new List<MenuMeal>();
     }
 }
+

@@ -1,4 +1,4 @@
-﻿namespace YP_API.Models
+namespace YP_API.Models
 {
     public class User
     {
@@ -17,3 +17,4 @@
         public ICollection<UserInventory> Inventory { get; set; } = new List<UserInventory>();
     }
 }
+

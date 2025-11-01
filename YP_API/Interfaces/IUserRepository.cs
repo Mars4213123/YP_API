@@ -1,4 +1,4 @@
-﻿using YP_API.Models;
+using YP_API.Models;
 
 namespace YP_API.Interfaces
 {
@@ -9,3 +9,4 @@ namespace YP_API.Interfaces
         Task<bool> UserExistsAsync(string username, string email);
     }
 }
+

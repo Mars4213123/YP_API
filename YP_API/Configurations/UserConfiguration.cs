@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore;
 using YP_API.Models;
 
@@ -32,3 +32,4 @@ namespace YP_API.Configurations
         }
     }
 }
+

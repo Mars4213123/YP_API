@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using YP_API.Data;
 using YP_API.DTOs;
 using YP_API.Helpers;
@@ -17,3 +17,4 @@ namespace YP_API.Interfaces
         Task<bool> SaveAllAsync();
     }
 }
+

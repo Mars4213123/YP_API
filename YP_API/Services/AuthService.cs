@@ -1,4 +1,4 @@
-﻿using Microsoft.IdentityModel.Tokens;
+using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -22,7 +22,7 @@ namespace YP_API.Services
 
         public async Task<UserDto> Register(RegisterDto registerDto)
         {
-            // Валидация
+            
             if (string.IsNullOrWhiteSpace(registerDto.Username))
                 throw new Exception("Username is required");
 
@@ -37,7 +37,7 @@ namespace YP_API.Services
 
             try
             {
-                // Создаем соль и хеш
+                
                 using var hmac = new HMACSHA512();
 
                 var passwordBytes = Encoding.UTF8.GetBytes(registerDto.Password);
@@ -102,11 +102,11 @@ namespace YP_API.Services
             if (user.PasswordHash == null || user.PasswordSalt == null)
                 throw new Exception("Invalid user data in database");
 
-            // Вычисляем хеш введенного пароля
+            
             using var hmac = new HMACSHA512(user.PasswordSalt);
             var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(loginDto.Password));
 
-            // Сравниваем хеши
+            
             if (computedHash.Length != user.PasswordHash.Length)
             {
                 Console.WriteLine($"Hash length mismatch: computed={computedHash.Length}, stored={user.PasswordHash.Length}");
@@ -143,7 +143,7 @@ namespace YP_API.Services
                 new Claim(ClaimTypes.Name, user.Username)
             };
 
-            // Используем HmacSha256 вместо HmacSha512
+            
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JWT:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -168,3 +168,4 @@ namespace YP_API.Services
         string CreateToken(User user);
     }
 }
+

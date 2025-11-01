@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using YP_API.Data;
 using YP_API.Interfaces;
 using YP_API.Models;
@@ -12,12 +12,12 @@ namespace YP_API.Repositories
         public async Task<ShoppingList> GetCurrentShoppingListAsync(int userId)
         {
             return await _context.ShoppingLists
-                .Include(sl => sl.WeeklyMenu) // Убедитесь что это есть
+                .Include(sl => sl.WeeklyMenu) 
                 .Include(sl => sl.Items)
                     .ThenInclude(sli => sli.Ingredient)
                 .Where(sl => sl.MenuId != null &&
                            sl.WeeklyMenu != null &&
-                           sl.WeeklyMenu.UserId == userId && // Правильно: через WeeklyMenu
+                           sl.WeeklyMenu.UserId == userId && 
                            !sl.IsCompleted)
                 .OrderByDescending(sl => sl.CreatedAt)
                 .FirstOrDefaultAsync();
@@ -52,10 +52,11 @@ namespace YP_API.Repositories
             }
             catch (Exception ex)
             {
-                // Логируем ошибку для диагностики
+                
                 Console.WriteLine($"Error in GetShoppingListByUserIdAsync: {ex.Message}");
                 return null;
             }
         }
     }
 }
+

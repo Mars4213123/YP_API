@@ -1,4 +1,4 @@
-﻿namespace YP_API.Models
+namespace YP_API.Models
 {
     public class ShoppingList
     {
@@ -24,3 +24,4 @@
         public Ingredient Ingredient { get; set; }
     }
 }
+
