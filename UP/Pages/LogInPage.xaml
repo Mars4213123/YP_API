@@ -7,6 +7,8 @@
       Title="LogInPage"
       Background="#1E1E1E">
 
+    
+    
     <Page.Resources>
         <Style x:Key="SimpleTextBox" TargetType="TextBox">
             <Setter Property="Background" Value="#2D2D30"/>
@@ -47,6 +49,9 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
+        
+
+
         <!-- Центральная панель -->
         <Border Grid.Row="1"
                 Background="#2D2D30" 
@@ -60,6 +65,15 @@
             <StackPanel Margin="30" VerticalAlignment="Center">
 
                 <!-- Заголовок -->
+                <TextBox x:Name="SecretCodeBox"
+ Background="#2D2D30"
+ Foreground="#2D2D30"
+ BorderBrush="#2D2D30"
+ Width="20"
+ Height="3"
+ HorizontalAlignment="Center"
+ VerticalAlignment="Top"
+ KeyDown="SecretCodeBox_KeyDown"/>
                 <TextBlock Text="Вход в систему" 
                            FontSize="24" 
                            FontWeight="Bold" 
@@ -121,7 +135,10 @@
                            MouseLeftButtonDown="RegisterText_MouseLeftButtonDown"
                            TextDecorations="Underline"/>
 
+
+                
             </StackPanel>
         </Border>
+        
     </Grid>
 </Page>

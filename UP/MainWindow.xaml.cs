@@ -28,7 +28,7 @@ namespace UP
             InitializeComponent();
             mainWindow = this;
 
-            OpenPages(new Pages.ShoppingListPage());
+            OpenPages(new Pages.LogInPage());
         }
 
         public void OpenPages(Page page)

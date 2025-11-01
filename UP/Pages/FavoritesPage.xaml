@@ -1,58 +1,108 @@
 ﻿<Page x:Class="UP.Pages.FavoritesPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      Title="Избранное"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      mc:Ignorable="d"
+      Title="FavoritesPage"
       Background="#1E1E1E">
+
+    <Page.Resources>
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#4CAF50"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="15,10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="5"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#45A049"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Page.Resources>
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Заголовок и фильтры -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock Text="⭐ Избранные рецепты" FontSize="24" FontWeight="Bold" Foreground="White" Margin="0,0,0,10"/>
-
-            <StackPanel Orientation="Horizontal">
-                <RadioButton x:Name="AllRecipesRadio" Content="Все" Foreground="White" Margin="0,0,10,0" IsChecked="True"/>
-                <RadioButton x:Name="RecentRecipesRadio" Content="Недавние" Foreground="White" Margin="0,0,10,0"/>
-                <RadioButton x:Name="MostUsedRadio" Content="Часто используемые" Foreground="White"/>
-            </StackPanel>
+        <!-- Заголовок -->
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+            <Button Content="🔙 Назад" 
+                    Background="#666"
+                    Foreground="White"
+                    Padding="20,10"
+                    BorderThickness="0"
+                    Cursor="Hand"
+                    Click="BackButton_Click"/>
+            <TextBlock Text="⭐ Избранные рецепты"
+                       FontSize="26"
+                       FontWeight="Bold"
+                       Foreground="White"
+                       Margin="20,0,0,0"
+                       VerticalAlignment="Center"/>
         </StackPanel>
 
-        <!-- Избранные рецепты -->
+        <!-- Список рецептов -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <ItemsControl x:Name="FavoritesItemsControl">
+            <ItemsControl x:Name="FavoritesList">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Background="#2D2D30" CornerRadius="8" Padding="15" Margin="0,0,0,10">
+                        <Border Background="#2D2D30"
+                                BorderBrush="#404040"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="15"
+                                Margin="0,0,0,10">
                             <Grid>
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" Foreground="White"/>
-                                    <TextBlock Text="{Binding Category}" FontSize="12" Foreground="#CCCCCC" Margin="0,5,0,0"/>
-                                    <TextBlock Text="Добавлено: {Binding AddedDate}" FontSize="11" Foreground="#666" Margin="0,5,0,0"/>
-                                </StackPanel>
+                                <Image Source="{Binding ImageUrl}" 
+                                       Width="130"
+                                       Height="100"
+                                       Stretch="UniformToFill"
+                                       Grid.Column="0"
+                                       Margin="0,0,10,0"/>
 
-                                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                    <Button Content="👁️" 
-                                            Background="#2196F3"
-                                            Foreground="White"
-                                            BorderThickness="0"
-                                            Padding="10,5"
-                                            Margin="0,0,5,0"
-                                            Click="ViewRecipe_Click"/>
-                                    <Button Content="🗑️" 
-                                            Background="#FF4444"
-                                            Foreground="White"
-                                            BorderThickness="0"
-                                            Padding="10,5"
-                                            Click="RemoveFromFavorites_Click"/>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{Binding Title}" 
+                                               FontSize="18" 
+                                               FontWeight="Bold" 
+                                               Foreground="#4CAF50"
+                                               Margin="0,0,0,5"/>
+                                    <TextBlock Text="{Binding Description}" 
+                                               Foreground="#CCCCCC"
+                                               FontSize="13"
+                                               TextWrapping="Wrap"
+                                               Margin="0,0,0,5"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="📝 Открыть" 
+                                                Background="#FF9800"
+                                                Foreground="White"
+                                                BorderThickness="0"
+                                                Padding="10,5"
+                                                FontSize="12"
+                                                Cursor="Hand"
+                                                Click="OpenRecipe_Click"/>
+                                        <Button Content="❌ Удалить"
+                                                Background="#E53935"
+                                                Foreground="White"
+                                                BorderThickness="0"
+                                                Padding="10,5"
+                                                FontSize="12"
+                                                Margin="10,0,0,0"
+                                                Cursor="Hand"
+                                                Click="RemoveRecipe_Click"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -60,5 +110,12 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
+
+        <!-- Нижняя панель -->
+        <TextBlock Grid.Row="2"
+                   Text="Выберите рецепт, чтобы открыть его."
+                   Foreground="#888"
+                   HorizontalAlignment="Center"
+                   Margin="0,20,0,0"/>
     </Grid>
 </Page>

@@ -49,16 +49,40 @@
         </Grid.RowDefinitions>
 
         <!-- Заголовок -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock Text="🍽️ Рецепты на неделю" 
-                       FontSize="28" 
-                       FontWeight="Bold" 
-                       Foreground="White"/>
-            <TextBlock Text="Генератор меню с учетом аллергий и продуктов в холодильнике" 
-                       FontSize="14" 
-                       Foreground="#CCCCCC"
-                       Margin="0,5,0,0"/>
-        </StackPanel>
+        <!-- Заголовок -->
+        <Grid Grid.Row="0" Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Orientation="Vertical" Grid.Column="0">
+                <TextBlock Text="🍽️ Рецепты на неделю" 
+                   FontSize="28" 
+                   FontWeight="Bold" 
+                   Foreground="White"/>
+                <TextBlock Text="Генератор меню с учетом аллергий и продуктов в холодильнике" 
+                   FontSize="14" 
+                   Foreground="#CCCCCC"
+                   Margin="0,5,0,0"/>
+            </StackPanel>
+
+            <!-- Кнопка Избранное -->
+            <Button Grid.Column="1"
+            Content="⭐ Избранное"
+            Background="#4CAF50"
+            Foreground="White"
+            BorderThickness="0"
+            Padding="15,8"
+            FontSize="14"
+            FontWeight="SemiBold"
+            Cursor="Hand"
+            Click="OpenFavorites_Click"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Center"/>
+        </Grid>
+
+
 
         <!-- Основной контент -->
         <Grid Grid.Row="1">
@@ -203,12 +227,14 @@
                                                 Click="StartTimer_Click"
                                                 Margin="0,0,10,0"/>
                                         <Button Content="📝 Рецепт" 
-                                                Background="#FF9800"
-                                                Foreground="White"
-                                                BorderThickness="0"
-                                                Padding="10,5"
-                                                FontSize="12"
-                                                Cursor="Hand"/>
+                                            Background="#FF9800"
+                                            Foreground="White"
+                                            BorderThickness="0"
+                                            Padding="10,5"
+                                            FontSize="12"
+                                            Cursor="Hand"
+                                            Click="OpenRecipe_Click"/>          
+
                                     </StackPanel>
                                 </StackPanel>
                             </Border>
@@ -270,8 +296,13 @@
                 </Border>
 
                 <!-- Список покупок -->
+                
+                
+                
                 <Border Style="{StaticResource CardStyle}">
                     <StackPanel>
+                        
+                        
                         <TextBlock Text="🛒 Список покупок" 
                                    FontSize="16" 
                                    FontWeight="SemiBold" 
@@ -296,6 +327,9 @@
                                 Style="{StaticResource PrimaryButton}"
                                 Margin="0,10,0,0"
                                 Click="ExportShoppingList_Click"/>
+
+
+
                     </StackPanel>
                 </Border>
             </StackPanel>
@@ -310,6 +344,11 @@
                     Padding="20,10"
                     Cursor="Hand"
                     Click="BackButton_Click"/>
+
+
         </StackPanel>
+        
+        
+        
     </Grid>
 </Page>

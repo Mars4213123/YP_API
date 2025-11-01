@@ -15,6 +15,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Microsoft.Win32;
 using System.Windows.Threading;
+using static UP.Pages.Receipts;
 
 namespace UP.Pages
 {
@@ -51,20 +52,20 @@ namespace UP.Pages
 
         private void InitializeData()
         {
-            // Инициализация коллекций
-            _products = new ObservableCollection<string>();
-            _weeklyMenu = new ObservableCollection<DailyMenu>();
+            // Подключаем глобальные коллекции из AppData
+            _products = AppData.Products;
+            _weeklyMenu = AppData.WeeklyMenu;
+            _shoppingList = AppData.ShoppingList;
             _activeTimers = new ObservableCollection<TimerItem>();
-            _shoppingList = new ObservableCollection<string>();
 
             ProductsListView.ItemsSource = _products;
             WeeklyMenuItemsControl.ItemsSource = _weeklyMenu;
             ActiveTimersItemsControl.ItemsSource = _activeTimers;
             ShoppingListListView.ItemsSource = _shoppingList;
 
-            // Обновляем видимость текста "Нет таймеров"
             UpdateNoTimersVisibility();
         }
+
 
         private void AddProduct_Click(object sender, RoutedEventArgs e)
         {
@@ -85,9 +86,16 @@ namespace UP.Pages
 
         private void GenerateMenu_Click(object sender, RoutedEventArgs e)
         {
-            // Очищаем предыдущее меню
-            _weeklyMenu.Clear();
-            _shoppingList.Clear();
+            if (_weeklyMenu.Count > 0)
+            {
+                var result = MessageBox.Show("Меню уже сгенерировано. Сгенерировать заново?", "Подтверждение",
+                                             MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (result == MessageBoxResult.No)
+                    return;
+
+                _weeklyMenu.Clear();
+                _shoppingList.Clear();
+            }
 
             // Пример генерации меню на неделю
             var sampleMenu = new List<DailyMenu>
@@ -265,6 +273,30 @@ namespace UP.Pages
         {
 
         }
+
+        private void OpenRecipe_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.DataContext is DailyMenu recipe)
+            {
+                // Пример перехода на страницу деталей рецепта
+                var detailsPage = new RecipeDetailsPage(
+                    recipe.Meal,
+                    recipe.Description,
+                    "https://via.placeholder.com/600x300?text=" + Uri.EscapeDataString(recipe.Meal),
+                    new List<string> { "Куриное филе", "Овощи", "Соль", "Масло" },
+                    new List<string> { "Подготовить ингредиенты", "Обжарить курицу", "Добавить овощи", "Подавать горячим" }
+                );
+
+                // Если у тебя используется OpenPages() — вызываем так:
+                MainWindow.mainWindow.OpenPages(detailsPage);
+            }
+        }
+
+        private void OpenFavorites_Click(object sender, RoutedEventArgs e)
+        {
+            MainWindow.mainWindow.OpenPages(new FavoritesPage());
+        }
+
     }
 
     // Окно для установки таймера
@@ -326,7 +358,7 @@ namespace UP.Pages
                 Content = "Запустить",
                 Background = new SolidColorBrush(Color.FromRgb(76, 175, 80)),
                 Foreground = Brushes.White,
-                
+
                 Margin = new Thickness(0, 0, 10, 0)
             };
             okButton.Click += (s, e) => { DialogResult = true; Close(); };
@@ -337,7 +369,7 @@ namespace UP.Pages
                 Content = "Отмена",
                 Background = new SolidColorBrush(Color.FromRgb(244, 67, 54)),
                 Foreground = Brushes.White,
-                
+
             };
             cancelButton.Click += (s, e) => { DialogResult = false; Close(); };
             buttonPanel.Children.Add(cancelButton);
@@ -347,6 +379,11 @@ namespace UP.Pages
             Content = stackPanel;
             Background = new SolidColorBrush(Color.FromRgb(30, 30, 30));
         }
+
+
+
+
+
 
     }
 }
