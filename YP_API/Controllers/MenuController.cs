@@ -1,5 +1,6 @@
-using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 using YP_API.Interfaces;
 using YP_API.Models;
 using YP_API.Services;
@@ -10,106 +11,297 @@ namespace YP_API.Controllers
     {
         private readonly IMenuService _menuService;
         private readonly IUserRepository _userRepository;
+        private readonly IRecipeRepository _recipeRepository;
+        private readonly ILogger<MenuController> _logger;
 
-        public MenuController(IMenuService menuService, IUserRepository userRepository)
+        public MenuController(IMenuService menuService, IUserRepository userRepository, IRecipeRepository recipeRepository, ILogger<MenuController> logger)
         {
             _menuService = menuService;
             _userRepository = userRepository;
+            _recipeRepository = recipeRepository;
+            _logger = logger;
         }
 
         [HttpGet("current")]
         public async Task<ActionResult> GetCurrentMenu()
         {
-            var userId = GetUserId();
-            var menu = await _menuService.GetCurrentMenuAsync(userId);
-
-            if (menu == null)
-                return NotFound(new { error = "No current menu found" });
-
-            return Ok(new
+            try
             {
-                Id = menu.Id,
-                Name = menu.Name,
-                StartDate = menu.StartDate,
-                EndDate = menu.EndDate,
-                TotalCalories = menu.TotalCalories,
-                Days = menu.MenuMeals?.GroupBy(m => m.MealDate).Select(g => new {
-                    Date = g.Key,
-                    Meals = g.Select(m => new {
-                        Id = m.Id,
-                        RecipeId = m.RecipeId,
-                        RecipeTitle = m.Recipe?.Title,
-                        MealType = m.MealType,
-                        Calories = m.Recipe?.Calories,
-                        PrepTime = (m.Recipe?.PrepTime ?? 0) + (m.Recipe?.CookTime ?? 0),
-                        ImageUrl = m.Recipe?.ImageUrl
-                    })
-                })
-            });
+                var userId = GetUserId();
+                _logger.LogInformation($"Getting current menu for user ID: {userId}");
+
+                var menu = await _menuService.GetCurrentMenuAsync(userId);
+
+                if (menu == null)
+                    return Ok(new
+                    {
+                        success = false,
+                        message = "Текущее меню не найдено",
+                        data = (object)null
+                    });
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Меню найдено",
+                    data = new
+                    {
+                        Id = menu.Id,
+                        Name = menu.Name,
+                        StartDate = menu.StartDate,
+                        EndDate = menu.EndDate,
+                        TotalCalories = menu.TotalCalories,
+                        Days = menu.MenuMeals?.GroupBy(m => m.MealDate).Select(g => new {
+                            Date = g.Key,
+                            Meals = g.Select(m => new {
+                                Id = m.Id,
+                                RecipeId = m.RecipeId,
+                                RecipeTitle = m.Recipe?.Title,
+                                MealType = m.MealType,
+                                Calories = m.Recipe?.Calories,
+                                PrepTime = (m.Recipe?.PrepTime ?? 0) + (m.Recipe?.CookTime ?? 0),
+                                ImageUrl = m.Recipe?.ImageUrl
+                            })
+                        })
+                    }
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning($"Authorization error in GetCurrentMenu: {ex.Message}");
+                return Unauthorized(new
+                {
+                    success = false,
+                    error = "Ошибка авторизации",
+                    message = "Необходима авторизация"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error in GetCurrentMenu: {ex.Message}");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    error = "Внутренняя ошибка сервера",
+                    message = "Произошла ошибка при получении меню"
+                });
+            }
         }
 
         [HttpPost("generate")]
         public async Task<ActionResult> GenerateMenu(
-            [FromForm] int days = 7,
-            [FromForm] decimal? targetCaloriesPerDay = null,
-            [FromForm] List<string> cuisineTags = null,
-            [FromForm] List<string> mealTypes = null,
-            [FromForm] bool useInventory = false)
+            [FromForm]
+            [Range(1, 30, ErrorMessage = "Количество дней должно быть от 1 до 30")]
+            [Display(Name = "Количество дней")]
+            int days = 7,
+
+            [FromForm]
+            [Range(0, 10000, ErrorMessage = "Калории должны быть от 0 до 10000")]
+            [Display(Name = "Целевые калории в день")]
+            decimal? targetCaloriesPerDay = null,
+
+            [FromForm]
+            [Display(Name = "Теги кухни")]
+            List<string> cuisineTags = null,
+
+            [FromForm]
+            [Display(Name = "Типы приемов пищи")]
+            List<string> mealTypes = null,
+
+            [FromForm]
+            [Display(Name = "Использовать инвентарь")]
+            bool useInventory = false)
         {
-            var userId = GetUserId();
-            var user = await _userRepository.GetByIdAsync(userId);
-
-            var request = new GenerateMenuRequest
+            try
             {
-                Days = days,
-                TargetCaloriesPerDay = targetCaloriesPerDay,
-                CuisineTags = cuisineTags ?? new List<string>(),
-                MealTypes = mealTypes ?? new List<string> { "breakfast", "lunch", "dinner" },
-                UseInventory = useInventory
-            };
+                var userId = GetUserId();
+                _logger.LogInformation($"Generating menu for user {userId}, days: {days}, calories: {targetCaloriesPerDay}");
 
-            var menu = await _menuService.GenerateWeeklyMenuAsync(userId, request, user?.Allergies);
+                var user = await _userRepository.GetByIdAsync(userId);
+                if (user == null)
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        error = "Пользователь не найден",
+                        message = "Не удалось найти данные пользователя"
+                    });
+                }
 
-            return Ok(new
+                // Проверяем доступные рецепты перед генерацией
+                var availableRecipes = await _recipeRepository.GetRecipesForMenuAsync(
+                    user.Allergies ?? new List<string>(),
+                    cuisineTags ?? new List<string>(),
+                    targetCaloriesPerDay);
+
+                if (!availableRecipes.Any())
+                {
+                    _logger.LogWarning($"No recipes available for user {userId} with filters: allergies={user.Allergies?.Count}, cuisineTags={cuisineTags?.Count}, maxCalories={targetCaloriesPerDay}");
+
+                    return BadRequest(new
+                    {
+                        success = false,
+                        error = "Нет доступных рецептов",
+                        message = "Не найдено рецептов по заданным критериям. Попробуйте изменить фильтры.",
+                        suggestions = new
+                        {
+                            tryWithoutAllergies = user.Allergies?.Any() == true,
+                            tryWithoutCuisineTags = cuisineTags?.Any() == true,
+                            tryHigherCalories = targetCaloriesPerDay.HasValue
+                        }
+                    });
+                }
+
+                var request = new GenerateMenuRequest
+                {
+                    Days = days,
+                    TargetCaloriesPerDay = targetCaloriesPerDay,
+                    CuisineTags = cuisineTags ?? new List<string>(),
+                    MealTypes = mealTypes ?? new List<string> { "breakfast", "lunch", "dinner" },
+                    UseInventory = useInventory
+                };
+
+                var menu = await _menuService.GenerateWeeklyMenuAsync(userId, request, user.Allergies);
+
+                _logger.LogInformation($"Menu generated successfully: {menu.Id} with {menu.MenuMeals?.Count} meals");
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Меню успешно сгенерировано",
+                    data = new
+                    {
+                        Id = menu.Id,
+                        Name = menu.Name,
+                        StartDate = menu.StartDate,
+                        EndDate = menu.EndDate,
+                        TotalCalories = menu.TotalCalories,
+                        MealCount = menu.MenuMeals?.Count ?? 0
+                    }
+                });
+            }
+            catch (UnauthorizedAccessException ex)
             {
-                Id = menu.Id,
-                Name = menu.Name,
-                StartDate = menu.StartDate,
-                EndDate = menu.EndDate,
-                TotalCalories = menu.TotalCalories,
-                Message = "Menu generated successfully"
-            });
+                _logger.LogWarning($"Authorization error in GenerateMenu: {ex.Message}");
+                return Unauthorized(new
+                {
+                    success = false,
+                    error = "Ошибка авторизации",
+                    message = "Необходима авторизация"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error in GenerateMenu: {ex.Message}");
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "Ошибка генерации меню",
+                    message = ex.Message
+                });
+            }
         }
 
         [HttpGet("history")]
         public async Task<ActionResult> GetMenuHistory()
         {
-            var userId = GetUserId();
-            var menus = await _menuService.GetUserMenuHistoryAsync(userId);
+            try
+            {
+                var userId = GetUserId();
+                var menus = await _menuService.GetUserMenuHistoryAsync(userId);
 
-            return Ok(menus.Select(m => new {
-                Id = m.Id,
-                Name = m.Name,
-                StartDate = m.StartDate,
-                EndDate = m.EndDate,
-                TotalCalories = m.TotalCalories
-            }));
+                if (!menus.Any())
+                {
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "История меню пуста",
+                        data = new List<object>()
+                    });
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "История меню загружена",
+                    data = menus.Select(m => new {
+                        Id = m.Id,
+                        Name = m.Name,
+                        StartDate = m.StartDate,
+                        EndDate = m.EndDate,
+                        TotalCalories = m.TotalCalories,
+                        CreatedAt = m.CreatedAt
+                    })
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning($"Authorization error in GetMenuHistory: {ex.Message}");
+                return Unauthorized(new
+                {
+                    success = false,
+                    error = "Ошибка авторизации",
+                    message = "Необходима авторизация"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error in GetMenuHistory: {ex.Message}");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    error = "Внутренняя ошибка сервера",
+                    message = "Произошла ошибка при загрузке истории"
+                });
+            }
         }
 
         [HttpPost("{menuId}/regenerate-day")]
-        public async Task<ActionResult> RegenerateDay(int menuId, [FromForm] DateTime date)
+        public async Task<ActionResult> RegenerateDay(
+            int menuId,
+            [FromForm]
+            [Required(ErrorMessage = "Дата обязательна")]
+            [Display(Name = "Дата для перегенерации")]
+            DateTime date)
         {
-            var userId = GetUserId();
-            var user = await _userRepository.GetByIdAsync(userId);
-
-            var menu = await _menuService.RegenerateDayAsync(menuId, date, user?.Allergies);
-
-            return Ok(new
+            try
             {
-                Message = "Day regenerated successfully",
-                MenuId = menu.Id,
-                Date = date
-            });
+                var userId = GetUserId();
+                var user = await _userRepository.GetByIdAsync(userId);
+
+                var menu = await _menuService.RegenerateDayAsync(menuId, date, user?.Allergies);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "День успешно перегенерирован",
+                    data = new
+                    {
+                        MenuId = menu.Id,
+                        Date = date
+                    }
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning($"Authorization error in RegenerateDay: {ex.Message}");
+                return Unauthorized(new
+                {
+                    success = false,
+                    error = "Ошибка авторизации",
+                    message = "Необходима авторизация"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error in RegenerateDay: {ex.Message}");
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "Ошибка перегенерации",
+                    message = ex.Message
+                });
+            }
         }
     }
 
@@ -122,4 +314,3 @@ namespace YP_API.Controllers
         public bool UseInventory { get; set; } = false;
     }
 }
-

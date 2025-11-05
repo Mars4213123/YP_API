@@ -1,6 +1,6 @@
-using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 using YP_API.Helpers;
 using YP_API.Interfaces;
 using YP_API.Models;
@@ -10,10 +10,12 @@ namespace YP_API.Controllers
     public class RecipesController : BaseApiController
     {
         private readonly IRecipeRepository _recipeRepository;
+        private readonly ILogger<RecipesController> _logger;
 
-        public RecipesController(IRecipeRepository recipeRepository)
+        public RecipesController(IRecipeRepository recipeRepository, ILogger<RecipesController> logger)
         {
             _recipeRepository = recipeRepository;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -32,20 +34,31 @@ namespace YP_API.Controllers
                     recipes.TotalPages
                 }));
 
-                return Ok(recipes.Select(r => new {
-                    Id = r.Id,
-                    Title = r.Title,
-                    Description = r.Description,
-                    PrepTime = r.PrepTime,
-                    CookTime = r.CookTime,
-                    Calories = r.Calories,
-                    ImageUrl = r.ImageUrl,
-                    Difficulty = r.Difficulty
-                }));
+                return Ok(new
+                {
+                    success = true,
+                    message = "Рецепты загружены успешно",
+                    data = recipes.Select(r => new {
+                        Id = r.Id,
+                        Title = r.Title,
+                        Description = r.Description,
+                        PrepTime = r.PrepTime,
+                        CookTime = r.CookTime,
+                        Calories = r.Calories,
+                        ImageUrl = r.ImageUrl,
+                        Difficulty = r.Difficulty
+                    })
+                });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+                _logger.LogError($"Error in GetRecipes: {ex.Message}");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    error = "Внутренняя ошибка сервера",
+                    message = "Произошла ошибка при загрузке рецептов"
+                });
             }
         }
 
@@ -58,48 +71,100 @@ namespace YP_API.Controllers
                 var recipe = await _recipeRepository.GetRecipeWithDetailsAsync(id);
 
                 if (recipe == null)
-                    return NotFound(new { error = "Recipe not found" });
+                    return NotFound(new
+                    {
+                        success = false,
+                        error = "Рецепт не найден",
+                        message = $"Рецепт с ID {id} не существует"
+                    });
 
                 return Ok(new
                 {
-                    Id = recipe.Id,
-                    Title = recipe.Title,
-                    Description = recipe.Description,
-                    Instructions = recipe.Instructions,
-                    PrepTime = recipe.PrepTime,
-                    CookTime = recipe.CookTime,
-                    Servings = recipe.Servings,
-                    Calories = recipe.Calories,
-                    ImageUrl = recipe.ImageUrl,
-                    Difficulty = recipe.Difficulty,
-                    CuisineType = recipe.CuisineType,
-                    Ingredients = recipe.RecipeIngredients?.Select(ri => new {
-                        Name = ri.Ingredient?.Name,
-                        Quantity = ri.Quantity,
-                        Unit = ri.Unit,
-                        Category = ri.Ingredient?.Category
-                    })
+                    success = true,
+                    message = "Рецепт загружен успешно",
+                    data = new
+                    {
+                        Id = recipe.Id,
+                        Title = recipe.Title,
+                        Description = recipe.Description,
+                        Instructions = recipe.Instructions,
+                        PrepTime = recipe.PrepTime,
+                        CookTime = recipe.CookTime,
+                        Servings = recipe.Servings,
+                        Calories = recipe.Calories,
+                        ImageUrl = recipe.ImageUrl,
+                        Difficulty = recipe.Difficulty,
+                        CuisineType = recipe.CuisineType,
+                        Ingredients = recipe.RecipeIngredients?.Select(ri => new {
+                            Name = ri.Ingredient?.Name,
+                            Quantity = ri.Quantity,
+                            Unit = ri.Unit,
+                            Category = ri.Ingredient?.Category
+                        })
+                    }
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+                _logger.LogError($"Error in GetRecipe: {ex.Message}");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    error = "Внутренняя ошибка сервера",
+                    message = "Произошла ошибка при загрузке рецепта"
+                });
             }
         }
 
         [HttpPost]
         [Authorize]
         public async Task<ActionResult> CreateRecipe(
-            [FromForm] string title,
-            [FromForm] string description,
-            [FromForm] string instructions,
-            [FromForm] int prepTime,
-            [FromForm] int cookTime,
-            [FromForm] int servings,
-            [FromForm] decimal calories,
-            [FromForm] string imageUrl = "",
-            [FromForm] string cuisineType = "",
-            [FromForm] string difficulty = "")
+            [FromForm]
+            [Required(ErrorMessage = "Название рецепта обязательно")]
+            [Display(Name = "Название рецепта")]
+            string title,
+
+            [FromForm]
+            [Display(Name = "Описание рецепта")]
+            string description,
+
+            [FromForm]
+            [Required(ErrorMessage = "Инструкции обязательны")]
+            [Display(Name = "Инструкции приготовления")]
+            string instructions,
+
+            [FromForm]
+            [Range(0, 1000, ErrorMessage = "Время подготовки должно быть от 0 до 1000 минут")]
+            [Display(Name = "Время подготовки (минуты)")]
+            int prepTime,
+
+            [FromForm]
+            [Range(0, 1000, ErrorMessage = "Время готовки должно быть от 0 до 1000 минут")]
+            [Display(Name = "Время готовки (минуты)")]
+            int cookTime,
+
+            [FromForm]
+            [Range(1, 100, ErrorMessage = "Количество порций должно быть от 1 до 100")]
+            [Display(Name = "Количество порций")]
+            int servings,
+
+            [FromForm]
+            [Range(0, 10000, ErrorMessage = "Калории должны быть от 0 до 10000")]
+            [Display(Name = "Калории")]
+            decimal calories,
+
+            [FromForm]
+            [Url(ErrorMessage = "Некорректный URL изображения")]
+            [Display(Name = "URL изображения")]
+            string imageUrl = "",
+
+            [FromForm]
+            [Display(Name = "Тип кухни")]
+            string cuisineType = "",
+
+            [FromForm]
+            [Display(Name = "Сложность приготовления")]
+            string difficulty = "")
         {
             try
             {
@@ -124,17 +189,32 @@ namespace YP_API.Controllers
                 {
                     return Ok(new
                     {
-                        Id = recipe.Id,
-                        Message = "Recipe created successfully",
-                        Title = recipe.Title
+                        success = true,
+                        message = "Рецепт успешно создан",
+                        data = new
+                        {
+                            Id = recipe.Id,
+                            Title = recipe.Title
+                        }
                     });
                 }
 
-                return BadRequest(new { error = "Failed to create recipe" });
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "Ошибка создания рецепта",
+                    message = "Не удалось сохранить рецепт в базу данных"
+                });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+                _logger.LogError($"Error in CreateRecipe: {ex.Message}");
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "Ошибка создания рецепта",
+                    message = ex.Message
+                });
             }
         }
 
@@ -145,16 +225,52 @@ namespace YP_API.Controllers
             try
             {
                 var userId = GetUserId();
+                _logger.LogInformation($"Toggling favorite for user {userId}, recipe {id}");
+
                 var success = await _recipeRepository.ToggleFavoriteAsync(userId, id);
 
                 if (success)
-                    return Ok(new { message = "Favorite toggled successfully" });
+                {
+                    var isFavorite = await _recipeRepository.IsRecipeFavoriteAsync(userId, id);
 
-                return BadRequest(new { error = "Failed to toggle favorite" });
+                    return Ok(new
+                    {
+                        success = true,
+                        message = isFavorite ? "Рецепт добавлен в избранное" : "Рецепт удален из избранного",
+                        data = new
+                        {
+                            RecipeId = id,
+                            IsFavorite = isFavorite
+                        }
+                    });
+                }
+
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "Ошибка обновления избранного",
+                    message = "Не удалось обновить избранное"
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning($"Authorization error in ToggleFavorite: {ex.Message}");
+                return Unauthorized(new
+                {
+                    success = false,
+                    error = "Ошибка авторизации",
+                    message = "Необходима авторизация"
+                });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+                _logger.LogError($"Error in ToggleFavorite: {ex.Message}");
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "Ошибка обновления избранного",
+                    message = ex.Message
+                });
             }
         }
 
@@ -167,21 +283,48 @@ namespace YP_API.Controllers
                 var userId = GetUserId();
                 var favorites = await _recipeRepository.GetUserFavoritesAsync(userId);
 
-                return Ok(favorites.Select(r => new {
-                    Id = r.Id,
-                    Title = r.Title,
-                    Description = r.Description,
-                    Calories = r.Calories,
-                    ImageUrl = r.ImageUrl,
-                    PrepTime = r.PrepTime,
-                    CookTime = r.CookTime
-                }));
+                return Ok(new
+                {
+                    success = true,
+                    message = "Избранные рецепты загружены",
+                    data = favorites.Select(r => new {
+                        Id = r.Id,
+                        Title = r.Title,
+                        Description = r.Description,
+                        Calories = r.Calories,
+                        ImageUrl = r.ImageUrl,
+                        PrepTime = r.PrepTime,
+                        CookTime = r.CookTime
+                    })
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning($"Authorization error in GetFavorites: {ex.Message}");
+                return Unauthorized(new
+                {
+                    success = false,
+                    error = "Ошибка авторизации",
+                    message = "Необходима авторизация"
+                });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+                _logger.LogError($"Error in GetFavorites: {ex.Message}");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    error = "Внутренняя ошибка сервера",
+                    message = "Произошла ошибка при загрузке избранных рецептов"
+                });
             }
         }
     }
-}
 
+    public class CreateRecipeIngredientRequest
+    {
+        public int IngredientId { get; set; }
+        public decimal Quantity { get; set; }
+        public string Unit { get; set; }
+    }
+}

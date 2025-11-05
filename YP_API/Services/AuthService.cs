@@ -71,7 +71,9 @@ namespace YP_API.Services
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.Username)
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim("userId", user.Id.ToString()),
+                new Claim("email", user.Email)
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JWT:Key"]));
@@ -81,7 +83,9 @@ namespace YP_API.Services
             {
                 Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.Now.AddDays(7),
-                SigningCredentials = creds
+                SigningCredentials = creds,
+                Issuer = "RecipePlannerAPI",
+                Audience = "RecipePlannerUsers"
             };
 
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -97,4 +101,3 @@ namespace YP_API.Services
         Task<User> Login(string username, string password);
     }
 }
-

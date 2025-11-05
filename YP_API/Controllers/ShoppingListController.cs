@@ -1,7 +1,6 @@
-using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using YP_API.Helpers;
+using System.ComponentModel.DataAnnotations;
 using YP_API.Interfaces;
 using YP_API.Models;
 using YP_API.Services;
@@ -27,7 +26,7 @@ namespace YP_API.Controllers
             var shoppingList = await _shoppingListService.GetCurrentShoppingListAsync(userId);
 
             if (shoppingList == null)
-                return NotFound(new { error = "No current shopping list found" });
+                return NotFound(new { error = "Текущий список покупок не найден" });
 
             return Ok(new
             {
@@ -46,14 +45,20 @@ namespace YP_API.Controllers
         }
 
         [HttpPost("{listId}/items/{itemId}/toggle")]
-        public async Task<ActionResult> ToggleItemPurchased(int listId, int itemId, [FromForm] bool isPurchased)
+        public async Task<ActionResult> ToggleItemPurchased(
+            int listId,
+            int itemId,
+            [FromForm]
+            [Required(ErrorMessage = "Статус покупки обязателен")]
+            [Display(Name = "Статус покупки (куплено/не куплено)")]
+            bool isPurchased)
         {
             var success = await _shoppingListService.ToggleItemPurchasedAsync(itemId, isPurchased);
 
             if (success)
-                return Ok(new { message = "Item updated successfully" });
+                return Ok(new { message = "Статус товара успешно обновлен" });
 
-            return BadRequest(new { error = "Failed to update item" });
+            return BadRequest(new { error = "Не удалось обновить статус товара" });
         }
 
         [HttpPost("generate-from-menu/{menuId}")]
@@ -66,10 +71,9 @@ namespace YP_API.Controllers
             {
                 Id = shoppingList.Id,
                 Name = shoppingList.Name,
-                Message = "Shopping list generated successfully",
+                Message = "Список покупок успешно сгенерирован",
                 ItemsCount = shoppingList.Items?.Count ?? 0
             });
         }
     }
 }
-

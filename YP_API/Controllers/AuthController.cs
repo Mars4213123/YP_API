@@ -1,5 +1,5 @@
-using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 using YP_API.Models;
 using YP_API.Services;
 
@@ -18,11 +18,33 @@ namespace YP_API.Controllers
 
         [HttpPost("register")]
         public async Task<ActionResult> Register(
-            [FromForm] string username,
-            [FromForm] string email,
-            [FromForm] string fullName,
-            [FromForm] string password,
-            [FromForm] List<string> allergies = null)
+            [FromForm]
+            [Required(ErrorMessage = "Имя пользователя обязательно")]
+            [StringLength(50, MinimumLength = 3, ErrorMessage = "Имя пользователя должно быть от 3 до 50 символов")]
+            [Display(Name = "Имя пользователя")]
+            string username,
+
+            [FromForm]
+            [Required(ErrorMessage = "Email обязателен")]
+            [EmailAddress(ErrorMessage = "Некорректный формат email")]
+            [Display(Name = "Email адрес")]
+            string email,
+
+            [FromForm]
+            [Required(ErrorMessage = "Полное имя обязательно")]
+            [StringLength(100, ErrorMessage = "Полное имя не должно превышать 100 символов")]
+            [Display(Name = "Полное имя")]
+            string fullName,
+
+            [FromForm]
+            [Required(ErrorMessage = "Пароль обязателен")]
+            [StringLength(100, MinimumLength = 6, ErrorMessage = "Пароль должен быть не менее 6 символов")]
+            [Display(Name = "Пароль")]
+            string password,
+
+            [FromForm]
+            [Display(Name = "Аллергии")]
+            List<string> allergies = null)
         {
             try
             {
@@ -45,8 +67,15 @@ namespace YP_API.Controllers
 
         [HttpPost("login")]
         public async Task<ActionResult> Login(
-            [FromForm] string username,
-            [FromForm] string password)
+            [FromForm]
+            [Required(ErrorMessage = "Имя пользователя обязательно")]
+            [Display(Name = "Имя пользователя")]
+            string username,
+
+            [FromForm]
+            [Required(ErrorMessage = "Пароль обязателен")]
+            [Display(Name = "Пароль")]
+            string password)
         {
             try
             {
@@ -68,4 +97,3 @@ namespace YP_API.Controllers
         }
     }
 }
-

@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using YP_API.Models;
 
 namespace YP_API.Controllers
 {
@@ -10,13 +9,33 @@ namespace YP_API.Controllers
     {
         protected int GetUserId()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdClaim))
+            try
             {
-                throw new UnauthorizedAccessException("User ID not found in token");
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                               ?? User.FindFirst("nameid")?.Value
+                               ?? User.FindFirst("sub")?.Value
+                               ?? User.FindFirst("userId")?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim))
+                {
+                    var allClaims = User.Claims.Select(c => $"{c.Type}: {c.Value}").ToList();
+                    Console.WriteLine("Available claims: " + string.Join(", ", allClaims));
+
+                    throw new UnauthorizedAccessException("User ID not found in token. Available claims: " + string.Join(", ", allClaims));
+                }
+
+                if (int.TryParse(userIdClaim, out int userId))
+                {
+                    return userId;
+                }
+
+                throw new UnauthorizedAccessException($"Invalid user ID format in token: {userIdClaim}");
             }
-            return int.Parse(userIdClaim);
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in GetUserId: {ex.Message}");
+                throw;
+            }
         }
     }
 }
-

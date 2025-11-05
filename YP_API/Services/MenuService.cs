@@ -30,13 +30,13 @@ namespace YP_API.Services
 
             if (!availableRecipes.Any())
             {
-                throw new Exception("No recipes available for menu generation");
+                throw new Exception("No recipes available for menu generation with current filters");
             }
 
             var menu = new WeeklyMenu
             {
                 UserId = userId,
-                Name = $"Menu Plan {DateTime.Today:yyyy-MM-dd}",
+                Name = $"Меню на {request.Days} дней",
                 StartDate = DateTime.Today,
                 EndDate = DateTime.Today.AddDays(request.Days - 1),
                 CreatedAt = DateTime.UtcNow
@@ -44,6 +44,7 @@ namespace YP_API.Services
 
             var random = new Random();
             var totalCalories = 0m;
+            var usedRecipeIds = new HashSet<int>();
 
             for (int i = 0; i < request.Days; i++)
             {
@@ -52,12 +53,14 @@ namespace YP_API.Services
                 foreach (var mealType in request.MealTypes ?? new List<string> { "breakfast", "lunch", "dinner" })
                 {
                     var suitableRecipes = availableRecipes
+                        .Where(r => !usedRecipeIds.Contains(r.Id))
                         .Where(r => r.Tags.Contains(mealType) || IsSuitableForMealType(r, mealType))
                         .ToList();
 
                     if (suitableRecipes.Any())
                     {
                         var selectedRecipe = suitableRecipes[random.Next(suitableRecipes.Count)];
+                        usedRecipeIds.Add(selectedRecipe.Id);
 
                         menu.MenuMeals.Add(new MenuMeal
                         {
@@ -67,7 +70,11 @@ namespace YP_API.Services
                         });
 
                         totalCalories += selectedRecipe.Calories;
-                        availableRecipes.Remove(selectedRecipe);
+                        _logger.LogInformation($"Added {mealType}: {selectedRecipe.Title} ({selectedRecipe.Calories} cal)");
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"No suitable recipes found for {mealType} on {date.ToShortDateString()}");
                     }
                 }
             }
@@ -77,7 +84,7 @@ namespace YP_API.Services
             var createdMenu = await _menuRepository.CreateMenuAsync(menu);
             await _menuRepository.SaveAllAsync();
 
-            _logger.LogInformation($"Menu created successfully with ID: {createdMenu.Id}");
+            _logger.LogInformation($"Menu created successfully with ID: {createdMenu.Id}, {menu.MenuMeals.Count} meals, {totalCalories} total calories");
 
             return await GetMenuWithDetailsAsync(createdMenu.Id);
         }
@@ -110,10 +117,10 @@ namespace YP_API.Services
 
             return mealType.ToLower() switch
             {
-                "breakfast" => recipe.Tags.Any(t => t.Contains("breakfast") || t.Contains("morning")),
-                "lunch" => recipe.Tags.Any(t => t.Contains("lunch") || t.Contains("main")),
-                "dinner" => recipe.Tags.Any(t => t.Contains("dinner") || t.Contains("main")),
-                "snack" => recipe.Tags.Any(t => t.Contains("snack") || t.Contains("quick")),
+                "breakfast" => recipe.Tags.Any(t => t.Contains("breakfast") || t.Contains("morning") || t.Contains("завтрак")),
+                "lunch" => recipe.Tags.Any(t => t.Contains("lunch") || t.Contains("main") || t.Contains("обед")),
+                "dinner" => recipe.Tags.Any(t => t.Contains("dinner") || t.Contains("main") || t.Contains("ужин")),
+                "snack" => recipe.Tags.Any(t => t.Contains("snack") || t.Contains("quick") || t.Contains("перекус")),
                 _ => false
             };
         }
@@ -127,5 +134,3 @@ namespace YP_API.Services
         Task<WeeklyMenu> RegenerateDayAsync(int menuId, DateTime date, List<string> userAllergies);
     }
 }
-
-

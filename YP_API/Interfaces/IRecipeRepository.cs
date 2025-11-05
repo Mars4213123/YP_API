@@ -9,8 +9,8 @@ namespace YP_API.Interfaces
         Task<Recipe> GetRecipeWithDetailsAsync(int id);
         Task<IEnumerable<Recipe>> GetRecipesForMenuAsync(List<string> excludedAllergens, List<string> cuisineTags, decimal? maxCalories);
         Task<bool> ToggleFavoriteAsync(int userId, int recipeId);
+        Task<bool> IsRecipeFavoriteAsync(int userId, int recipeId);
         Task<IEnumerable<Recipe>> GetUserFavoritesAsync(int userId);
         Task<IEnumerable<Recipe>> SearchRecipesAsync(string query, List<string> tags, List<string> excludedAllergens);
     }
 }
-

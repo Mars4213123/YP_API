@@ -12,40 +12,43 @@ namespace YP_API.Repositories
 
         public async Task<bool> ToggleFavoriteAsync(int userId, int recipeId)
         {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
-                Console.WriteLine($"ToggleFavoriteAsync: UserId={userId}, RecipeId={recipeId}");
+                _logger.LogInformation($"ToggleFavoriteAsync: UserId={userId}, RecipeId={recipeId}");
 
                 // Проверяем существование рецепта
                 var recipe = await _context.Recipes.FindAsync(recipeId);
                 if (recipe == null)
                 {
-                    Console.WriteLine("Recipe not found");
-                    throw new Exception("Recipe not found");
+                    _logger.LogWarning($"Recipe {recipeId} not found");
+                    throw new Exception($"Рецепт с ID {recipeId} не найден");
                 }
 
                 // Проверяем существование пользователя
                 var user = await _context.Users.FindAsync(userId);
                 if (user == null)
                 {
-                    Console.WriteLine("User not found");
-                    throw new Exception("User not found");
+                    _logger.LogWarning($"User {userId} not found");
+                    throw new Exception($"Пользователь с ID {userId} не найден");
                 }
 
                 // Ищем существующий избранный рецепт
                 var existingFavorite = await _context.UserFavorites
+                    .AsNoTracking()
                     .FirstOrDefaultAsync(uf => uf.UserId == userId && uf.RecipeId == recipeId);
 
                 if (existingFavorite != null)
                 {
                     // Удаляем из избранного
-                    Console.WriteLine("Removing from favorites");
+                    _logger.LogInformation($"Removing recipe {recipeId} from favorites for user {userId}");
                     _context.UserFavorites.Remove(existingFavorite);
                 }
                 else
                 {
                     // Добавляем в избранное
-                    Console.WriteLine("Adding to favorites");
+                    _logger.LogInformation($"Adding recipe {recipeId} to favorites for user {userId}");
                     var favorite = new UserFavorite
                     {
                         UserId = userId,
@@ -57,23 +60,49 @@ namespace YP_API.Repositories
 
                 // Сохраняем изменения
                 var result = await _context.SaveChangesAsync() > 0;
-                Console.WriteLine($"Save result: {result}");
+
+                if (result)
+                {
+                    await transaction.CommitAsync();
+                    _logger.LogInformation($"Favorite toggled successfully for user {userId}, recipe {recipeId}");
+                }
+                else
+                {
+                    await transaction.RollbackAsync();
+                    _logger.LogWarning($"Failed to save favorite changes for user {userId}, recipe {recipeId}");
+                }
+
                 return result;
             }
             catch (DbUpdateException dbEx)
             {
-                Console.WriteLine($"Database error in ToggleFavoriteAsync: {dbEx.Message}");
-                Console.WriteLine($"Inner exception: {dbEx.InnerException?.Message}");
-                throw new Exception("Database error occurred while updating favorites");
+                await transaction.RollbackAsync();
+                _logger.LogError($"Database error in ToggleFavoriteAsync: {dbEx.Message}");
+                _logger.LogError($"Inner exception: {dbEx.InnerException?.Message}");
+
+                if (dbEx.InnerException?.Message?.Contains("foreign key constraint") == true)
+                {
+                    throw new Exception("Ошибка связи с базой данных. Проверьте существование рецепта и пользователя.");
+                }
+
+                throw new Exception("Ошибка базы данных при обновлении избранного");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in ToggleFavoriteAsync: {ex.Message}");
-                Console.WriteLine($"Inner exception: {ex.InnerException?.Message}");
-                throw new Exception("Error occurred while updating favorites");
+                await transaction.RollbackAsync();
+                _logger.LogError($"Error in ToggleFavoriteAsync: {ex.Message}");
+                _logger.LogError($"Inner exception: {ex.InnerException?.Message}");
+                throw new Exception($"Ошибка при обновлении избранного: {ex.Message}");
             }
         }
 
+        public async Task<bool> IsRecipeFavoriteAsync(int userId, int recipeId)
+        {
+            return await _context.UserFavorites
+                .AnyAsync(uf => uf.UserId == userId && uf.RecipeId == recipeId);
+        }
+
+        // Остальные методы остаются без изменений...
         public async Task<PagedList<Recipe>> GetRecipesAsync(RecipeSearchParams searchParams)
         {
             var query = _context.Recipes
@@ -221,6 +250,7 @@ namespace YP_API.Repositories
 
             return await searchQuery.Take(50).ToListAsync();
         }
+
+        private readonly ILogger<RecipeRepository> _logger;
     }
 }
-
