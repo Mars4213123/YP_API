@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using YP_API.Data;
-using YP_API.DTOs;
 using YP_API.Helpers;
 using YP_API.Interfaces;
 using YP_API.Models;
@@ -11,7 +10,71 @@ namespace YP_API.Repositories
     {
         public RecipeRepository(RecipePlannerContext context) : base(context) { }
 
-        public async Task<PagedList<RecipeDto>> GetRecipesAsync(RecipeSearchParams searchParams)
+        public async Task<bool> ToggleFavoriteAsync(int userId, int recipeId)
+        {
+            try
+            {
+                Console.WriteLine($"ToggleFavoriteAsync: UserId={userId}, RecipeId={recipeId}");
+
+                // Проверяем существование рецепта
+                var recipe = await _context.Recipes.FindAsync(recipeId);
+                if (recipe == null)
+                {
+                    Console.WriteLine("Recipe not found");
+                    throw new Exception("Recipe not found");
+                }
+
+                // Проверяем существование пользователя
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    Console.WriteLine("User not found");
+                    throw new Exception("User not found");
+                }
+
+                // Ищем существующий избранный рецепт
+                var existingFavorite = await _context.UserFavorites
+                    .FirstOrDefaultAsync(uf => uf.UserId == userId && uf.RecipeId == recipeId);
+
+                if (existingFavorite != null)
+                {
+                    // Удаляем из избранного
+                    Console.WriteLine("Removing from favorites");
+                    _context.UserFavorites.Remove(existingFavorite);
+                }
+                else
+                {
+                    // Добавляем в избранное
+                    Console.WriteLine("Adding to favorites");
+                    var favorite = new UserFavorite
+                    {
+                        UserId = userId,
+                        RecipeId = recipeId,
+                        AddedAt = DateTime.UtcNow
+                    };
+                    await _context.UserFavorites.AddAsync(favorite);
+                }
+
+                // Сохраняем изменения
+                var result = await _context.SaveChangesAsync() > 0;
+                Console.WriteLine($"Save result: {result}");
+                return result;
+            }
+            catch (DbUpdateException dbEx)
+            {
+                Console.WriteLine($"Database error in ToggleFavoriteAsync: {dbEx.Message}");
+                Console.WriteLine($"Inner exception: {dbEx.InnerException?.Message}");
+                throw new Exception("Database error occurred while updating favorites");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in ToggleFavoriteAsync: {ex.Message}");
+                Console.WriteLine($"Inner exception: {ex.InnerException?.Message}");
+                throw new Exception("Error occurred while updating favorites");
+            }
+        }
+
+        public async Task<PagedList<Recipe>> GetRecipesAsync(RecipeSearchParams searchParams)
         {
             var query = _context.Recipes
                 .Include(r => r.RecipeIngredients)
@@ -26,8 +89,8 @@ namespace YP_API.Repositories
                 var allRecipes = await query.ToListAsync();
                 var filteredRecipes = allRecipes.Where(r => searchParams.Tags.All(t => r.Tags.Contains(t))).ToList();
 
-                return PagedList<RecipeDto>.Create(
-                    filteredRecipes.Select(r => MapToRecipeDto(r)),
+                return PagedList<Recipe>.Create(
+                    filteredRecipes,
                     searchParams.PageNumber,
                     searchParams.PageSize
                 );
@@ -38,8 +101,8 @@ namespace YP_API.Repositories
                 var allRecipes = await query.ToListAsync();
                 var filteredRecipes = allRecipes.Where(r => !r.Allergens.Any(a => searchParams.ExcludedAllergens.Contains(a))).ToList();
 
-                return PagedList<RecipeDto>.Create(
-                    filteredRecipes.Select(r => MapToRecipeDto(r)),
+                return PagedList<Recipe>.Create(
+                    filteredRecipes,
                     searchParams.PageNumber,
                     searchParams.PageSize
                 );
@@ -56,8 +119,8 @@ namespace YP_API.Repositories
                 var allRecipes = await query.ToListAsync();
                 var filteredRecipes = allRecipes.Where(r => searchParams.CuisineTypes.Contains(r.CuisineType)).ToList();
 
-                return PagedList<RecipeDto>.Create(
-                    filteredRecipes.Select(r => MapToRecipeDto(r)),
+                return PagedList<Recipe>.Create(
+                    filteredRecipes,
                     searchParams.PageNumber,
                     searchParams.PageSize
                 );
@@ -85,18 +148,15 @@ namespace YP_API.Repositories
                 .Take(searchParams.PageSize)
                 .ToListAsync();
 
-            var recipeDtos = recipes.Select(r => MapToRecipeDto(r)).ToList();
-            return new PagedList<RecipeDto>(recipeDtos, totalCount, searchParams.PageNumber, searchParams.PageSize);
+            return new PagedList<Recipe>(recipes, totalCount, searchParams.PageNumber, searchParams.PageSize);
         }
 
-        public async Task<RecipeDto> GetRecipeDtoByIdAsync(int id)
+        public async Task<Recipe> GetRecipeWithDetailsAsync(int id)
         {
-            var recipe = await _context.Recipes
+            return await _context.Recipes
                 .Include(r => r.RecipeIngredients)
                     .ThenInclude(ri => ri.Ingredient)
                 .FirstOrDefaultAsync(r => r.Id == id);
-
-            return recipe != null ? MapToRecipeDto(recipe) : null;
         }
 
         public async Task<IEnumerable<Recipe>> GetRecipesForMenuAsync(List<string> excludedAllergens, List<string> cuisineTags, decimal? maxCalories)
@@ -125,76 +185,15 @@ namespace YP_API.Repositories
             return recipes;
         }
 
-        public async Task<Recipe> CreateRecipeAsync(CreateRecipeDto createRecipeDto)
+        public async Task<IEnumerable<Recipe>> GetUserFavoritesAsync(int userId)
         {
-            var recipe = new Recipe
-            {
-                Title = createRecipeDto.Title,
-                Description = createRecipeDto.Description,
-                Instructions = createRecipeDto.Instructions,
-                PrepTime = createRecipeDto.PrepTime,
-                CookTime = createRecipeDto.CookTime,
-                Servings = createRecipeDto.Servings,
-                Calories = createRecipeDto.Calories,
-                ImageUrl = createRecipeDto.ImageUrl,
-                Tags = createRecipeDto.Tags ?? new List<string>(),
-                Allergens = createRecipeDto.Allergens ?? new List<string>(),
-                CuisineType = createRecipeDto.CuisineType,
-                Difficulty = createRecipeDto.Difficulty,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            if (createRecipeDto.Ingredients != null)
-            {
-                foreach (var ingredientDto in createRecipeDto.Ingredients)
-                {
-                    recipe.RecipeIngredients.Add(new RecipeIngredient
-                    {
-                        IngredientId = ingredientDto.IngredientId,
-                        Quantity = ingredientDto.Quantity,
-                        Unit = ingredientDto.Unit
-                    });
-                }
-            }
-
-            await _context.Recipes.AddAsync(recipe);
-            return recipe;
-        }
-
-        public async Task<bool> ToggleFavoriteAsync(int userId, int recipeId)
-        {
-            var existingFavorite = await _context.UserFavorites
-                .FirstOrDefaultAsync(uf => uf.UserId == userId && uf.RecipeId == recipeId);
-
-            if (existingFavorite != null)
-            {
-                _context.UserFavorites.Remove(existingFavorite);
-            }
-            else
-            {
-                var favorite = new UserFavorite
-                {
-                    UserId = userId,
-                    RecipeId = recipeId,
-                    AddedAt = DateTime.UtcNow
-                };
-                await _context.UserFavorites.AddAsync(favorite);
-            }
-
-            return await SaveAllAsync();
-        }
-
-        public async Task<IEnumerable<RecipeDto>> GetUserFavoritesAsync(int userId)
-        {
-            var favoriteRecipes = await _context.UserFavorites
+            return await _context.UserFavorites
                 .Where(uf => uf.UserId == userId)
                 .Include(uf => uf.Recipe)
                     .ThenInclude(r => r.RecipeIngredients)
                         .ThenInclude(ri => ri.Ingredient)
                 .Select(uf => uf.Recipe)
                 .ToListAsync();
-
-            return favoriteRecipes.Select(r => MapToRecipeDto(r));
         }
 
         public async Task<IEnumerable<Recipe>> SearchRecipesAsync(string query, List<string> tags, List<string> excludedAllergens)
@@ -221,35 +220,6 @@ namespace YP_API.Repositories
                 searchQuery = searchQuery.Where(r => !r.Allergens.Any(a => excludedAllergens.Contains(a)));
 
             return await searchQuery.Take(50).ToListAsync();
-        }
-
-        private RecipeDto MapToRecipeDto(Recipe recipe)
-        {
-            return new RecipeDto
-            {
-                Id = recipe.Id,
-                Title = recipe.Title ?? string.Empty,
-                Description = recipe.Description ?? string.Empty,
-                Instructions = recipe.Instructions ?? string.Empty,
-                PrepTime = recipe.PrepTime,
-                CookTime = recipe.CookTime,
-                Servings = recipe.Servings,
-                Calories = recipe.Calories,
-                ImageUrl = recipe.ImageUrl ?? string.Empty,
-                Tags = recipe.Tags ?? new List<string>(),
-                Allergens = recipe.Allergens ?? new List<string>(),
-                CuisineType = recipe.CuisineType ?? string.Empty,
-                Difficulty = recipe.Difficulty ?? string.Empty,
-                Ingredients = recipe.RecipeIngredients?.Select(ri => new RecipeIngredientDto
-                {
-                    IngredientId = ri.IngredientId,
-                    IngredientName = ri.Ingredient?.Name ?? string.Empty,
-                    Category = ri.Ingredient?.Category ?? string.Empty,
-                    Quantity = ri.Quantity,
-                    Unit = ri.Unit ?? string.Empty
-                }).ToList() ?? new List<RecipeIngredientDto>(),
-                IsFavorite = false
-            };
         }
     }
 }

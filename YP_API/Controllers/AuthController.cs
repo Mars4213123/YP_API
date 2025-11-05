@@ -1,5 +1,6 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
-using YP_API.DTOs;
+using YP_API.Models;
 using YP_API.Services;
 
 namespace YP_API.Controllers
@@ -16,30 +17,53 @@ namespace YP_API.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<ActionResult<UserDto>> Register(RegisterDto registerDto)
+        public async Task<ActionResult> Register(
+            [FromForm] string username,
+            [FromForm] string email,
+            [FromForm] string fullName,
+            [FromForm] string password,
+            [FromForm] List<string> allergies = null)
         {
             try
             {
-                var user = await _authService.Register(registerDto);
-                return Ok(user);
+                var user = await _authService.Register(username, email, fullName, password, allergies ?? new List<string>());
+
+                return Ok(new
+                {
+                    Id = user.Id,
+                    Username = user.Username,
+                    Email = user.Email,
+                    FullName = user.FullName,
+                    Token = user.Token
+                });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { error = ex.Message });
             }
         }
 
         [HttpPost("login")]
-        public async Task<ActionResult<UserDto>> Login(LoginDto loginDto)
+        public async Task<ActionResult> Login(
+            [FromForm] string username,
+            [FromForm] string password)
         {
             try
             {
-                var user = await _authService.Login(loginDto);
-                return Ok(user);
+                var user = await _authService.Login(username, password);
+
+                return Ok(new
+                {
+                    Id = user.Id,
+                    Username = user.Username,
+                    Email = user.Email,
+                    FullName = user.FullName,
+                    Token = user.Token
+                });
             }
             catch (Exception ex)
             {
-                return Unauthorized(ex.Message);
+                return Unauthorized(new { error = ex.Message });
             }
         }
     }

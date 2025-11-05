@@ -1,4 +1,3 @@
-using YP_API.DTOs;
 using YP_API.Interfaces;
 using YP_API.Models;
 using YP_API.Repositories;
@@ -18,7 +17,7 @@ namespace YP_API.Services
             _logger = logger;
         }
 
-        public async Task<WeeklyMenuDto> GenerateWeeklyMenuAsync(int userId, GenerateMenuRequestDto request, List<string> userAllergies)
+        public async Task<WeeklyMenu> GenerateWeeklyMenuAsync(int userId, Controllers.GenerateMenuRequest request, List<string> userAllergies)
         {
             _logger.LogInformation($"Generating menu for user {userId}, days: {request.Days}");
 
@@ -80,93 +79,28 @@ namespace YP_API.Services
 
             _logger.LogInformation($"Menu created successfully with ID: {createdMenu.Id}");
 
-            return await GetMenuDtoAsync(createdMenu.Id);
+            return await GetMenuWithDetailsAsync(createdMenu.Id);
         }
 
-        public async Task<WeeklyMenuDto> GetCurrentMenuAsync(int userId)
+        public async Task<WeeklyMenu> GetCurrentMenuAsync(int userId)
         {
-            var menu = await _menuRepository.GetCurrentMenuAsync(userId);
-            return menu != null ? await GetMenuDtoAsync(menu.Id) : null;
+            return await _menuRepository.GetCurrentMenuAsync(userId);
         }
 
-        public async Task<List<WeeklyMenuDto>> GetUserMenuHistoryAsync(int userId)
+        public async Task<List<WeeklyMenu>> GetUserMenuHistoryAsync(int userId)
         {
             var menus = await _menuRepository.GetUserMenusAsync(userId);
-            var menuDtos = new List<WeeklyMenuDto>();
-
-            foreach (var menu in menus)
-            {
-                menuDtos.Add(await GetMenuDtoAsync(menu.Id));
-            }
-
-            return menuDtos;
+            return menus.ToList();
         }
 
-        public async Task<MenuDayDto> RegenerateDayAsync(int menuId, DateTime date, List<string> userAllergies)
+        public async Task<WeeklyMenu> RegenerateDayAsync(int menuId, DateTime date, List<string> userAllergies)
         {
-            var menu = await _menuRepository.GetMenuWithDetailsAsync(menuId);
-            if (menu == null) return null;
-
-            var dayMeals = menu.MenuMeals.Where(m => m.MealDate.Date == date.Date).ToList();
-
-            return new MenuDayDto
-            {
-                Date = date,
-                Meals = dayMeals.Select(m => new MenuItemDto
-                {
-                    Id = m.Id,
-                    RecipeId = m.Recipe.Id,
-                    RecipeTitle = m.Recipe.Title,
-                    MealType = m.MealType,
-                    Calories = m.Recipe.Calories,
-                    PrepTime = m.Recipe.PrepTime + m.Recipe.CookTime,
-                    ImageUrl = m.Recipe.ImageUrl ?? string.Empty
-                }).ToList()
-            };
+            return await _menuRepository.GetMenuWithDetailsAsync(menuId);
         }
 
-        private async Task<WeeklyMenuDto> GetMenuDtoAsync(int menuId)
+        private async Task<WeeklyMenu> GetMenuWithDetailsAsync(int menuId)
         {
-            var menu = await _menuRepository.GetMenuWithDetailsAsync(menuId);
-            if (menu == null) return null;
-
-            var menuDto = new WeeklyMenuDto
-            {
-                Id = menu.Id,
-                Name = menu.Name,
-                StartDate = menu.StartDate,
-                EndDate = menu.EndDate,
-                TotalCalories = menu.TotalCalories,
-                Days = new List<MenuDayDto>(),
-                ShoppingList = new ShoppingListDto()
-            };
-
-            
-            
-
-            var mealsByDate = menu.MenuMeals.GroupBy(m => m.MealDate.Date);
-
-            foreach (var dayGroup in mealsByDate)
-            {
-                var dayDto = new MenuDayDto
-                {
-                    Date = dayGroup.Key,
-                    Meals = dayGroup.Select(m => new MenuItemDto
-                    {
-                        Id = m.Id,
-                        RecipeId = m.Recipe.Id,
-                        RecipeTitle = m.Recipe.Title,
-                        MealType = m.MealType,
-                        Calories = m.Recipe.Calories,
-                        PrepTime = m.Recipe.PrepTime + m.Recipe.CookTime,
-                        ImageUrl = m.Recipe.ImageUrl ?? string.Empty
-                    }).ToList()
-                };
-
-                menuDto.Days.Add(dayDto);
-            }
-
-            return menuDto;
+            return await _menuRepository.GetMenuWithDetailsAsync(menuId);
         }
 
         private bool IsSuitableForMealType(Recipe recipe, string mealType)
@@ -187,10 +121,10 @@ namespace YP_API.Services
 
     public interface IMenuService
     {
-        Task<WeeklyMenuDto> GenerateWeeklyMenuAsync(int userId, GenerateMenuRequestDto request, List<string> userAllergies);
-        Task<WeeklyMenuDto> GetCurrentMenuAsync(int userId);
-        Task<List<WeeklyMenuDto>> GetUserMenuHistoryAsync(int userId);
-        Task<MenuDayDto> RegenerateDayAsync(int menuId, DateTime date, List<string> userAllergies);
+        Task<WeeklyMenu> GenerateWeeklyMenuAsync(int userId, Controllers.GenerateMenuRequest request, List<string> userAllergies);
+        Task<WeeklyMenu> GetCurrentMenuAsync(int userId);
+        Task<List<WeeklyMenu>> GetUserMenuHistoryAsync(int userId);
+        Task<WeeklyMenu> RegenerateDayAsync(int menuId, DateTime date, List<string> userAllergies);
     }
 }
 
