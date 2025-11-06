@@ -185,12 +185,22 @@
                     </Border>
 
                     <!-- Кнопка генерации -->
-                    <Button Content="🎲 Сгенерировать меню на неделю" 
-                            Style="{StaticResource PrimaryButton}"
-                            Height="50"
-                            FontSize="14"
-                            FontWeight="Bold"
-                            Click="GenerateMenu_Click"/>
+                    <Button x:Name="GenerateMenuButton"
+        Content="🎲 Сгенерировать меню на неделю" 
+        Style="{StaticResource PrimaryButton}"
+        Height="50"
+        FontSize="14"
+        FontWeight="Bold"
+        Click="GenerateMenu_Click"/>
+                    <Button Content="🔄 Обновить данные"
+        Background="#2196F3"
+        Foreground="White"
+        BorderThickness="0"
+        Padding="10,5"
+        FontSize="12"
+        Cursor="Hand"
+        Click="RefreshData_Click"
+        Margin="10,0,0,0"/>
                 </StackPanel>
             </ScrollViewer>
 

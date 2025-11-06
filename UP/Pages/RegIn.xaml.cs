@@ -1,8 +1,12 @@
-﻿using System;
+﻿// RegIn.xaml.cs
+using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using UP.Models;
+using UP.Services;
 
 namespace UP.Pages
 {
@@ -24,7 +28,6 @@ namespace UP.Pages
         {
             if (e.Key == Key.Enter)
             {
-                // Переход к следующему полю или регистрации
                 if (sender == UsernameTextBox)
                     EmailTextBox.Focus();
                 else if (sender == EmailTextBox)
@@ -36,17 +39,32 @@ namespace UP.Pages
             }
         }
 
-        private void RegisterButton_Click(object sender, RoutedEventArgs e)
+        private async void RegisterButton_Click(object sender, RoutedEventArgs e)
         {
             if (!ValidateForm())
                 return;
 
-            // Регистрация пользователя
-            if (RegisterUser())
+            try
             {
-               
+                // Регистрация пользователя через API
+                var user = await AppData.ApiService.RegisterAsync(
+                    UsernameTextBox.Text.Trim(),
+                    EmailTextBox.Text.Trim(),
+                    PasswordBox.Password,
+                    new List<string>()); // Аллергии можно добавить позже
+
+                AppData.InitializeAfterLogin(user);
+
                 // Возврат на страницу входа
                 NavigationService?.Navigate(new LogInPage());
+
+                MessageBox.Show("Регистрация успешна! Теперь вы можете войти в систему.",
+                              "Успешная регистрация",
+                              MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Ошибка регистрации: {ex.Message}");
             }
         }
 
@@ -105,7 +123,6 @@ namespace UP.Pages
                 return false;
             }
 
-
             return true;
         }
 
@@ -122,34 +139,6 @@ namespace UP.Pages
             }
         }
 
-        private bool RegisterUser()
-        {
-            try
-            {
-                // Здесь должна быть реальная логика регистрации
-                // Например, сохранение в базу данных, вызов API и т.д.
-
-                var userData = new
-                {
-                    Username = UsernameTextBox.Text.Trim(),
-                    Email = EmailTextBox.Text.Trim(),
-                    Password = PasswordBox.Password, // В реальном приложении пароль должен хэшироваться
-                    RegistrationDate = DateTime.Now
-                };
-
-                // Заглушка для демонстрации
-                // В реальном приложении здесь будет вызов сервиса регистрации
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка при регистрации: {ex.Message}", "Ошибка",
-                              MessageBoxButton.OK, MessageBoxImage.Error);
-                return false;
-            }
-        }
-
         private void ShowError(string message)
         {
             MessageBox.Show(message, "Ошибка валидации",
@@ -158,13 +147,11 @@ namespace UP.Pages
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
-            // Возврат на страницу входа
             NavigationService?.Navigate(new LogInPage());
         }
 
         private void LoginText_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            // Переход на страницу входа
             NavigationService?.Navigate(new LogInPage());
         }
     }

@@ -2,26 +2,14 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using Microsoft.Win32;
-using System.Windows.Threading;
-using static UP.Pages.Receipts;
+using UP.Models;
+using UP.Services;
 
 namespace UP.Pages
 {
-    /// <summary>
-    /// Логика взаимодействия для Receipts.xaml
-    /// </summary>
     public partial class Receipts : Page
     {
         public class DailyMenu
@@ -29,13 +17,14 @@ namespace UP.Pages
             public string Day { get; set; }
             public string Meal { get; set; }
             public string Description { get; set; }
+            public int RecipeId { get; set; }
         }
 
         public class TimerItem
         {
             public string Name { get; set; }
             public string TimeLeft { get; set; }
-            public DispatcherTimer Timer { get; set; }
+            public System.Windows.Threading.DispatcherTimer Timer { get; set; }
             public DateTime EndTime { get; set; }
         }
 
@@ -52,7 +41,6 @@ namespace UP.Pages
 
         private void InitializeData()
         {
-            // Подключаем глобальные коллекции из AppData
             _products = AppData.Products;
             _weeklyMenu = AppData.WeeklyMenu;
             _shoppingList = AppData.ShoppingList;
@@ -66,8 +54,7 @@ namespace UP.Pages
             UpdateNoTimersVisibility();
         }
 
-
-        private void AddProduct_Click(object sender, RoutedEventArgs e)
+        private async void AddProduct_Click(object sender, RoutedEventArgs e)
         {
             if (!string.IsNullOrWhiteSpace(NewProductTextBox.Text))
             {
@@ -84,76 +71,117 @@ namespace UP.Pages
             }
         }
 
-        private void GenerateMenu_Click(object sender, RoutedEventArgs e)
+        private async void GenerateMenu_Click(object sender, RoutedEventArgs e)
         {
-            if (_weeklyMenu.Count > 0)
+            try
             {
-                var result = MessageBox.Show("Меню уже сгенерировано. Сгенерировать заново?", "Подтверждение",
-                                             MessageBoxButton.YesNo, MessageBoxImage.Question);
-                if (result == MessageBoxResult.No)
-                    return;
+                if (GenerateMenuButton != null)
+                {
+                    GenerateMenuButton.IsEnabled = false;
+                    GenerateMenuButton.Content = "Генерация...";
+                }
 
-                _weeklyMenu.Clear();
-                _shoppingList.Clear();
+                var request = new GenerateMenuRequest
+                {
+                    Days = 7,
+                    TargetCaloriesPerDay = 2000,
+                    CuisineTags = GetSelectedCuisineTags(),
+                    UseInventory = _products.Count > 0
+                };
+
+                var success = await AppData.GenerateNewMenu(request);
+
+                if (success)
+                {
+                    MessageBox.Show("Меню успешно сгенерировано!", "Успех",
+                                  MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show("Не удалось сгенерировать меню", "Ошибка",
+                                  MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка генерации меню: {ex.Message}", "Ошибка",
+                              MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                if (GenerateMenuButton != null)
+                {
+                    GenerateMenuButton.IsEnabled = true;
+                    GenerateMenuButton.Content = "🎲 Сгенерировать меню на неделю";
+                }
+            }
+        }
+
+        private List<string> GetSelectedCuisineTags()
+        {
+            var tags = new List<string>();
+
+            if (GlutenCheckBox?.IsChecked == true) tags.Add("безглютеновое");
+            if (LactoseCheckBox?.IsChecked == true) tags.Add("безлактозное");
+            if (NutsCheckBox?.IsChecked == true) tags.Add("безореховое");
+            if (SeafoodCheckBox?.IsChecked == true) tags.Add("безморепродуктов");
+
+            if (!string.IsNullOrWhiteSpace(OtherAllergiesTextBox?.Text))
+            {
+                tags.AddRange(OtherAllergiesTextBox.Text.Split(',').Select(t => t.Trim()));
             }
 
-            // Пример генерации меню на неделю
-            var sampleMenu = new List<DailyMenu>
+            return tags;
+        }
+
+        private async void OpenRecipe_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.DataContext is DailyMenu dailyMenu)
             {
-                new DailyMenu { Day = "Понедельник", Meal = "Завтрак", Description = "Овсяная каша с фруктами" },
-                new DailyMenu { Day = "Понедельник", Meal = "Обед", Description = "Куриный суп с овощами" },
-                new DailyMenu { Day = "Понедельник", Meal = "Ужин", Description = "Запеченная рыба с картофелем" },
+                try
+                {
+                    var recipe = AppData.AllRecipes.FirstOrDefault(r => r.Title == dailyMenu.Meal);
 
-                new DailyMenu { Day = "Вторник", Meal = "Завтрак", Description = "Творог с ягодами" },
-                new DailyMenu { Day = "Вторник", Meal = "Обед", Description = "Гречневая каша с грибами" },
-                new DailyMenu { Day = "Вторник", Meal = "Ужин", Description = "Овощное рагу" },
+                    if (recipe != null)
+                    {
+                        var detailsPage = new RecipeDetailsPage(
+                            recipe.Title,
+                            recipe.Description,
+                            recipe.ImageUrl,
+                            recipe.Ingredients.ConvertAll(i => $"{i.Name} - {i.Quantity} {i.Unit}"),
+                            recipe.Instructions
+                        );
 
-                new DailyMenu { Day = "Среда", Meal = "Завтрак", Description = "Омлет с овощами" },
-                new DailyMenu { Day = "Среда", Meal = "Обед", Description = "Паста с томатным соусом" },
-                new DailyMenu { Day = "Среда", Meal = "Ужин", Description = "Куриные котлеты с салатом" },
+                        MainWindow.mainWindow.OpenPages(detailsPage);
+                    }
+                    else
+                    {
+                        var recipes = await AppData.ApiService.SearchRecipesAsync(dailyMenu.Meal);
+                        if (recipes.Any())
+                        {
+                            var foundRecipe = recipes.First();
+                            var detailsPage = new RecipeDetailsPage(
+                                foundRecipe.Title,
+                                foundRecipe.Description,
+                                foundRecipe.ImageUrl,
+                                foundRecipe.Ingredients.ConvertAll(i => $"{i.Name} - {i.Quantity} {i.Unit}"),
+                                foundRecipe.Instructions
+                            );
 
-                new DailyMenu { Day = "Четверг", Meal = "Завтрак", Description = "Смузи из банана и ягод" },
-                new DailyMenu { Day = "Четверг", Meal = "Обед", Description = "Овощной суп-пюре" },
-                new DailyMenu { Day = "Четверг", Meal = "Ужин", Description = "Запеченная курица с брокколи" },
-
-                new DailyMenu { Day = "Пятница", Meal = "Завтрак", Description = "Йогурт с гранолой" },
-                new DailyMenu { Day = "Пятница", Meal = "Обед", Description = "Рис с овощами" },
-                new DailyMenu { Day = "Пятница", Meal = "Ужин", Description = "Лосось на гриле с салатом" },
-
-                new DailyMenu { Day = "Суббота", Meal = "Завтрак", Description = "Блины с медом" },
-                new DailyMenu { Day = "Суббота", Meal = "Обед", Description = "Пицца домашняя" },
-                new DailyMenu { Day = "Суббота", Meal = "Ужин", Description = "Стейк с овощами" },
-
-                new DailyMenu { Day = "Воскресенье", Meal = "Завтрак", Description = "Яичница с беконом" },
-                new DailyMenu { Day = "Воскресенье", Meal = "Обед", Description = "Плов с курицей" },
-                new DailyMenu { Day = "Воскресенье", Meal = "Ужин", Description = "Салат Цезарь с курицей" }
-            };
-
-            foreach (var menu in sampleMenu)
-            {
-                _weeklyMenu.Add(menu);
+                            MainWindow.mainWindow.OpenPages(detailsPage);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка загрузки рецепта: {ex.Message}");
+                }
             }
+        }
 
-            // Генерируем примерный список покупок
-            var sampleShoppingList = new List<string>
-            {
-                "Куриное филе - 500г",
-                "Лосось - 300г",
-                "Овощи для супа",
-                "Фрукты для смузи",
-                "Молоко - 1л",
-                "Яйца - 10шт",
-                "Овсяные хлопья",
-                "Рис - 400г",
-                "Макароны - 400г",
-                "Сыр - 200г"
-            };
-
-            foreach (var item in sampleShoppingList)
-            {
-                _shoppingList.Add(item);
-            }
-
+        private void OpenFavorites_Click(object sender, RoutedEventArgs e)
+        {
+            MainWindow.mainWindow.OpenPages(new FavoritesPage());
         }
 
         private void StartTimer_Click(object sender, RoutedEventArgs e)
@@ -167,7 +195,7 @@ namespace UP.Pages
                     {
                         Name = menu.Meal,
                         EndTime = DateTime.Now.AddMinutes(timerWindow.SelectedMinutes),
-                        Timer = new DispatcherTimer()
+                        Timer = new System.Windows.Threading.DispatcherTimer()
                     };
 
                     timerItem.Timer.Interval = TimeSpan.FromSeconds(1);
@@ -176,7 +204,7 @@ namespace UP.Pages
 
                     _activeTimers.Add(timerItem);
                     UpdateNoTimersVisibility();
-                    UpdateTimer(timerItem); // Первоначальное обновление
+                    UpdateTimer(timerItem);
                 }
             }
         }
@@ -197,7 +225,6 @@ namespace UP.Pages
                 timerItem.TimeLeft = $"{timeLeft:mm\\:ss}";
             }
 
-            // Обновляем отображение
             var index = _activeTimers.IndexOf(timerItem);
             if (index >= 0)
             {
@@ -222,23 +249,20 @@ namespace UP.Pages
 
         private void ShoppingItem_Checked(object sender, RoutedEventArgs e)
         {
-            if (sender is CheckBox checkBox)
-            {
-                // Можно добавить логику для отмеченных items
-            }
+            // Логика для отмеченных items
         }
 
-        private void ExportShoppingList_Click(object sender, RoutedEventArgs e)
+        private async void ExportShoppingList_Click(object sender, RoutedEventArgs e)
         {
-            var saveDialog = new SaveFileDialog
+            try
             {
-                Filter = "Текстовые файлы (*.txt)|*.txt",
-                FileName = "Список_покупок.txt"
-            };
+                var saveDialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "Текстовые файлы (*.txt)|*.txt",
+                    FileName = "Список_покупок.txt"
+                };
 
-            if (saveDialog.ShowDialog() == true)
-            {
-                try
+                if (saveDialog.ShowDialog() == true)
                 {
                     var lines = new List<string> { "Список покупок:", "==================" };
                     foreach (var item in _shoppingList)
@@ -250,57 +274,46 @@ namespace UP.Pages
                     MessageBox.Show("Список покупок экспортирован!", "Успех",
                                   MessageBoxButton.OK, MessageBoxImage.Information);
                 }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Ошибка при экспорте: {ex.Message}", "Ошибка",
-                                  MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при экспорте: {ex.Message}", "Ошибка",
+                              MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
-            // Останавливаем все таймеры при выходе
             foreach (var timer in _activeTimers)
             {
                 timer.Timer.Stop();
             }
 
-            NavigationService?.GoBack();
+            AppData.Logout();
+            MainWindow.mainWindow.OpenPages(new LogInPage());
         }
 
         private void OtherAllergiesTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-
+            // Логика обработки изменений
         }
 
-        private void OpenRecipe_Click(object sender, RoutedEventArgs e)
+        private async void RefreshData_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button button && button.DataContext is DailyMenu recipe)
+            try
             {
-                // Пример перехода на страницу деталей рецепта
-                var detailsPage = new RecipeDetailsPage(
-                    recipe.Meal,
-                    recipe.Description,
-                    "https://via.placeholder.com/600x300?text=" + Uri.EscapeDataString(recipe.Meal),
-                    new List<string> { "Куриное филе", "Овощи", "Соль", "Масло" },
-                    new List<string> { "Подготовить ингредиенты", "Обжарить курицу", "Добавить овощи", "Подавать горячим" }
-                );
-
-                // Если у тебя используется OpenPages() — вызываем так:
-                MainWindow.mainWindow.OpenPages(detailsPage);
+                await AppData.LoadInitialData();
+                MessageBox.Show("Данные обновлены", "Успех");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка обновления: {ex.Message}", "Ошибка");
             }
         }
-
-        private void OpenFavorites_Click(object sender, RoutedEventArgs e)
-        {
-            MainWindow.mainWindow.OpenPages(new FavoritesPage());
-        }
-
     }
 
-    // Окно для установки таймера
-    public partial class TimerWindow : Window
+    // Класс TimerWindow
+    public class TimerWindow : Window
     {
         public int SelectedMinutes { get; private set; } = 10;
 
@@ -358,7 +371,6 @@ namespace UP.Pages
                 Content = "Запустить",
                 Background = new SolidColorBrush(Color.FromRgb(76, 175, 80)),
                 Foreground = Brushes.White,
-
                 Margin = new Thickness(0, 0, 10, 0)
             };
             okButton.Click += (s, e) => { DialogResult = true; Close(); };
@@ -369,7 +381,6 @@ namespace UP.Pages
                 Content = "Отмена",
                 Background = new SolidColorBrush(Color.FromRgb(244, 67, 54)),
                 Foreground = Brushes.White,
-
             };
             cancelButton.Click += (s, e) => { DialogResult = false; Close(); };
             buttonPanel.Children.Add(cancelButton);
@@ -379,11 +390,5 @@ namespace UP.Pages
             Content = stackPanel;
             Background = new SolidColorBrush(Color.FromRgb(30, 30, 30));
         }
-
-
-
-
-
-
     }
 }

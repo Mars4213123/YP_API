@@ -1,6 +1,7 @@
 ﻿using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using UP.Services;
 
 namespace UP.Pages
 {
@@ -9,6 +10,11 @@ namespace UP.Pages
         public FavoritesPage()
         {
             InitializeComponent();
+            LoadFavorites();
+        }
+
+        private void LoadFavorites()
+        {
             FavoritesList.ItemsSource = AppData.Favorites;
         }
 
@@ -17,7 +23,7 @@ namespace UP.Pages
             MainWindow.mainWindow.OpenPages(new Receipts());
         }
 
-        private void OpenRecipe_Click(object sender, RoutedEventArgs e)
+        private async void OpenRecipe_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.DataContext is RecipeDetailsPage.RecipeData recipe)
             {
@@ -33,16 +39,31 @@ namespace UP.Pages
             }
         }
 
-        private void RemoveRecipe_Click(object sender, RoutedEventArgs e)
+        private async void RemoveRecipe_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.DataContext is RecipeDetailsPage.RecipeData recipe)
             {
                 if (MessageBox.Show($"Удалить рецепт '{recipe.Title}' из избранного?", "Подтверждение",
                                     MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
-                    AppData.Favorites.Remove(recipe);
+                    var success = await AppData.RemoveFromFavorites(recipe);
+                    if (success)
+                    {
+                        AppData.Favorites.Remove(recipe);
+                        MessageBox.Show("Рецепт удален из избранного", "Успех");
+                    }
+                    else
+                    {
+                        MessageBox.Show("Не удалось удалить рецепт", "Ошибка");
+                    }
                 }
             }
+        }
+
+        private async void RefreshFavorites_Click(object sender, RoutedEventArgs e)
+        {
+            await AppData.LoadFavorites();
+            LoadFavorites();
         }
     }
 }

@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media.Imaging;
+using UP.Models;
+using UP.Services;
 
 namespace UP.Pages
 {
@@ -16,12 +17,6 @@ namespace UP.Pages
             public string ImageUrl { get; set; }
             public List<string> Ingredients { get; set; }
             public List<string> Steps { get; set; }
-        }
-
-        public class RecipeStep
-        {
-            public int StepNumber { get; set; }
-            public string StepText { get; set; }
         }
 
         private RecipeData _currentRecipe;
@@ -41,17 +36,20 @@ namespace UP.Pages
 
             RecipeTitleText.Text = title;
             RecipeDescriptionText.Text = description;
-            RecipeImage.Source = new BitmapImage(new Uri(imageUrl));
+
+            if (!string.IsNullOrEmpty(imageUrl))
+            {
+                RecipeImage.Source = new System.Windows.Media.Imaging.BitmapImage(new Uri(imageUrl));
+            }
 
             IngredientsList.ItemsSource = ingredients;
 
-            var stepObjects = new List<RecipeStep>();
+            var stepObjects = new List<object>();
             int i = 1;
             foreach (var step in steps)
-                stepObjects.Add(new RecipeStep { StepNumber = i++, StepText = step });
+                stepObjects.Add(new { StepNumber = i++, StepText = step });
             StepsList.ItemsSource = stepObjects;
         }
-
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
@@ -66,26 +64,43 @@ namespace UP.Pages
 
         private void AddToShoppingList_Click(object sender, RoutedEventArgs e)
         {
+            // Добавляем ингредиенты в локальный список
+            foreach (var ingredient in _currentRecipe.Ingredients)
+            {
+                AppData.ShoppingList.Add(ingredient);
+            }
+
             MessageBox.Show("Ингредиенты добавлены в список покупок.", "Список покупок",
                             MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private void AddToFavorites_Click(object sender, RoutedEventArgs e)
+        private async void AddToFavorites_Click(object sender, RoutedEventArgs e)
         {
-            if (!AppData.Favorites.Any(f => f.Title == _currentRecipe.Title))
+            try
             {
-                AppData.Favorites.Add(_currentRecipe);
-                MessageBox.Show("Рецепт добавлен в избранное!", "Избранное",
-                                MessageBoxButton.OK, MessageBoxImage.Information);
+                var success = await AppData.AddToFavorites(_currentRecipe);
+                if (success)
+                {
+                    // Проверяем, нет ли уже в избранном
+                    if (!AppData.Favorites.Any(f => f.Title == _currentRecipe.Title))
+                    {
+                        AppData.Favorites.Add(_currentRecipe);
+                    }
+
+                    MessageBox.Show("Рецепт добавлен в избранное!", "Избранное",
+                                    MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show("Не удалось добавить в избранное", "Ошибка",
+                                    MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                MessageBox.Show("Этот рецепт уже в избранном.", "Избранное",
-                                MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка",
+                                MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-
-
     }
 }
-

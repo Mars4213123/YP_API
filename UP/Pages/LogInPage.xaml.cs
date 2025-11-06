@@ -1,35 +1,98 @@
-﻿using System.Windows;
+﻿using System;
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using UP.Models;
+using UP.Services;
 
 namespace UP.Pages
 {
     public partial class LogInPage : Page
     {
-        string secretCode = "qweasd";
+        private string secretCode = "qweasd";
+
         public LogInPage()
         {
             InitializeComponent();
-
             Loaded += (s, e) => UsernameTextBox.Focus();
             UsernameTextBox.KeyDown += TextBox_KeyDown;
             PasswordBox.KeyDown += TextBox_KeyDown;
         }
 
-        private void LoginButton_Click(object sender, RoutedEventArgs e)
+        private async void LoginButton_Click(object sender, RoutedEventArgs e)
         {
-            AttemptLogin();
+            await AttemptLogin();
         }
 
-        private void TextBox_KeyDown(object sender, KeyEventArgs e)
+        private async void TextBox_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter)
             {
-                AttemptLogin();
+                await AttemptLogin();
             }
         }
 
-        private void AttemptLogin()
+        private async Task<string> TestApiConnection()
+        {
+            try
+            {
+                var client = new HttpClient();
+                client.Timeout = TimeSpan.FromSeconds(5);
+
+                var testUrls = new[]
+                {
+                    "https://localhost:7197/swagger",
+                    "https://localhost:7197/api/recipes",
+                    "https://localhost:7197/"
+                };
+
+                foreach (var url in testUrls)
+                {
+                    try
+                    {
+                        var response = await client.GetAsync(url);
+                        if (response.IsSuccessStatusCode)
+                        {
+                            return $"✅ API доступен: {url}";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Failed to connect to {url}: {ex.Message}");
+                    }
+                }
+
+                return "❌ API недоступен. Убедитесь, что:\n• Бекенд запущен\n• Порт 7197 свободен\n• Приложение имеет доступ к сети";
+            }
+            catch (Exception ex)
+            {
+                return $"❌ Ошибка проверки: {ex.Message}";
+            }
+        }
+
+        private async void CheckConnectionButton_Click(object sender, RoutedEventArgs e)
+        {
+            var status = await TestApiConnection();
+            MessageBox.Show(status, "Проверка подключения");
+        }
+
+        private async void CreateTestUserButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var user = await AppData.ApiService.RegisterAsync("asd", "asd@test.com", "asd", new List<string>());
+                MessageBox.Show($"✅ Пользователь 'asd' создан!\nМожно войти с паролем 'asd'", "Успех");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"❌ Ошибка создания пользователя: {ex.Message}", "Ошибка");
+            }
+        }
+
+        private async System.Threading.Tasks.Task AttemptLogin()
         {
             string username = UsernameTextBox.Text;
             string password = PasswordBox.Password;
@@ -48,16 +111,38 @@ namespace UP.Pages
                 return;
             }
 
-            if (username == "admin" && password == "123")
+            LoginButton.IsEnabled = false;
+            LoginButton.Content = "Вход...";
+
+            try
             {
-                // Переход на главную страницу
+                // Проверяем подключение
+                var connectionStatus = await TestApiConnection();
+                if (connectionStatus.Contains("❌"))
+                {
+                    ShowMessage(connectionStatus);
+                    return;
+                }
+
+                // Пробуем войти
+                var user = await AppData.ApiService.LoginAsync(username, password);
+                AppData.InitializeAfterLogin(user);
+
+                ShowMessage($"Успешный вход! Добро пожаловать, {user.Username}");
                 MainWindow.mainWindow.OpenPages(new Receipts());
             }
-            else
+            catch (HttpRequestException httpEx)
             {
-                ShowMessage("Неверное имя пользователя или пароль");
-                PasswordBox.Clear();
-                PasswordBox.Focus();
+                ShowMessage($"Ошибка сети: {httpEx.Message}\n\nПроверьте:\n1. Запущен ли бекенд\n2. Блокирует ли фаервол\n3. Доступен ли localhost:7197");
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Ошибка входа: {ex.Message}");
+            }
+            finally
+            {
+                LoginButton.IsEnabled = true;
+                LoginButton.Content = "Войти";
             }
         }
 
@@ -83,10 +168,9 @@ namespace UP.Pages
                 SecretCodeBox.Clear();
             }
         }
-        
+
         private void ShowScaryImage()
         {
-            // Создаем новое окно на весь экран
             Window scaryWindow = new Window
             {
                 Height = 1080,
@@ -98,7 +182,6 @@ namespace UP.Pages
                 Top = 0
             };
 
-            // Картинка
             Image img = new Image
             {
                 Source = new System.Windows.Media.Imaging.BitmapImage(new System.Uri("pack://application:,,,/Images/scary.jpg")),

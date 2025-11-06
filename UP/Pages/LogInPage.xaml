@@ -63,7 +63,19 @@
                 VerticalAlignment="Center">
 
             <StackPanel Margin="30" VerticalAlignment="Center">
-
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
+                    <Button Content="🔍 Проверить подключение" 
+            Click="CheckConnectionButton_Click"
+            Background="#2196F3"
+            Foreground="White"
+            Padding="10,5"
+            Margin="0,0,10,0"/>
+                    <Button Content="👤 Создать тестового пользователя" 
+            Click="CreateTestUserButton_Click"
+            Background="#FF9800"
+            Foreground="White"
+            Padding="10,5"/>
+                </StackPanel>
                 <!-- Заголовок -->
                 <TextBox x:Name="SecretCodeBox"
  Background="#2D2D30"
