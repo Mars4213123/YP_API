@@ -10,6 +10,25 @@ using YP_API.Repositories;
 using YP_API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+
+    options.AddPolicy("AllowSpecificOrigins", policy =>
+    {
+        policy.WithOrigins("https://yourdomain.com", "http://localhost:3000", "http://localhost:4200")
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
+
 builder.Services.AddLogging(logging =>
 {
     logging.AddConsole();
@@ -21,10 +40,8 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 
-
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-
 
 builder.Services.AddSwaggerGen(c =>
 {
@@ -40,7 +57,6 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 
-    
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
@@ -66,10 +82,8 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 
-    
     c.CustomSchemaIds(x => x.FullName);
 });
-
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Server=localhost;Port=3306;Database=recipe_planner;Uid=root;Pwd=;";
@@ -80,7 +94,6 @@ builder.Services.AddDbContext<RecipePlannerContext>(options =>
     options.EnableSensitiveDataLogging();
     options.EnableDetailedErrors();
 });
-
 
 builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
 builder.Services.AddScoped<IIngredientRepository, IngredientRepository>();
@@ -94,7 +107,6 @@ builder.Services.AddScoped<IRepository<ShoppingListItem>, Repository<ShoppingLis
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMenuService, MenuService>();
 builder.Services.AddScoped<IShoppingListService, ShoppingListService>();
-
 
 var jwtKey = builder.Configuration["JWT:Key"] ?? "fallback-super-secret-key-for-development-1234567890";
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -115,17 +127,17 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+app.UseCors("AllowAll");
 
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
 
-    
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "Recipe Planner API v1");
-        c.RoutePrefix = string.Empty; 
+        c.RoutePrefix = string.Empty;
         c.DocumentTitle = "Recipe Planner API Documentation";
     });
 }
@@ -134,12 +146,14 @@ else
     app.UseExceptionHandler("/error");
     app.UseHsts();
 }
+
 app.Use(async (context, next) =>
 {
     var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
     logger.LogInformation($"Request: {context.Request.Method} {context.Request.Path}");
     await next();
 });
+
 app.Use(async (context, next) =>
 {
     try
@@ -168,7 +182,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-
 try
 {
     using var scope = app.Services.CreateScope();
@@ -194,5 +207,5 @@ catch (Exception ex)
 
 Console.WriteLine("Application started successfully");
 Console.WriteLine($"Swagger available at: {app.Urls.FirstOrDefault()}");
-app.Run();
 
+app.Run();
