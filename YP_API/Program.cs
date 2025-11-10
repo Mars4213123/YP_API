@@ -1,8 +1,5 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Text;
 using YP_API.Data;
 using YP_API.Interfaces;
 using YP_API.Models;
@@ -22,13 +19,13 @@ builder.Services.AddCors(options =>
 
     options.AddPolicy("AllowSpecificOrigins", policy =>
     {
-        policy.WithOrigins("https://yourdomain.com", "http://localhost:3000", "http://localhost:4200")
+        policy.WithOrigins("http://localhost:3000", "http://localhost:4200")
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
     });
 });
-
+//
 builder.Services.AddLogging(logging =>
 {
     logging.AddConsole();
@@ -50,36 +47,6 @@ builder.Services.AddSwaggerGen(c =>
         Title = "Recipe Planner API",
         Version = "v1",
         Description = "API for managing recipes, menus and shopping lists",
-        Contact = new OpenApiContact
-        {
-            Name = "Recipe Planner Team",
-            Email = "support@recipeplanner.com"
-        }
-    });
-
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
-        Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer",
-        BearerFormat = "JWT"
-    });
-
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            new string[] {}
-        }
     });
 
     c.CustomSchemaIds(x => x.FullName);
@@ -107,23 +74,6 @@ builder.Services.AddScoped<IRepository<ShoppingListItem>, Repository<ShoppingLis
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMenuService, MenuService>();
 builder.Services.AddScoped<IShoppingListService, ShoppingListService>();
-
-var jwtKey = builder.Configuration["JWT:Key"] ?? "fallback-super-secret-key-for-development-1234567890";
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-            ValidateIssuer = false,
-            ValidateAudience = false,
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero
-        };
-    });
-
-builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -177,9 +127,6 @@ app.Use(async (context, next) =>
     }
 });
 
-app.UseHttpsRedirection();
-app.UseAuthentication();
-app.UseAuthorization();
 app.MapControllers();
 
 try
