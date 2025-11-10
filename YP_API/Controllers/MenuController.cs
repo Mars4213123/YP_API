@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using YP_API.Interfaces;
@@ -7,7 +6,9 @@ using YP_API.Services;
 
 namespace YP_API.Controllers
 {
-    public class MenuController : BaseApiController
+    [ApiController]
+    [Route("api/[controller]")]
+    public class MenuController : ControllerBase
     {
         private readonly IMenuService _menuService;
         private readonly IUserRepository _userRepository;
@@ -22,12 +23,11 @@ namespace YP_API.Controllers
             _logger = logger;
         }
 
-        [HttpGet("current")]
-        public async Task<ActionResult> GetCurrentMenu()
+        [HttpGet("current/{userId}")]
+        public async Task<ActionResult> GetCurrentMenu(int userId)
         {
             try
             {
-                var userId = GetUserId();
                 _logger.LogInformation($"Getting current menu for user ID: {userId}");
 
                 var menu = await _menuService.GetCurrentMenuAsync(userId);
@@ -66,16 +66,6 @@ namespace YP_API.Controllers
                     }
                 });
             }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning($"Authorization error in GetCurrentMenu: {ex.Message}");
-                return Unauthorized(new
-                {
-                    success = false,
-                    error = "Ошибка авторизации",
-                    message = "Необходима авторизация"
-                });
-            }
             catch (Exception ex)
             {
                 _logger.LogError($"Error in GetCurrentMenu: {ex.Message}");
@@ -88,8 +78,9 @@ namespace YP_API.Controllers
             }
         }
 
-        [HttpPost("generate")]
+        [HttpPost("generate/{userId}")]
         public async Task<ActionResult> GenerateMenu(
+            int userId,
             [FromForm]
             [Range(1, 30, ErrorMessage = "Количество дней должно быть от 1 до 30")]
             [Display(Name = "Количество дней")]
@@ -97,11 +88,11 @@ namespace YP_API.Controllers
 
             [FromForm]
             [Range(0, 10000, ErrorMessage = "Калории должны быть от 0 до 10000")]
-            [Display(Name = "Целевые калории в день")]
+            [Display(Name = "Желаемые калории в день")]
             decimal? targetCaloriesPerDay = null,
 
             [FromForm]
-            [Display(Name = "Теги кухни")]
+            [Display(Name = "Тип кухни")]
             List<string> cuisineTags = null,
 
             [FromForm]
@@ -114,7 +105,6 @@ namespace YP_API.Controllers
         {
             try
             {
-                var userId = GetUserId();
                 _logger.LogInformation($"Generating menu for user {userId}, days: {days}, calories: {targetCaloriesPerDay}");
 
                 var user = await _userRepository.GetByIdAsync(userId);
@@ -124,11 +114,10 @@ namespace YP_API.Controllers
                     {
                         success = false,
                         error = "Пользователь не найден",
-                        message = "Не удалось найти данные пользователя"
+                        message = "Не удалось найти данного пользователя"
                     });
                 }
 
-                // Проверяем доступные рецепты перед генерацией
                 var availableRecipes = await _recipeRepository.GetRecipesForMenuAsync(
                     user.Allergies ?? new List<string>(),
                     cuisineTags ?? new List<string>(),
@@ -142,7 +131,7 @@ namespace YP_API.Controllers
                     {
                         success = false,
                         error = "Нет доступных рецептов",
-                        message = "Не найдено рецептов по заданным критериям. Попробуйте изменить фильтры.",
+                        message = "Не найдено рецептов по заданным фильтрам. Попробуйте изменить фильтры.",
                         suggestions = new
                         {
                             tryWithoutAllergies = user.Allergies?.Any() == true,
@@ -180,16 +169,6 @@ namespace YP_API.Controllers
                     }
                 });
             }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning($"Authorization error in GenerateMenu: {ex.Message}");
-                return Unauthorized(new
-                {
-                    success = false,
-                    error = "Ошибка авторизации",
-                    message = "Необходима авторизация"
-                });
-            }
             catch (Exception ex)
             {
                 _logger.LogError($"Error in GenerateMenu: {ex.Message}");
@@ -202,12 +181,11 @@ namespace YP_API.Controllers
             }
         }
 
-        [HttpGet("history")]
-        public async Task<ActionResult> GetMenuHistory()
+        [HttpGet("history/{userId}")]
+        public async Task<ActionResult> GetMenuHistory(int userId)
         {
             try
             {
-                var userId = GetUserId();
                 var menus = await _menuService.GetUserMenuHistoryAsync(userId);
 
                 if (!menus.Any())
@@ -223,7 +201,7 @@ namespace YP_API.Controllers
                 return Ok(new
                 {
                     success = true,
-                    message = "История меню загружена",
+                    message = "История меню получена",
                     data = menus.Select(m => new {
                         Id = m.Id,
                         Name = m.Name,
@@ -234,16 +212,6 @@ namespace YP_API.Controllers
                     })
                 });
             }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning($"Authorization error in GetMenuHistory: {ex.Message}");
-                return Unauthorized(new
-                {
-                    success = false,
-                    error = "Ошибка авторизации",
-                    message = "Необходима авторизация"
-                });
-            }
             catch (Exception ex)
             {
                 _logger.LogError($"Error in GetMenuHistory: {ex.Message}");
@@ -251,7 +219,7 @@ namespace YP_API.Controllers
                 {
                     success = false,
                     error = "Внутренняя ошибка сервера",
-                    message = "Произошла ошибка при загрузке истории"
+                    message = "Произошла ошибка при получении истории"
                 });
             }
         }
@@ -266,10 +234,7 @@ namespace YP_API.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var user = await _userRepository.GetByIdAsync(userId);
-
-                var menu = await _menuService.RegenerateDayAsync(menuId, date, user?.Allergies);
+                var menu = await _menuService.RegenerateDayAsync(menuId, date, null);
 
                 return Ok(new
                 {
@@ -280,16 +245,6 @@ namespace YP_API.Controllers
                         MenuId = menu.Id,
                         Date = date
                     }
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning($"Authorization error in RegenerateDay: {ex.Message}");
-                return Unauthorized(new
-                {
-                    success = false,
-                    error = "Ошибка авторизации",
-                    message = "Необходима авторизация"
                 });
             }
             catch (Exception ex)

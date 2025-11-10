@@ -13,8 +13,6 @@ namespace YP_API.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public List<string> Allergies { get; set; } = new List<string>();
 
-        [NotMapped]
-        public string Token { get; set; }
 
         public ICollection<WeeklyMenu> WeeklyMenus { get; set; } = new List<WeeklyMenu>();
         public ICollection<ShoppingList> ShoppingLists { get; set; } = new List<ShoppingList>();

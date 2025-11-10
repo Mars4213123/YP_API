@@ -25,7 +25,7 @@ builder.Services.AddCors(options =>
               .AllowCredentials();
     });
 });
-//
+
 builder.Services.AddLogging(logging =>
 {
     logging.AddConsole();
@@ -46,7 +46,7 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "Recipe Planner API",
         Version = "v1",
-        Description = "API for managing recipes, menus and shopping lists",
+        Description = "API for managing recipes, menus and shopping lists"
     });
 
     c.CustomSchemaIds(x => x.FullName);

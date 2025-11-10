@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using YP_API.Helpers;
@@ -7,7 +6,9 @@ using YP_API.Models;
 
 namespace YP_API.Controllers
 {
-    public class RecipesController : BaseApiController
+    [ApiController]
+    [Route("api/[controller]")]
+    public class RecipesController : ControllerBase
     {
         private readonly IRecipeRepository _recipeRepository;
         private readonly ILogger<RecipesController> _logger;
@@ -19,7 +20,6 @@ namespace YP_API.Controllers
         }
 
         [HttpGet]
-        [AllowAnonymous]
         public async Task<ActionResult> GetRecipes([FromQuery] RecipeSearchParams searchParams)
         {
             try
@@ -37,7 +37,7 @@ namespace YP_API.Controllers
                 return Ok(new
                 {
                     success = true,
-                    message = "Рецепты загружены успешно",
+                    message = "Рецепты получены успешно",
                     data = recipes.Select(r => new {
                         Id = r.Id,
                         Title = r.Title,
@@ -57,13 +57,12 @@ namespace YP_API.Controllers
                 {
                     success = false,
                     error = "Внутренняя ошибка сервера",
-                    message = "Произошла ошибка при загрузке рецептов"
+                    message = "Произошла ошибка при получении рецептов"
                 });
             }
         }
 
         [HttpGet("{id}")]
-        [AllowAnonymous]
         public async Task<ActionResult> GetRecipe(int id)
         {
             try
@@ -81,7 +80,7 @@ namespace YP_API.Controllers
                 return Ok(new
                 {
                     success = true,
-                    message = "Рецепт загружен успешно",
+                    message = "Рецепт получен успешно",
                     data = new
                     {
                         Id = recipe.Id,
@@ -111,13 +110,12 @@ namespace YP_API.Controllers
                 {
                     success = false,
                     error = "Внутренняя ошибка сервера",
-                    message = "Произошла ошибка при загрузке рецепта"
+                    message = "Произошла ошибка при получении рецепта"
                 });
             }
         }
 
         [HttpPost]
-        [Authorize]
         public async Task<ActionResult> CreateRecipe(
             [FromForm]
             [Required(ErrorMessage = "Название рецепта обязательно")]
@@ -154,7 +152,7 @@ namespace YP_API.Controllers
             decimal calories,
 
             [FromForm]
-            [Url(ErrorMessage = "Некорректный URL изображения")]
+            [Url(ErrorMessage = "Неверный URL изображения")]
             [Display(Name = "URL изображения")]
             string imageUrl = "",
 
@@ -203,7 +201,7 @@ namespace YP_API.Controllers
                 {
                     success = false,
                     error = "Ошибка создания рецепта",
-                    message = "Не удалось сохранить рецепт в базу данных"
+                    message = "Не удалось сохранить рецепт в базе данных"
                 });
             }
             catch (Exception ex)
@@ -218,13 +216,11 @@ namespace YP_API.Controllers
             }
         }
 
-        [HttpPost("{id}/favorite")]
-        [Authorize]
-        public async Task<ActionResult> ToggleFavorite(int id)
+        [HttpPost("{id}/favorite/{userId}")]
+        public async Task<ActionResult> ToggleFavorite(int id, int userId)
         {
             try
             {
-                var userId = GetUserId();
                 _logger.LogInformation($"Toggling favorite for user {userId}, recipe {id}");
 
                 var success = await _recipeRepository.ToggleFavoriteAsync(userId, id);
@@ -248,18 +244,8 @@ namespace YP_API.Controllers
                 return BadRequest(new
                 {
                     success = false,
-                    error = "Ошибка обновления избранного",
-                    message = "Не удалось обновить избранное"
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning($"Authorization error in ToggleFavorite: {ex.Message}");
-                return Unauthorized(new
-                {
-                    success = false,
-                    error = "Ошибка авторизации",
-                    message = "Необходима авторизация"
+                    error = "Ошибка изменения избранного",
+                    message = "Не удалось изменить статус избранного"
                 });
             }
             catch (Exception ex)
@@ -268,25 +254,23 @@ namespace YP_API.Controllers
                 return BadRequest(new
                 {
                     success = false,
-                    error = "Ошибка обновления избранного",
+                    error = "Ошибка изменения избранного",
                     message = ex.Message
                 });
             }
         }
 
-        [HttpGet("favorites")]
-        [Authorize]
-        public async Task<ActionResult> GetFavorites()
+        [HttpGet("favorites/{userId}")]
+        public async Task<ActionResult> GetFavorites(int userId)
         {
             try
             {
-                var userId = GetUserId();
                 var favorites = await _recipeRepository.GetUserFavoritesAsync(userId);
 
                 return Ok(new
                 {
                     success = true,
-                    message = "Избранные рецепты загружены",
+                    message = "Избранные рецепты получены",
                     data = favorites.Select(r => new {
                         Id = r.Id,
                         Title = r.Title,
@@ -298,16 +282,6 @@ namespace YP_API.Controllers
                     })
                 });
             }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning($"Authorization error in GetFavorites: {ex.Message}");
-                return Unauthorized(new
-                {
-                    success = false,
-                    error = "Ошибка авторизации",
-                    message = "Необходима авторизация"
-                });
-            }
             catch (Exception ex)
             {
                 _logger.LogError($"Error in GetFavorites: {ex.Message}");
@@ -315,7 +289,7 @@ namespace YP_API.Controllers
                 {
                     success = false,
                     error = "Внутренняя ошибка сервера",
-                    message = "Произошла ошибка при загрузке избранных рецептов"
+                    message = "Произошла ошибка при получении избранных рецептов"
                 });
             }
         }

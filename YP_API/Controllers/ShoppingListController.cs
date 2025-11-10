@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using YP_API.Interfaces;
@@ -9,8 +8,7 @@ namespace YP_API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
-    public class ShoppingListController : BaseApiController
+    public class ShoppingListController : ControllerBase
     {
         private readonly IShoppingListService _shoppingListService;
 
@@ -19,10 +17,9 @@ namespace YP_API.Controllers
             _shoppingListService = shoppingListService;
         }
 
-        [HttpGet("current")]
-        public async Task<ActionResult> GetCurrentShoppingList()
+        [HttpGet("current/{userId}")]
+        public async Task<ActionResult> GetCurrentShoppingList(int userId)
         {
-            var userId = GetUserId();
             var shoppingList = await _shoppingListService.GetCurrentShoppingListAsync(userId);
 
             if (shoppingList == null)
@@ -56,15 +53,14 @@ namespace YP_API.Controllers
             var success = await _shoppingListService.ToggleItemPurchasedAsync(itemId, isPurchased);
 
             if (success)
-                return Ok(new { message = "Статус товара успешно обновлен" });
+                return Ok(new { message = "Статус покупки успешно изменен" });
 
-            return BadRequest(new { error = "Не удалось обновить статус товара" });
+            return BadRequest(new { error = "Не удалось изменить статус покупки" });
         }
 
-        [HttpPost("generate-from-menu/{menuId}")]
-        public async Task<ActionResult> GenerateFromMenu(int menuId)
+        [HttpPost("generate-from-menu/{menuId}/{userId}")]
+        public async Task<ActionResult> GenerateFromMenu(int menuId, int userId)
         {
-            var userId = GetUserId();
             var shoppingList = await _shoppingListService.GenerateShoppingListFromMenuAsync(menuId, userId);
 
             return Ok(new

@@ -26,7 +26,7 @@ namespace YP_API.Controllers
 
             [FromForm]
             [Required(ErrorMessage = "Email обязателен")]
-            [EmailAddress(ErrorMessage = "Некорректный формат email")]
+            [EmailAddress(ErrorMessage = "Неверный формат email")]
             [Display(Name = "Email адрес")]
             string email,
 
@@ -56,7 +56,7 @@ namespace YP_API.Controllers
                     Username = user.Username,
                     Email = user.Email,
                     FullName = user.FullName,
-                    Token = user.Token
+                    Message = "Пользователь успешно создан"
                 });
             }
             catch (Exception ex)
@@ -87,7 +87,7 @@ namespace YP_API.Controllers
                     Username = user.Username,
                     Email = user.Email,
                     FullName = user.FullName,
-                    Token = user.Token
+                    Message = "Пользователь успешно найден"
                 });
             }
             catch (Exception ex)

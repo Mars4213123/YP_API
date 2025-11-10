@@ -1,6 +1,3 @@
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using YP_API.Interfaces;
@@ -11,12 +8,10 @@ namespace YP_API.Services
     public class AuthService : IAuthService
     {
         private readonly IUserRepository _userRepository;
-        private readonly IConfiguration _config;
 
-        public AuthService(IUserRepository userRepository, IConfiguration config)
+        public AuthService(IUserRepository userRepository)
         {
             _userRepository = userRepository;
-            _config = config;
         }
 
         public async Task<User> Register(string username, string email, string fullName, string password, List<string> allergies)
@@ -42,7 +37,6 @@ namespace YP_API.Services
             if (!await _userRepository.SaveAllAsync())
                 throw new Exception("Failed to save user");
 
-            user.Token = CreateToken(user);
             return user;
         }
 
@@ -62,36 +56,7 @@ namespace YP_API.Services
                     throw new Exception("Invalid password");
             }
 
-            user.Token = CreateToken(user);
             return user;
-        }
-
-        private string CreateToken(User user)
-        {
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.Username),
-                new Claim("userId", user.Id.ToString()),
-                new Claim("email", user.Email)
-            };
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JWT:Key"]));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.Now.AddDays(7),
-                SigningCredentials = creds,
-                Issuer = "RecipePlannerAPI",
-                Audience = "RecipePlannerUsers"
-            };
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-
-            return tokenHandler.WriteToken(token);
         }
     }
 
