@@ -1,44 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
-    app:cardBackgroundColor="#2D2D2D">
+    app:cardBackgroundColor="#2D2D2D"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="4dp">
 
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:layout_height="wrap_content">
 
         <TextView
-            android:id="@+id/tv_day"
+            android:id="@+id/tvDayDate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Day 1"
-            android:textColor="@android:color/white"
+            android:text="2025-11-07"
+            android:textColor="#FFFFFF"
             android:textSize="18sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            android:layout_margin="8dp" />
 
         <TextView
-            android:id="@+id/tv_meals"
+            android:id="@+id/tvDayCalories"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Breakfast: Oatmeal | Lunch: Salad | Dinner: Pasta"
-            android:textColor="#CCCCCC" />
+            android:text="Общие калории: 2000"
+            android:textColor="#4CAF50"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/tvDayDate"
+            android:layout_marginEnd="8dp" />
 
-        <Button
-            android:id="@+id/btn_view_day"
-            android:layout_width="wrap_content"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvDayMeals"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_gravity="end"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tvDayDate"
             android:layout_marginTop="8dp"
-            android:backgroundTint="#4CAF50"
-            android:text="View Details"
-            android:textColor="@android:color/white" />
+            android:nestedScrollingEnabled="false" />
 
-    </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
-</com.google.android.material.card.MaterialCardView>
+</androidx.cardview.widget.CardView>
