@@ -1,20 +1,16 @@
 package com.example.okak.viewmodel;
 
 import android.app.Application;
-
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-
 import com.example.okak.network.ApiClient;
 import com.example.okak.network.ApiService;
-
-import java.util.List;
-
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import java.util.List;
 
 public class UserViewModel extends AndroidViewModel {
     private MutableLiveData<ApiService.UserProfile> profileLiveData = new MutableLiveData<>();
@@ -29,8 +25,6 @@ public class UserViewModel extends AndroidViewModel {
     public void loadProfile() {
         loadingLiveData.setValue(true);
         ApiService apiService = ApiClient.getApiService(getApplication());
-
-        // Загрузка профиля
         apiService.getUserProfile().enqueue(new Callback<ApiService.UserProfile>() {
             @Override
             public void onResponse(@NonNull Call<ApiService.UserProfile> call, @NonNull Response<ApiService.UserProfile> response) {
@@ -39,7 +33,7 @@ public class UserViewModel extends AndroidViewModel {
                 } else {
                     errorLiveData.setValue("Ошибка загрузки профиля: " + response.code());
                 }
-                loadAllergies(); // Загружаем аллергии параллельно
+                loadAllergies();
             }
 
             @Override
@@ -71,7 +65,6 @@ public class UserViewModel extends AndroidViewModel {
         });
     }
 
-    // Геттеры
     public LiveData<ApiService.UserProfile> getProfile() { return profileLiveData; }
     public LiveData<List<String>> getAllergies() { return allergiesLiveData; }
     public LiveData<Boolean> getLoading() { return loadingLiveData; }

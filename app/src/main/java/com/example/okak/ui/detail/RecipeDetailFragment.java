@@ -9,14 +9,12 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
-import com.bumptech.glide.Glide; // Теперь этот импорт будет работать
+import com.bumptech.glide.Glide;
 import com.example.okak.R;
 import com.example.okak.adapters.IngredientAdapter;
 import com.example.okak.viewmodel.RecipeViewModel;
@@ -39,24 +37,18 @@ public class RecipeDetailFragment extends Fragment {
         tvInstructions = root.findViewById(R.id.tvInstructions);
         rvIngredients = root.findViewById(R.id.rvIngredients);
         btnFavorite = root.findViewById(R.id.btnToggleFavorite);
-        progressBar = root.findViewById(R.id.progressBarDetail); // Теперь этот ID существует
+        progressBar = root.findViewById(R.id.progressBarDetail);
 
         recipeViewModel = new ViewModelProvider(this).get(RecipeViewModel.class);
 
-        // --- ИСПРАВЛЕНИЕ: Убираем RecipeDetailFragmentArgs ---
-        // Будем получать "recipeId" вручную из Bundle
         if (getArguments() != null) {
             recipeId = getArguments().getInt("recipeId");
         }
-        // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
 
         recipeViewModel.loadRecipeDetail(recipeId);
         setupObservers();
-
         rvIngredients.setLayoutManager(new LinearLayoutManager(getContext()));
-
         btnFavorite.setOnClickListener(v -> recipeViewModel.toggleFavorite(recipeId));
-
         return root;
     }
 
@@ -66,14 +58,10 @@ public class RecipeDetailFragment extends Fragment {
                 tvTitle.setText(detail.title);
                 tvDescription.setText(detail.description);
                 tvInstructions.setText(detail.instructions);
-
-                // Glide для загрузки изображения
                 Glide.with(this).load(detail.imageUrl).into(ivImage);
-
-                // Адаптер для ингредиентов
                 IngredientAdapter adapter = new IngredientAdapter(detail.ingredients);
                 rvIngredients.setAdapter(adapter);
-                btnFavorite.setText(detail.isFavorite ? "Убрать из избранного" : "В избранное");
+                btnFavorite.setText(detail.isFavorite ? "Удалить из избранного" : "В избранное");
             }
         });
         recipeViewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {

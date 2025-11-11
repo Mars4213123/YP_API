@@ -9,17 +9,13 @@ import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
-
-import com.example.okak.LoginActivity;
 import com.example.okak.R;
+import com.example.okak.LoginActivity;
 import com.example.okak.network.AuthTokenManager;
 import com.example.okak.viewmodel.UserViewModel;
-
-import java.util.List;
 
 public class ProfileFragment extends Fragment {
     private UserViewModel userViewModel;
@@ -36,13 +32,10 @@ public class ProfileFragment extends Fragment {
         tvAllergies = root.findViewById(R.id.tvAllergies);
         btnLogout = root.findViewById(R.id.btnLogout);
         progressBar = root.findViewById(R.id.progressBarProfile);
-
         userViewModel = new ViewModelProvider(this).get(UserViewModel.class);
         setupObservers();
-
         btnLogout.setOnClickListener(v -> logout());
-
-        userViewModel.loadProfile(); // Загрузка при старте
+        userViewModel.loadProfile();
         return root;
     }
 
@@ -54,7 +47,6 @@ public class ProfileFragment extends Fragment {
                 tvFullName.setText("Полное имя: " + profile.fullName);
             }
         });
-
         userViewModel.getAllergies().observe(getViewLifecycleOwner(), allergies -> {
             if (allergies != null && !allergies.isEmpty()) {
                 String allergiesStr = String.join(", ", allergies);
@@ -63,11 +55,9 @@ public class ProfileFragment extends Fragment {
                 tvAllergies.setText("Аллергии: Нет");
             }
         });
-
         userViewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {
             progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
         });
-
         userViewModel.getError().observe(getViewLifecycleOwner(), error -> {
             if (error != null) {
                 Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
@@ -78,7 +68,6 @@ public class ProfileFragment extends Fragment {
     private void logout() {
         AuthTokenManager.clearToken(requireContext().getApplicationContext());
         Toast.makeText(getContext(), "Выход выполнен", Toast.LENGTH_SHORT).show();
-
         Intent intent = new Intent(getActivity(), LoginActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);

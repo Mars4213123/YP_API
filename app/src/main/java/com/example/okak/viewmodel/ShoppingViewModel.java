@@ -1,15 +1,12 @@
 package com.example.okak.viewmodel;
 
 import android.app.Application;
-
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-
 import com.example.okak.network.ApiClient;
 import com.example.okak.network.ApiService;
-
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -33,7 +30,7 @@ public class ShoppingViewModel extends AndroidViewModel {
                 if (response.isSuccessful() && response.body() != null) {
                     shoppingListLiveData.setValue(response.body());
                 } else {
-                    shoppingListLiveData.setValue(null); // <-- ИСПРАВЛЕНИЕ: Очищаем, если списка нет
+                    shoppingListLiveData.setValue(null);
                     errorLiveData.setValue("Ошибка загрузки списка");
                 }
             }
@@ -68,22 +65,17 @@ public class ShoppingViewModel extends AndroidViewModel {
         });
     }
 
-    // --- ИСПРАВЛЕНИЕ: Метод toggleItem ---
     public void toggleItem(int itemId, boolean isChecked) {
-        // Мы можем получить listId из LiveData
         if (shoppingListLiveData.getValue() == null) {
             errorLiveData.setValue("Список покупок не загружен");
             return;
         }
         int listId = shoppingListLiveData.getValue().id;
-
         ApiService apiService = ApiClient.getApiService(getApplication());
-        // Вызываем исправленный метод API
         apiService.toggleShoppingListItem(listId, itemId, isChecked).enqueue(new Callback<ApiService.BaseResponse>() {
             @Override
             public void onResponse(@NonNull Call<ApiService.BaseResponse> call, @NonNull Response<ApiService.BaseResponse> response) {
                 if (response.isSuccessful()) {
-                    // Обновляем состояние локально, чтобы не перезагружать весь список
                     ApiService.ShoppingList currentList = shoppingListLiveData.getValue();
                     if (currentList != null && currentList.items != null) {
                         for (ApiService.ShoppingListItem item : currentList.items) {
@@ -96,7 +88,6 @@ public class ShoppingViewModel extends AndroidViewModel {
                     }
                 } else {
                     errorLiveData.setValue("Ошибка обновления");
-                    // Если ошибка, перезагружаем, чтобы отменить изменение
                     loadCurrentShoppingList();
                 }
             }
@@ -104,13 +95,11 @@ public class ShoppingViewModel extends AndroidViewModel {
             @Override
             public void onFailure(@NonNull Call<ApiService.BaseResponse> call, @NonNull Throwable t) {
                 errorLiveData.setValue("Сетевая ошибка");
-                loadCurrentShoppingList(); // Откатываем
+                loadCurrentShoppingList();
             }
         });
     }
-    // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
 
-    // Геттеры
     public LiveData<ApiService.ShoppingList> getShoppingList() { return shoppingListLiveData; }
     public LiveData<Boolean> getLoading() { return loadingLiveData; }
     public LiveData<String> getError() { return errorLiveData; }

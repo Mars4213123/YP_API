@@ -4,18 +4,16 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.example.okak.R;
 import com.example.okak.network.ApiService;
-
 import java.util.List;
 
 public class MenuDayAdapter extends RecyclerView.Adapter<MenuDayAdapter.ViewHolder> {
     private List<ApiService.MenuDay> days;
+
     public MenuDayAdapter(List<ApiService.MenuDay> days) {
         this.days = days;
     }
@@ -33,8 +31,6 @@ public class MenuDayAdapter extends RecyclerView.Adapter<MenuDayAdapter.ViewHold
         holder.tvDate.setText(day.date);
         holder.tvCalories.setText("Общие калории: " + day.totalCalories);
 
-        // --- ИСПРАВЛЕНИЕ ---
-        // Извлекаем список RecipeShort из day.meals, чтобы передать его в RecipeAdapter
         List<ApiService.RecipeShort> mealsAsRecipes = new java.util.ArrayList<>();
         if (day.meals != null) {
             for (ApiService.Meal meal : day.meals) {
@@ -43,9 +39,7 @@ public class MenuDayAdapter extends RecyclerView.Adapter<MenuDayAdapter.ViewHold
                 }
             }
         }
-        // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
 
-        // Используем созданный список
         RecipeAdapter mealAdapter = new RecipeAdapter(mealsAsRecipes);
         holder.rvMeals.setLayoutManager(new LinearLayoutManager(holder.itemView.getContext(), LinearLayoutManager.HORIZONTAL, false));
         holder.rvMeals.setAdapter(mealAdapter);

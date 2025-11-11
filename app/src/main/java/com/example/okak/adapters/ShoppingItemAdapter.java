@@ -5,18 +5,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.TextView;
-
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.example.okak.R;
 import com.example.okak.network.ApiService;
-
 import java.util.List;
 
 public class ShoppingItemAdapter extends RecyclerView.Adapter<ShoppingItemAdapter.ViewHolder> {
-
-    // --- ИСПРАВЛЕНИЕ: Добавляем Listener ---
     public interface OnItemToggleListener {
         void onItemToggle(int itemId, boolean isChecked);
     }
@@ -28,7 +23,6 @@ public class ShoppingItemAdapter extends RecyclerView.Adapter<ShoppingItemAdapte
         this.items = items;
         this.listener = listener;
     }
-    // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
 
     @NonNull
     @Override
@@ -43,16 +37,13 @@ public class ShoppingItemAdapter extends RecyclerView.Adapter<ShoppingItemAdapte
         holder.tvName.setText(item.name);
         holder.tvQuantity.setText(item.quantity + " " + item.unit);
 
-        // --- ИСПРАВЛЕНИЕ: Убираем setOnCheckedChangeListener перед установкой isChecked ---
         holder.cbBought.setOnCheckedChangeListener(null);
         holder.cbBought.setChecked(item.isBought);
-
         holder.cbBought.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (listener != null) {
                 listener.onItemToggle(item.id, isChecked);
             }
         });
-        // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
     }
 
     @Override

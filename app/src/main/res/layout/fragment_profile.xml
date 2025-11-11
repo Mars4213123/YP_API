@@ -82,11 +82,11 @@
         android:layout_height="wrap_content"
         android:text="Выйти из аккаунта"
         android:backgroundTint="#F44336"
-    android:textColor="#FFFFFF"
-    app:layout_constraintBottom_toBottomOf="parent"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintStart_toStartOf="parent"
-    android:layout_marginBottom="80dp" />
+        android:textColor="#FFFFFF"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginBottom="80dp" />
 
     <ProgressBar
         android:id="@+id/progressBarProfile"

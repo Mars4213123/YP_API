@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#1E1E1E"
-    tools:context=".RegisterActivity">
+    android:background="#1E1E1E">
 
     <ScrollView
         android:layout_width="match_parent"
@@ -55,6 +52,7 @@
                     android:inputType="text"
                     android:textColor="#FFFFFF"
                     android:textColorHint="#9E9E9E"/>
+
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -80,6 +78,7 @@
                     android:inputType="textEmailAddress"
                     android:textColor="#FFFFFF"
                     android:textColorHint="#9E9E9E"/>
+
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -105,6 +104,7 @@
                     android:inputType="textPersonName"
                     android:textColor="#FFFFFF"
                     android:textColorHint="#9E9E9E"/>
+
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -131,32 +131,7 @@
                     android:inputType="textPassword"
                     android:textColor="#FFFFFF"
                     android:textColorHint="#9E9E9E"/>
-            </com.google.android.material.textfield.TextInputLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/tilConfirmPassword"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
-                android:layout_marginEnd="32dp"
-                android:layout_marginTop="16dp"
-                app:passwordToggleEnabled="true"
-                app:boxStrokeColor="#4CAF50"
-                app:hintTextColor="#4CAF50"
-                app:boxBackgroundColor="#333333"
-                app:layout_constraintTop_toBottomOf="@id/tilPassword"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etConfirmPassword"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="Повторите пароль"
-                    android:inputType="textPassword"
-                    android:textColor="#FFFFFF"
-                    android:textColorHint="#9E9E9E"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <Button
@@ -172,7 +147,7 @@
                 android:layout_marginTop="40dp"
                 android:backgroundTint="#4CAF50"
                 android:textColor="#FFFFFF"
-                app:layout_constraintTop_toBottomOf="@id/tilConfirmPassword"
+                app:layout_constraintTop_toBottomOf="@id/tilPassword"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent" />
 
@@ -196,13 +171,4 @@
         </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>
 
-    <ProgressBar
-        android:id="@+id/progressBar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>

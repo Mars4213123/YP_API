@@ -1,4 +1,4 @@
-package com.example.okak; // (твой package)
+package com.example.okak;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -7,22 +7,18 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-
 import com.example.okak.network.ApiClient;
 import com.example.okak.network.ApiService;
 import com.example.okak.network.AuthTokenManager;
-
+import java.io.IOException;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
 public class LoginActivity extends AppCompatActivity {
-
     private static final String TAG = "LoginActivity";
-
     private EditText etUsername;
     private EditText etPassword;
     private Button btnLogin;
@@ -33,13 +29,13 @@ public class LoginActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Проверка токена
         if (AuthTokenManager.hasToken(getApplicationContext())) {
             goToMainActivity();
             return;
         }
 
         setContentView(R.layout.activity_login);
-
         apiService = ApiClient.getApiService(getApplicationContext());
 
         etUsername = findViewById(R.id.etUsername);
@@ -70,23 +66,27 @@ public class LoginActivity extends AppCompatActivity {
             public void onResponse(@NonNull Call<ApiService.UserAuthResponse> call, @NonNull Response<ApiService.UserAuthResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
 
-                    // ==========================================================
-                    //  *** ИСПРАВЛЕНИЕ ЗДЕСЬ ***
-                    //  Было: response.body().getToken()
-                    //  Стало: response.body().token (прямой доступ к полю)
                     String token = response.body().token;
-                    // ==========================================================
 
-                    AuthTokenManager.saveToken(getApplicationContext(), token);
+                    // Строгая проверка, что токен не null и не пустой
+                    if (token != null && !token.isEmpty()) {
+                        AuthTokenManager.saveToken(getApplicationContext(), token);
+                        Toast.makeText(LoginActivity.this, "Вход выполнен!", Toast.LENGTH_SHORT).show();
+                        goToMainActivity();
+                    } else {
+                        Log.e(TAG, "Login successful but token was null or empty.");
+                        Toast.makeText(LoginActivity.this, "Ошибка входа: не удалось получить токен.", Toast.LENGTH_LONG).show();
+                    }
 
-                    Toast.makeText(LoginActivity.this, "Вход выполнен!", Toast.LENGTH_SHORT).show();
-
-                    goToMainActivity();
                 } else {
-                    String errorMsg = "Ошибка входа. ";
-                    try {
-                        errorMsg += "Код: " + response.code() + ", Тело: " + response.errorBody().string();
-                    } catch (Exception e) { e.printStackTrace(); }
+                    String errorMsg = "Ошибка входа. Код: " + response.code();
+                    if (response.errorBody() != null) {
+                        try {
+                            errorMsg += ", Тело: " + response.errorBody().string();
+                        } catch (IOException e) {
+                            Log.e(TAG, "Error reading errorBody", e);
+                        }
+                    }
                     Log.e(TAG, "Login failed: " + errorMsg);
                     Toast.makeText(LoginActivity.this, errorMsg, Toast.LENGTH_LONG).show();
                 }

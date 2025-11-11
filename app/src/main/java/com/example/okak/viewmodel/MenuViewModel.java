@@ -1,21 +1,16 @@
 package com.example.okak.viewmodel;
 
 import android.app.Application;
-
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-
 import com.example.okak.network.ApiClient;
 import com.example.okak.network.ApiService;
-
-import java.util.Arrays;
-import java.util.List;
-
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import java.util.List;
 
 public class MenuViewModel extends AndroidViewModel {
     private MutableLiveData<ApiService.MenuDetail> currentMenuLiveData = new MutableLiveData<>();
@@ -57,7 +52,7 @@ public class MenuViewModel extends AndroidViewModel {
             public void onResponse(@NonNull Call<ApiService.BaseResponse> call, @NonNull Response<ApiService.BaseResponse> response) {
                 loadingLiveData.setValue(false);
                 if (response.isSuccessful()) {
-                    loadCurrentMenu(); // Reload
+                    loadCurrentMenu();
                 } else {
                     errorLiveData.setValue("Ошибка генерации");
                 }
@@ -71,9 +66,6 @@ public class MenuViewModel extends AndroidViewModel {
         });
     }
 
-    // Аналогично для history, regenerateDay, setRating, deleteMenu
-
-    // Геттеры
     public LiveData<ApiService.MenuDetail> getCurrentMenu() { return currentMenuLiveData; }
     public LiveData<List<ApiService.MenuShort>> getHistory() { return historyLiveData; }
     public LiveData<Boolean> getLoading() { return loadingLiveData; }

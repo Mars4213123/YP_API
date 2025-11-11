@@ -1,37 +1,36 @@
 package com.example.okak;
 
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
-
+import com.example.okak.network.ApiClient;
+import com.example.okak.network.ApiService;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import com.example.okak.network.ApiService;
 
 public class AllergySelectionActivity extends AppCompatActivity {
-
     private LinearLayout allergiesContainer;
     private Button saveButton;
     private final List<String> availableAllergies = Arrays.asList(
             "Глютен", "Молоко", "Орехи", "Арахис", "Яйца", "Рыба", "Соя", "Моллюски"
-            // Добавьте больше аллергенов по необходимости
     );
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_allergy_selection); // Создайте этот layout
-
+        setContentView(R.layout.activity_allergy_selection);
         allergiesContainer = findViewById(R.id.allergies_container);
         saveButton = findViewById(R.id.btn_save_allergies);
-
         createAllergyCheckboxes();
-
         saveButton.setOnClickListener(v -> saveAllergies());
     }
 
@@ -39,7 +38,7 @@ public class AllergySelectionActivity extends AppCompatActivity {
         for (String allergy : availableAllergies) {
             CheckBox checkBox = new CheckBox(this);
             checkBox.setText(allergy);
-            checkBox.setTag(allergy); // Используем тег для получения названия при сохранении
+            checkBox.setTag(allergy);
             allergiesContainer.addView(checkBox);
         }
     }
@@ -54,27 +53,37 @@ public class AllergySelectionActivity extends AppCompatActivity {
                 }
             }
         }
-
-        // TODO: Отправьте selectedAllergies на ваш C# API (см. п. 1)
         sendAllergiesToApi(selectedAllergies);
     }
 
-    // Псевдокод для отправки на API
     private void sendAllergiesToApi(List<String> allergies) {
-        // Здесь должен быть ваш код для вызова API (например, с использованием Retrofit)
+        ApiService apiService = ApiClient.getApiService(this);
 
-        // В случае успеха:
-        Toast.makeText(this, "Аллергии сохранены!", Toast.LENGTH_SHORT).show();
+        ApiService.UpdateAllergiesDto allergiesDto = new ApiService.UpdateAllergiesDto(allergies);
 
-        // Переход на следующий экран (MainActivity)
-        navigateToNextScreen();
+        apiService.updateUserAllergies(allergiesDto).enqueue(new Callback<ApiService.BaseResponse>() {
+            @Override
+            public void onResponse(Call<ApiService.BaseResponse> call, Response<ApiService.BaseResponse> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().success) {
+                    Toast.makeText(AllergySelectionActivity.this, "Аллергии сохранены!", Toast.LENGTH_SHORT).show();
+                    navigateToNextScreen();
+                } else {
+                    Toast.makeText(AllergySelectionActivity.this, "Ошибка сохранения", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiService.BaseResponse> call, Throwable t) {
+                Toast.makeText(AllergySelectionActivity.this, "Сетевая ошибка: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void navigateToNextScreen() {
-        // Если Activity была вызвана после регистрации
-        if (getIntent().getBooleanExtra("FROM_REGISTRATION", false)) {
+        boolean fromRegistration = getIntent().getBooleanExtra("FROM_REGISTRATION", false);
+
+        if (fromRegistration) {
             Intent intent = new Intent(AllergySelectionActivity.this, MainActivity.class);
-            // Очищаем стек Activity, чтобы пользователь не мог вернуться к регистрации по кнопке "Назад"
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
         }

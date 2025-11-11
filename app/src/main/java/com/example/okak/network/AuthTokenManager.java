@@ -3,9 +3,7 @@ package com.example.okak.network;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-// Класс для управления токеном авторизации
 public class AuthTokenManager {
-
     private static final String PREF_NAME = "AuthPrefs";
     private static final String KEY_AUTH_TOKEN = "authToken";
 

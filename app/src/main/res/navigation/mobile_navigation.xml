@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/mobile_navigation"
     app:startDestination="@+id/navigation_home">
 
@@ -9,35 +8,39 @@
         android:id="@+id/navigation_home"
         android:name="com.example.okak.ui.home.HomeFragment"
         android:label="Home"
-        tools:layout="@layout/fragment_home" />
+        />
+
     <fragment
         android:id="@+id/navigation_search"
         android:name="com.example.okak.ui.search.SearchFragment"
         android:label="Search"
-        tools:layout="@layout/fragment_search">
+        >
         <action
             android:id="@+id/action_navigation_search_to_navigation_recipe_detail"
             app:destination="@id/navigation_recipe_detail" />
     </fragment>
+
     <fragment
         android:id="@+id/navigation_favorites"
         android:name="com.example.okak.ui.favorites.FavoritesFragment"
         android:label="Favorites"
-        tools:layout="@layout/fragment_favorites">
+        >
         <action
             android:id="@+id/action_navigation_favorites_to_navigation_recipe_detail"
             app:destination="@id/navigation_recipe_detail" />
     </fragment>
+
     <fragment
         android:id="@+id/navigation_shopping"
         android:name="com.example.okak.ui.shopping.ShoppingFragment"
         android:label="Shopping"
-        tools:layout="@layout/fragment_shopping" />
+        />
+
     <fragment
         android:id="@+id/navigation_recipe_detail"
         android:name="com.example.okak.ui.detail.RecipeDetailFragment"
         android:label="Recipe Detail"
-        tools:layout="@layout/fragment_recipe_detail">
+        >
         <argument
             android:name="recipeId"
             app:argType="integer" />
@@ -47,6 +50,6 @@
         android:id="@+id/navigation_profile"
         android:name="com.example.okak.ui.profile.ProfileFragment"
         android:label="Profile"
-        tools:layout="@layout/fragment_profile" />
+        />
 
 </navigation>
