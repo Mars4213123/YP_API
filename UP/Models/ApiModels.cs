@@ -53,7 +53,13 @@ namespace UP.Models
         public string CuisineType { get; set; }
         public string Difficulty { get; set; }
     }
-
+    public class DailyMenu
+    {
+        public string Day { get; set; }
+        public string Meal { get; set; }
+        public string Description { get; set; }
+        public int RecipeId { get; set; }
+    }
     public class IngredientDto
     {
         public string Name { get; set; }
@@ -84,7 +90,7 @@ namespace UP.Models
         public string Date { get; set; }
         public List<MenuMealDto> Meals { get; set; } = new List<MenuMealDto>();
     }
-    // Добавьте в Models/ApiModels.cs
+
     public class SimpleAuthResponse
     {
         public int Id { get; set; }

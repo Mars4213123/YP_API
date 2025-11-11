@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using UP.Models;
 
 namespace UP.Services
@@ -31,8 +30,6 @@ namespace UP.Services
                 new MediaTypeWithQualityHeaderValue("application/json"));
         }
 
-        public string GetBaseUrl() => _baseUrl;
-
         public void SetToken(string token)
         {
             _token = token;
@@ -50,9 +47,6 @@ namespace UP.Services
         {
             var content = await response.Content.ReadAsStringAsync();
 
-            Console.WriteLine($"API Response: {response.StatusCode}");
-            Console.WriteLine($"Response Content: {content}");
-
             if (!response.IsSuccessStatusCode)
             {
                 throw new HttpRequestException($"HTTP {response.StatusCode}: {content}");
@@ -65,43 +59,50 @@ namespace UP.Services
 
             try
             {
-                var options = new JsonSerializerOptions
+                var settings = new JsonSerializerSettings
                 {
-                    PropertyNameCaseInsensitive = true
+                    MissingMemberHandling = MissingMemberHandling.Ignore,
+                    NullValueHandling = NullValueHandling.Ignore
                 };
 
-                // Пробуем разные форматы ответа
                 try
                 {
-                    var apiResponse = JsonSerializer.Deserialize<ApiResponse<T>>(content, options);
-                    if (apiResponse != null)
+                    var simpleAuth = JsonConvert.DeserializeObject<SimpleAuthResponse>(content, settings);
+                    if (simpleAuth != null && !string.IsNullOrEmpty(simpleAuth.Token))
                     {
-                        if (apiResponse.Success)
+                        if (typeof(T) == typeof(UserData))
                         {
-                            return apiResponse.Data;
-                        }
-                        else
-                        {
-                            throw new Exception(apiResponse.Message ?? "Ошибка сервера");
+                            var userData = new UserData
+                            {
+                                Id = simpleAuth.Id,
+                                Username = simpleAuth.Username,
+                                Email = simpleAuth.Email,
+                                Token = simpleAuth.Token
+                            };
+                            return (T)(object)userData;
                         }
                     }
                 }
-                catch (JsonException)
-                {
-                    // Пробуем десериализовать напрямую
-                    return JsonSerializer.Deserialize<T>(content, options);
-                }
+                catch (JsonException) { }
 
-                throw new Exception($"Неизвестный формат ответа: {content}");
+                try
+                {
+                    var apiResponse = JsonConvert.DeserializeObject<ApiResponse<T>>(content, settings);
+                    if (apiResponse != null && apiResponse.Success)
+                    {
+                        return apiResponse.Data;
+                    }
+                }
+                catch (JsonException) { }
+
+                return JsonConvert.DeserializeObject<T>(content, settings);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error parsing response: {ex.Message}");
                 throw new Exception($"Ошибка обработки ответа: {ex.Message}");
             }
         }
 
-        // Аутентификация
         public async Task<UserData> LoginAsync(string username, string password)
         {
             try
@@ -111,8 +112,6 @@ namespace UP.Services
                     { new StringContent(username), "username" },
                     { new StringContent(password), "password" }
                 };
-
-                Console.WriteLine($"Sending login request to: {_baseUrl}Auth/login");
 
                 var response = await _httpClient.PostAsync($"{_baseUrl}Auth/login", formData);
 
@@ -133,7 +132,6 @@ namespace UP.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Login error: {ex.Message}");
                 throw;
             }
         }
@@ -157,8 +155,6 @@ namespace UP.Services
                     }
                 }
 
-                Console.WriteLine($"Sending register request to: {_baseUrl}Auth/register");
-
                 var response = await _httpClient.PostAsync($"{_baseUrl}Auth/register", formData);
 
                 if (!response.IsSuccessStatusCode)
@@ -171,12 +167,10 @@ namespace UP.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Register error: {ex.Message}");
                 throw;
             }
         }
 
-        // Рецепты
         public async Task<List<RecipeDto>> GetRecipesAsync()
         {
             try
@@ -186,7 +180,6 @@ namespace UP.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"GetRecipes error: {ex.Message}");
                 return new List<RecipeDto>();
             }
         }
@@ -200,7 +193,6 @@ namespace UP.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"GetRecipe error: {ex.Message}");
                 throw;
             }
         }
@@ -209,7 +201,8 @@ namespace UP.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync($"{_baseUrl}Recipes/favorites");
+                var userId = AppData.CurrentUser?.Id ?? 0;
+                var response = await _httpClient.GetAsync($"{_baseUrl}Recipes/favorites/{userId}");
                 return await HandleResponse<List<RecipeDto>>(response);
             }
             catch (Exception ex)
@@ -223,7 +216,8 @@ namespace UP.Services
         {
             try
             {
-                var response = await _httpClient.PostAsync($"{_baseUrl}Recipes/{recipeId}/favorite", null);
+                var userId = AppData.CurrentUser?.Id ?? 0;
+                var response = await _httpClient.PostAsync($"{_baseUrl}Recipes/{recipeId}/favorite/{userId}", null);
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
@@ -233,15 +227,22 @@ namespace UP.Services
             }
         }
 
-        // Меню
         public async Task<MenuDto> GenerateMenuAsync(GenerateMenuRequest request)
         {
             try
             {
-                var json = JsonSerializer.Serialize(request);
+                var json = JsonConvert.SerializeObject(request);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var response = await _httpClient.PostAsync($"{_baseUrl}Menu/generate", content);
+                var userId = AppData.CurrentUser?.Id ?? 0;
+                var response = await _httpClient.PostAsync($"{_baseUrl}Menu/generate/{userId}", content);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    throw new HttpRequestException($"Menu generation failed: {response.StatusCode} - {errorContent}");
+                }
+
                 return await HandleResponse<MenuDto>(response);
             }
             catch (Exception ex)
@@ -255,7 +256,8 @@ namespace UP.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync($"{_baseUrl}Menu/current");
+                var userId = AppData.CurrentUser?.Id ?? 0;
+                var response = await _httpClient.GetAsync($"{_baseUrl}Menu/current/{userId}");
                 return await HandleResponse<MenuDto>(response);
             }
             catch (Exception ex)
@@ -269,7 +271,8 @@ namespace UP.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync($"{_baseUrl}Menu/history");
+                var userId = AppData.CurrentUser?.Id ?? 0;
+                var response = await _httpClient.GetAsync($"{_baseUrl}Menu/history/{userId}");
                 return await HandleResponse<List<MenuDto>>(response);
             }
             catch (Exception ex)
@@ -279,12 +282,12 @@ namespace UP.Services
             }
         }
 
-        // Список покупок
         public async Task<ShoppingListDto> GetCurrentShoppingListAsync()
         {
             try
             {
-                var response = await _httpClient.GetAsync($"{_baseUrl}ShoppingList/current");
+                var userId = AppData.CurrentUser?.Id ?? 0;
+                var response = await _httpClient.GetAsync($"{_baseUrl}ShoppingList/current/{userId}");
                 return await HandleResponse<ShoppingListDto>(response);
             }
             catch (Exception ex)
@@ -294,11 +297,13 @@ namespace UP.Services
             }
         }
 
+
         public async Task<bool> GenerateShoppingListAsync(int menuId)
         {
             try
             {
-                var response = await _httpClient.PostAsync($"{_baseUrl}ShoppingList/generate-from-menu/{menuId}", null);
+                var userId = AppData.CurrentUser?.Id ?? 0;
+                var response = await _httpClient.PostAsync($"{_baseUrl}ShoppingList/generate-from-menu/{menuId}/{userId}", null);
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
@@ -313,9 +318,9 @@ namespace UP.Services
             try
             {
                 var formData = new MultipartFormDataContent
-                {
-                    { new StringContent(isPurchased.ToString()), "isPurchased" }
-                };
+        {
+            { new StringContent(isPurchased.ToString()), "isPurchased" }
+        };
 
                 var response = await _httpClient.PostAsync($"{_baseUrl}ShoppingList/{listId}/items/{itemId}/toggle", formData);
                 return response.IsSuccessStatusCode;
@@ -327,43 +332,6 @@ namespace UP.Services
             }
         }
 
-        // Ингредиенты и инвентарь
-        public async Task<List<IngredientDto>> GetIngredientsAsync()
-        {
-            try
-            {
-                var response = await _httpClient.GetAsync($"{_baseUrl}Ingredients");
-                return await HandleResponse<List<IngredientDto>>(response);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"GetIngredients error: {ex.Message}");
-                return new List<IngredientDto>();
-            }
-        }
-
-        public async Task<bool> AddToInventoryAsync(int ingredientId, decimal quantity, string unit)
-        {
-            try
-            {
-                var formData = new MultipartFormDataContent
-                {
-                    { new StringContent(ingredientId.ToString()), "ingredientId" },
-                    { new StringContent(quantity.ToString()), "quantity" },
-                    { new StringContent(unit), "unit" }
-                };
-
-                var response = await _httpClient.PostAsync($"{_baseUrl}Inventory/add", formData);
-                return response.IsSuccessStatusCode;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"AddToInventory error: {ex.Message}");
-                return false;
-            }
-        }
-
-        // Поиск рецептов
         public async Task<List<RecipeDto>> SearchRecipesAsync(string query, List<string> tags = null, int? maxTime = null)
         {
             try
@@ -385,8 +353,75 @@ namespace UP.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"SearchRecipes error: {ex.Message}");
                 return new List<RecipeDto>();
+            }
+        }
+        public async Task CheckAvailableEndpoints()
+        {
+            try
+            {
+                var endpoints = new[]
+                {
+            $"{_baseUrl}Menu/generate",
+            $"{_baseUrl}Menu",
+            $"{_baseUrl}Menu/create",
+            $"{_baseUrl}Menu/plan",
+            $"{_baseUrl}MenuPlans",
+            $"{_baseUrl}MenuPlan"
+        };
+
+                foreach (var endpoint in endpoints)
+                {
+                    try
+                    {
+                        var response = await _httpClient.GetAsync(endpoint);
+                        Console.WriteLine($"Endpoint {endpoint}: {response.StatusCode}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Endpoint {endpoint}: Error - {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Check endpoints error: {ex.Message}");
+            }
+        }
+
+        public async Task<List<IngredientDto>> GetIngredientsAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync($"{_baseUrl}Recipes/ingredients");
+                return await HandleResponse<List<IngredientDto>>(response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"GetIngredients error: {ex.Message}");
+                return new List<IngredientDto>();
+            }
+        }
+
+        public async Task<bool> AddToInventoryAsync(int ingredientId, decimal quantity, string unit)
+        {
+            try
+            {
+                var formData = new MultipartFormDataContent
+        {
+            { new StringContent(ingredientId.ToString()), "ingredientId" },
+            { new StringContent(quantity.ToString()), "quantity" },
+            { new StringContent(unit), "unit" }
+        };
+
+                var userId = AppData.CurrentUser?.Id ?? 0;
+                var response = await _httpClient.PostAsync($"{_baseUrl}Inventory/add/{userId}", formData);
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"AddToInventory error: {ex.Message}");
+                return false;
             }
         }
     }

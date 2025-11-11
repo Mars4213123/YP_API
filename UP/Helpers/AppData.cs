@@ -135,7 +135,6 @@ namespace UP
         {
             try
             {
-                // Находим ID рецепта по названию
                 var apiRecipe = AllRecipes.FirstOrDefault(r => r.Title == recipe.Title);
                 if (apiRecipe != null)
                 {
@@ -172,19 +171,40 @@ namespace UP
         {
             try
             {
+                Console.WriteLine($"Generating menu with request: Days={request.Days}, Calories={request.TargetCaloriesPerDay}, Tags={string.Join(", ", request.CuisineTags)}");
+
                 var menu = await ApiService.GenerateMenuAsync(request);
+
+                Console.WriteLine($"Menu generation response: {(menu != null ? "Success" : "Null response")}");
+
                 if (menu != null)
                 {
-                    await LoadCurrentMenu();
-                    await ApiService.GenerateShoppingListAsync(menu.Id);
-                    await LoadShoppingList();
-                    return true;
+                    Console.WriteLine($"Menu ID: {menu.Id}, Days count: {menu.Days?.Count}");
+
+                    if (menu.Days != null && menu.Days.Count > 0)
+                    {
+                        await LoadCurrentMenu();
+
+                        if (menu.Id > 0)
+                        {
+                            Console.WriteLine($"Generating shopping list for menu ID: {menu.Id}");
+                            await ApiService.GenerateShoppingListAsync(menu.Id);
+                            await LoadShoppingList();
+                        }
+                        return true;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Menu generated but has no days");
+                        return false;
+                    }
                 }
                 return false;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error generating menu: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 return false;
             }
         }

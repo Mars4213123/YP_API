@@ -5,7 +5,7 @@ VisualStudioVersion = 17.12.35527.113
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UP", "UP\UP.csproj", "{2A158B96-531E-4407-B43F-390636EE88EA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YP_API", "..\..\jk\YP_API\YP_API\YP_API.csproj", "{1BAADA5D-E263-4BE9-8D05-E239FBEED523}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YP_API", "YP_API\YP_API.csproj", "{582B77FD-0B60-42E5-96FC-ACB25A66EA33}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +17,10 @@ Global
 		{2A158B96-531E-4407-B43F-390636EE88EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2A158B96-531E-4407-B43F-390636EE88EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2A158B96-531E-4407-B43F-390636EE88EA}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1BAADA5D-E263-4BE9-8D05-E239FBEED523}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1BAADA5D-E263-4BE9-8D05-E239FBEED523}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1BAADA5D-E263-4BE9-8D05-E239FBEED523}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1BAADA5D-E263-4BE9-8D05-E239FBEED523}.Release|Any CPU.Build.0 = Release|Any CPU
+		{582B77FD-0B60-42E5-96FC-ACB25A66EA33}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{582B77FD-0B60-42E5-96FC-ACB25A66EA33}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{582B77FD-0B60-42E5-96FC-ACB25A66EA33}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{582B77FD-0B60-42E5-96FC-ACB25A66EA33}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

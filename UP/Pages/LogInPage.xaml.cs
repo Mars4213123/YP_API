@@ -35,64 +35,7 @@ namespace UP.Pages
             }
         }
 
-        private async Task<string> TestApiConnection()
-        {
-            try
-            {
-                var client = new HttpClient();
-                client.Timeout = TimeSpan.FromSeconds(5);
-
-                var testUrls = new[]
-                {
-                    "https://localhost:7197/swagger",
-                    "https://localhost:7197/api/recipes",
-                    "https://localhost:7197/"
-                };
-
-                foreach (var url in testUrls)
-                {
-                    try
-                    {
-                        var response = await client.GetAsync(url);
-                        if (response.IsSuccessStatusCode)
-                        {
-                            return $"✅ API доступен: {url}";
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Failed to connect to {url}: {ex.Message}");
-                    }
-                }
-
-                return "❌ API недоступен. Убедитесь, что:\n• Бекенд запущен\n• Порт 7197 свободен\n• Приложение имеет доступ к сети";
-            }
-            catch (Exception ex)
-            {
-                return $"❌ Ошибка проверки: {ex.Message}";
-            }
-        }
-
-        private async void CheckConnectionButton_Click(object sender, RoutedEventArgs e)
-        {
-            var status = await TestApiConnection();
-            MessageBox.Show(status, "Проверка подключения");
-        }
-
-        private async void CreateTestUserButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var user = await AppData.ApiService.RegisterAsync("asd", "asd@test.com", "asd", new List<string>());
-                MessageBox.Show($"✅ Пользователь 'asd' создан!\nМожно войти с паролем 'asd'", "Успех");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"❌ Ошибка создания пользователя: {ex.Message}", "Ошибка");
-            }
-        }
-
-        private async System.Threading.Tasks.Task AttemptLogin()
+        private async Task AttemptLogin()
         {
             string username = UsernameTextBox.Text;
             string password = PasswordBox.Password;
@@ -116,15 +59,6 @@ namespace UP.Pages
 
             try
             {
-                // Проверяем подключение
-                var connectionStatus = await TestApiConnection();
-                if (connectionStatus.Contains("❌"))
-                {
-                    ShowMessage(connectionStatus);
-                    return;
-                }
-
-                // Пробуем войти
                 var user = await AppData.ApiService.LoginAsync(username, password);
                 AppData.InitializeAfterLogin(user);
 
@@ -145,7 +79,6 @@ namespace UP.Pages
                 LoginButton.Content = "Войти";
             }
         }
-
         private void ShowMessage(string message)
         {
             MessageBox.Show(message, "Вход в систему",

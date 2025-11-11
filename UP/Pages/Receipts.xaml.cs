@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -58,8 +59,36 @@ namespace UP.Pages
         {
             if (!string.IsNullOrWhiteSpace(NewProductTextBox.Text))
             {
-                _products.Add(NewProductTextBox.Text.Trim());
+                var product = NewProductTextBox.Text.Trim();
+                _products.Add(product);
                 NewProductTextBox.Clear();
+
+                await SaveProductToInventory(product);
+            }
+        }
+
+        private async Task SaveProductToInventory(string productName)
+        {
+            try
+            {
+                var ingredients = await AppData.ApiService.GetIngredientsAsync();
+                var ingredient = ingredients.FirstOrDefault(i =>
+                    i.Name.Contains(productName));
+
+                if (ingredient != null)
+                {
+                    var success = await AppData.ApiService.AddToInventoryAsync(
+                        ingredient.Id, 1, "шт");
+
+                    if (success)
+                    {
+                        Console.WriteLine($"Product {productName} added to inventory");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving product to inventory: {ex.Message}");
             }
         }
 
@@ -81,12 +110,20 @@ namespace UP.Pages
                     GenerateMenuButton.Content = "Генерация...";
                 }
 
+                var cuisineTags = GetSelectedCuisineTags();
+
+                if (cuisineTags.Count == 0)
+                {
+                    cuisineTags = new List<string> { "русская", "европейская", "американская" };
+                }
+
                 var request = new GenerateMenuRequest
                 {
                     Days = 7,
                     TargetCaloriesPerDay = 2000,
-                    CuisineTags = GetSelectedCuisineTags(),
-                    UseInventory = _products.Count > 0
+                    CuisineTags = cuisineTags,
+                    UseInventory = _products.Count > 0,
+                    MealTypes = new List<string> { "breakfast", "lunch", "dinner" }
                 };
 
                 var success = await AppData.GenerateNewMenu(request);
@@ -98,7 +135,7 @@ namespace UP.Pages
                 }
                 else
                 {
-                    MessageBox.Show("Не удалось сгенерировать меню", "Ошибка",
+                    MessageBox.Show("Не удалось сгенерировать меню. Попробуйте другие настройки.", "Ошибка",
                                   MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
@@ -121,14 +158,26 @@ namespace UP.Pages
         {
             var tags = new List<string>();
 
-            if (GlutenCheckBox?.IsChecked == true) tags.Add("безглютеновое");
-            if (LactoseCheckBox?.IsChecked == true) tags.Add("безлактозное");
-            if (NutsCheckBox?.IsChecked == true) tags.Add("безореховое");
-            if (SeafoodCheckBox?.IsChecked == true) tags.Add("безморепродуктов");
+            if (GlutenCheckBox?.IsChecked == true)
+                tags.Add("безглютеновое");
+            if (LactoseCheckBox?.IsChecked == true)
+                tags.Add("безлактозное");
+            if (NutsCheckBox?.IsChecked == true)
+                tags.Add("безореховое");
+            if (SeafoodCheckBox?.IsChecked == true)
+                tags.Add("безморепродуктов");
 
             if (!string.IsNullOrWhiteSpace(OtherAllergiesTextBox?.Text))
             {
-                tags.AddRange(OtherAllergiesTextBox.Text.Split(',').Select(t => t.Trim()));
+                var customAllergies = OtherAllergiesTextBox.Text.Split(',')
+                    .Select(t => t.Trim())
+                    .Where(t => !string.IsNullOrEmpty(t));
+                tags.AddRange(customAllergies);
+            }
+
+            if (tags.Count == 0)
+            {
+                tags.AddRange(new[] { "русская", "европейская", "американская" });
             }
 
             return tags;
@@ -140,36 +189,43 @@ namespace UP.Pages
             {
                 try
                 {
-                    var recipe = AppData.AllRecipes.FirstOrDefault(r => r.Title == dailyMenu.Meal);
+                    if (dailyMenu.RecipeId > 0)
+                    {
+                        var recipe = await AppData.ApiService.GetRecipeAsync(dailyMenu.RecipeId);
 
-                    if (recipe != null)
+                        if (recipe != null)
+                        {
+                            var detailsPage = new RecipeDetailsPage(
+                                recipe.Title,
+                                recipe.Description,
+                                recipe.ImageUrl,
+                                recipe.Ingredients.ConvertAll(i => $"{i.Name} - {i.Quantity} {i.Unit}"),
+                                recipe.Instructions
+                            );
+
+                            MainWindow.mainWindow.OpenPages(detailsPage);
+                            return;
+                        }
+                    }
+
+                    var recipeByName = AppData.AllRecipes.FirstOrDefault(r =>
+                        r.Title.Equals(dailyMenu.Meal, StringComparison.OrdinalIgnoreCase));
+
+                    if (recipeByName != null)
                     {
                         var detailsPage = new RecipeDetailsPage(
-                            recipe.Title,
-                            recipe.Description,
-                            recipe.ImageUrl,
-                            recipe.Ingredients.ConvertAll(i => $"{i.Name} - {i.Quantity} {i.Unit}"),
-                            recipe.Instructions
+                            recipeByName.Title,
+                            recipeByName.Description,
+                            recipeByName.ImageUrl,
+                            recipeByName.Ingredients.ConvertAll(i => $"{i.Name} - {i.Quantity} {i.Unit}"),
+                            recipeByName.Instructions
                         );
 
                         MainWindow.mainWindow.OpenPages(detailsPage);
                     }
                     else
                     {
-                        var recipes = await AppData.ApiService.SearchRecipesAsync(dailyMenu.Meal);
-                        if (recipes.Any())
-                        {
-                            var foundRecipe = recipes.First();
-                            var detailsPage = new RecipeDetailsPage(
-                                foundRecipe.Title,
-                                foundRecipe.Description,
-                                foundRecipe.ImageUrl,
-                                foundRecipe.Ingredients.ConvertAll(i => $"{i.Name} - {i.Quantity} {i.Unit}"),
-                                foundRecipe.Instructions
-                            );
-
-                            MainWindow.mainWindow.OpenPages(detailsPage);
-                        }
+                        MessageBox.Show("Рецепт не найден", "Ошибка");
                     }
                 }
                 catch (Exception ex)
@@ -249,7 +305,6 @@ namespace UP.Pages
 
         private void ShoppingItem_Checked(object sender, RoutedEventArgs e)
         {
-            // Логика для отмеченных items
         }
 
         private async void ExportShoppingList_Click(object sender, RoutedEventArgs e)
@@ -295,7 +350,6 @@ namespace UP.Pages
 
         private void OtherAllergiesTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            // Логика обработки изменений
         }
 
         private async void RefreshData_Click(object sender, RoutedEventArgs e)
@@ -312,7 +366,6 @@ namespace UP.Pages
         }
     }
 
-    // Класс TimerWindow
     public class TimerWindow : Window
     {
         public int SelectedMinutes { get; private set; } = 10;
