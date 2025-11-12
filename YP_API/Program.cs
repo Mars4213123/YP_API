@@ -75,6 +75,8 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMenuService, MenuService>();
 builder.Services.AddScoped<IShoppingListService, ShoppingListService>();
 
+builder.Services.AddScoped<IRepository<UserInventory>, Repository<UserInventory>>();
+
 var app = builder.Build();
 
 app.UseCors("AllowAll");
