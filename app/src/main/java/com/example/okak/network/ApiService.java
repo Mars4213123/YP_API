@@ -1,5 +1,4 @@
 package com.example.okak.network;
-
 import com.google.gson.annotations.SerializedName;
 import java.util.List;
 import retrofit2.Call;
@@ -11,9 +10,25 @@ import retrofit2.http.GET;
 import retrofit2.http.POST;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
-
 public interface ApiService {
-    // Auth
+    class ApiResponse<T> {
+        @SerializedName("success")
+        public boolean success;
+        @SerializedName("message")
+        public String message;
+        @SerializedName("error")
+        public String error;
+        @SerializedName("data")
+        public T data;
+    }
+    class BaseResponse {
+        @SerializedName("success")
+        public boolean success;
+        @SerializedName("message")
+        public String message;
+        @SerializedName("error")
+        public String error;
+    }
     @FormUrlEncoded
     @POST("api/Auth/register")
     Call<UserAuthResponse> register(
@@ -23,171 +38,12 @@ public interface ApiService {
             @Field("fullName") String fullName,
             @Field("allergies") List<String> allergies
     );
-
     @FormUrlEncoded
     @POST("api/Auth/login")
     Call<UserAuthResponse> login(
             @Field("username") String username,
             @Field("password") String password
     );
-
-    // Recipes
-    @GET("api/Recipes")
-    Call<PagedResult<RecipeShort>> getRecipes(
-            @Query("Name") String name,
-            @Query("Cuisine") String cuisine,
-            @Query("Difficulty") String difficulty,
-            @Query("MaxPrepTime") Integer maxPrepTime,
-            @Query("MaxCookTime") Integer maxCookTime,
-            @Query("MaxCalories") Integer maxCalories,
-            @Query("SortBy") String sortBy,
-            @Query("IsAscending") boolean isAscending,
-            @Query("PageNumber") int pageNumber,
-            @Query("PageSize") int pageSize
-    );
-
-    @GET("api/Recipes/{id}")
-    Call<RecipeDetail> getRecipeDetail(@Path("id") int recipeId);
-
-    @FormUrlEncoded
-    @POST("api/Recipes")
-    Call<BaseResponse> createRecipe(
-            @Field("Title") String title,
-            @Field("Description") String description,
-            @Field("Instructions") String instructions,
-            @Field("PrepTime") int prepTime,
-            @Field("CookTime") int cookTime,
-            @Field("Servings") int servings,
-            @Field("Calories") double calories,
-            @Field("ImageUrl") String imageUrl,
-            @Field("CuisineType") String cuisineType,
-            @Field("Difficulty") String difficulty,
-            @Field("Ingredients") List<String> ingredients
-    );
-
-    @POST("api/Recipes/{id}/favorite")
-    Call<BaseResponse> toggleFavorite(@Path("id") int recipeId);
-
-    @GET("api/Recipes/favorites")
-    Call<PagedResult<RecipeShort>> getFavorites(
-            @Query("PageNumber") int pageNumber,
-            @Query("PageSize") int pageSize
-    );
-
-    @GET("api/Recipes/cuisines")
-    Call<List<String>> getCuisines();
-
-    @GET("api/Recipes/difficulties")
-    Call<List<String>> getDifficulties();
-
-    // Menu
-    @GET("api/Menu/current")
-    Call<MenuDetail> getCurrentMenu();
-
-    @FormUrlEncoded
-    @POST("api/Menu/generate")
-    Call<BaseResponse> generateMenu(
-            @Field("Days") int days,
-            @Field("TargetCaloriesPerDay") Double targetCalories,
-            @Field("CuisineTags") List<String> cuisineTags,
-            @Field("MealTypes") List<String> mealTypes,
-            @Field("UseInventory") boolean useInventory
-    );
-
-    @GET("api/Menu/history")
-    Call<PagedResult<MenuShort>> getMenuHistory(
-            @Query("PageNumber") int pageNumber,
-            @Query("PageSize") int pageSize
-    );
-
-    @FormUrlEncoded
-    @POST("api/Menu/{menuId}/regenerate-day")
-    Call<BaseResponse> regenerateDay(
-            @Path("menuId") int menuId,
-            @Field("Date") String date
-    );
-
-    @FormUrlEncoded
-    @POST("api/Menu/{menuId}/set-rating")
-    Call<BaseResponse> setMenuRating(
-            @Path("menuId") int menuId,
-            @Field("RecipeId") int recipeId,
-            @Field("Rating") int rating
-    );
-
-    @DELETE("api/Menu/{menuId}")
-    Call<BaseResponse> deleteMenu(@Path("menuId") int menuId);
-
-    // User
-    @GET("api/User/profile")
-    Call<UserProfile> getUserProfile();
-
-    @FormUrlEncoded
-    @POST("api/User/profile")
-    Call<BaseResponse> updateUserProfile(
-            @Field("FullName") String fullName,
-            @Field("Email") String email
-    );
-
-    @GET("api/User/allergies")
-    Call<List<String>> getUserAllergies();
-
-    @POST("api/User/allergies")
-    Call<BaseResponse> updateUserAllergies(
-            @Body UpdateAllergiesDto allergiesDto
-    );
-
-    // Inventory
-    @GET("api/Inventory")
-    Call<List<InventoryItem>> getInventory();
-
-    @FormUrlEncoded
-    @POST("api/Inventory")
-    Call<BaseResponse> addInventoryItem(
-            @Field("IngredientName") String ingredientName,
-            @Field("Quantity") double quantity,
-            @Field("Unit") String unit
-    );
-
-    @DELETE("api/Inventory/{ingredientId}")
-    Call<BaseResponse> deleteInventoryItem(@Path("ingredientId") int ingredientId);
-
-    @FormUrlEncoded
-    @POST("api/Inventory/update-quantity")
-    Call<BaseResponse> updateInventoryQuantity(
-            @Field("IngredientId") int ingredientId,
-            @Field("NewQuantity") double newQuantity
-    );
-
-    // Shopping List
-    @GET("api/ShoppingList/current")
-    Call<ShoppingList> getCurrentShoppingList();
-
-    @FormUrlEncoded
-    @POST("api/ShoppingList/generate-from-menu/{menuId}")
-    Call<ShoppingList> generateShoppingList(
-            @Path("menuId") int menuId
-    );
-
-    @FormUrlEncoded
-    @POST("api/ShoppingList/{listId}/items/{itemId}/toggle")
-    Call<BaseResponse> toggleShoppingListItem(
-            @Path("listId") int listId,
-            @Path("itemId") int itemId,
-            @Field("isPurchased") boolean isPurchased
-    );
-
-    // --- DTO ---
-
-    class BaseResponse {
-        @SerializedName("success")
-        public boolean success;
-        @SerializedName("message")
-        public String message;
-        @SerializedName("error")
-        public String error;
-    }
-
     class UserAuthResponse {
         @SerializedName("id")
         public int id;
@@ -197,19 +53,113 @@ public interface ApiService {
         public String email;
         @SerializedName("fullName")
         public String fullName;
-        @SerializedName("token")
-        public String token;
+        @SerializedName("message")
+        public String message;
     }
-
-    class PagedResult<T> {
-        @SerializedName("items")
-        public List<T> items;
-        @SerializedName("totalCount")
-        public int totalCount;
-        @SerializedName("totalPages")
-        public int totalPages;
+    @GET("api/Recipes")
+    Call<ApiResponse<List<RecipeShort>>> getRecipes(
+            @Query("Name") String name,
+            @Query("CuisineTypes") List<String> cuisineTypes,
+            @Query("Difficulty") String difficulty,
+            @Query("MaxPrepTime") Integer maxPrepTime,
+            @Query("MaxCookTime") Integer maxCookTime,
+            @Query("MaxCalories") Integer maxCalories,
+            @Query("SortBy") String sortBy,
+            @Query("SortDescending") boolean sortDescending,
+            @Query("PageNumber") int pageNumber,
+            @Query("PageSize") int pageSize,
+            @Query("userId") Integer userId
+    );
+    @GET("api/Recipes/{id}")
+    Call<ApiResponse<RecipeDetail>> getRecipeDetail(@Path("id") int recipeId, @Query("userId") Integer userId);
+    @POST("api/Recipes/{id}/favorite/{userId}")
+    Call<ApiResponse<ToggleFavoriteResponse>> toggleFavorite(
+            @Path("id") int recipeId,
+            @Path("userId") int userId
+    );
+    @GET("api/Recipes/favorites/{userId}")
+    Call<ApiResponse<List<RecipeShort>>> getFavorites(
+            @Path("userId") int userId
+    );
+    @GET("api/Recipes/cuisines")
+    Call<List<String>> getCuisines();
+    @GET("api/Recipes/difficulties")
+    Call<List<String>> getDifficulties();
+    @GET("api/Menu/current/{userId}")
+    Call<ApiResponse<MenuDetail>> getCurrentMenu(@Path("userId") int userId);
+    @POST("api/Menu/generate/{userId}")
+    @FormUrlEncoded
+    Call<ApiResponse<MenuShort>> generateMenu(
+            @Path("userId") int userId,
+            @Field("days") int days,
+            @Field("targetCaloriesPerDay") Double targetCalories,
+            @Field("cuisineTags[]") List<String> cuisines,
+            @Field("mealTypes[]") List<String> mealTypes,
+            @Field("useInventory") boolean useInventory
+    );
+    @GET("api/Menu/history/{userId}")
+    Call<ApiResponse<List<MenuShort>>> getMenuHistory(@Path("userId") int userId);
+    @GET("api/User/profile/{userId}")
+    Call<UserProfile> getUserProfile(@Path("userId") int userId);
+    @FormUrlEncoded
+    @POST("api/User/profile/{userId}")
+    Call<BaseResponse> updateUserProfile(
+            @Path("userId") int userId,
+            @Field("FullName") String fullName,
+            @Field("Email") String email
+    );
+    @GET("api/User/allergies/{userId}")
+    Call<List<String>> getUserAllergies(@Path("userId") int userId);
+    @POST("api/User/allergies/{userId}")
+    Call<BaseResponse> updateUserAllergies(
+            @Path("userId") int userId,
+            @Body UpdateAllergiesDto allergiesDto
+    );
+    @GET("api/Inventory/{userId}")
+    Call<ApiResponse<List<InventoryItem>>> getInventory(@Path("userId") int userId);
+    @FormUrlEncoded
+    @POST("api/Inventory/add/{userId}")
+    Call<ApiResponse<InventoryItem>> addInventoryItem(
+            @Path("userId") int userId,
+            @Field("productName") String productName,
+            @Field("quantity") double quantity,
+            @Field("unit") String unit
+    );
+    @DELETE("api/Inventory/{userId}/items/{itemId}")
+    Call<BaseResponse> deleteInventoryItem(
+            @Path("userId") int userId,
+            @Path("itemId") int itemId
+    );
+    @GET("api/ShoppingList/current/{userId}")
+    Call<ShoppingList> getCurrentShoppingList(@Path("userId") int userId);
+    @POST("api/ShoppingList/generate-from-menu/{menuId}/{userId}")
+    Call<ApiResponse<GenerateShoppingListResponse>> generateShoppingList(
+            @Path("menuId") int menuId,
+            @Path("userId") int userId
+    );
+    @FormUrlEncoded
+    @POST("api/ShoppingList/{listId}/items/{itemId}/toggle")
+    Call<BaseResponse> toggleShoppingListItem(
+            @Path("listId") int listId,
+            @Path("itemId") int itemId,
+            @Field("isPurchased") boolean isPurchased
+    );
+    class ToggleFavoriteResponse {
+        @SerializedName("recipeId")
+        public int recipeId;
+        @SerializedName("isFavorite")
+        public boolean isFavorite;
     }
-
+    class GenerateShoppingListResponse {
+        @SerializedName("id")
+        public int id;
+        @SerializedName("name")
+        public String name;
+        @SerializedName("message")
+        public String message;
+        @SerializedName("itemsCount")
+        public int itemsCount;
+    }
     class RecipeShort {
         @SerializedName("id")
         public int id;
@@ -230,7 +180,6 @@ public interface ApiService {
         @SerializedName("isFavorite")
         public boolean isFavorite;
     }
-
     class RecipeDetail extends RecipeShort {
         @SerializedName("description")
         public String description;
@@ -241,7 +190,6 @@ public interface ApiService {
         @SerializedName("ingredients")
         public List<Ingredient> ingredients;
     }
-
     class Ingredient {
         @SerializedName("name")
         public String name;
@@ -250,7 +198,6 @@ public interface ApiService {
         @SerializedName("unit")
         public String unit;
     }
-
     class UserProfile {
         @SerializedName("username")
         public String username;
@@ -260,46 +207,43 @@ public interface ApiService {
         public String fullName;
         @SerializedName("createdAt")
         public String createdAt;
-        // ⭐️ ДОБАВЛЕНО: Android-приложение должно ожидать этот список
         @SerializedName("allergies")
         public List<String> allergies;
     }
-
     class InventoryItem {
         @SerializedName("id")
         public int id;
-        @SerializedName("name")
-        public String name;
+        @SerializedName("productName")
+        public String productName;
+        @SerializedName("ingredientId")
+        public int ingredientId;
         @SerializedName("quantity")
         public double quantity;
         @SerializedName("unit")
         public String unit;
     }
-
     class ShoppingList {
         @SerializedName("id")
         public int id;
-        @SerializedName("menuId")
-        public int menuId;
-        @SerializedName("createdAt")
-        public String createdAt;
+        @SerializedName("name")
+        public String name;
+        @SerializedName("isCompleted")
+        public boolean isCompleted;
         @SerializedName("items")
         public List<ShoppingListItem> items;
     }
-
     class ShoppingListItem {
         @SerializedName("id")
         public int id;
-        @SerializedName("name")
+        @SerializedName("ingredientName")
         public String name;
         @SerializedName("quantity")
         public double quantity;
         @SerializedName("unit")
         public String unit;
-        @SerializedName("isBought")
+        @SerializedName("isPurchased")
         public boolean isBought;
     }
-
     class MenuShort {
         @SerializedName("id")
         public int id;
@@ -312,30 +256,33 @@ public interface ApiService {
         @SerializedName("totalCalories")
         public double totalCalories;
     }
-
     class MenuDetail extends MenuShort {
         @SerializedName("days")
         public List<MenuDay> days;
     }
-
     class MenuDay {
         @SerializedName("date")
         public String date;
-        @SerializedName("totalCalories")
         public double totalCalories;
         @SerializedName("meals")
         public List<Meal> meals;
     }
-
     class Meal {
+        @SerializedName("id")
+        public int id;
+        @SerializedName("recipeId")
+        public int recipeId;
+        @SerializedName("recipeTitle")
+        public String recipeTitle;
         @SerializedName("mealType")
         public String mealType;
-        @SerializedName("recipe")
-        public RecipeShort recipe;
+        @SerializedName("calories")
+        public double calories;
+        @SerializedName("imageUrl")
+        public String imageUrl;
     }
-
     class UpdateAllergiesDto {
-        @SerializedName("allergies")
+        @SerializedName("Allergies")
         public List<String> allergies;
         public UpdateAllergiesDto(List<String> allergies) {
             this.allergies = allergies;

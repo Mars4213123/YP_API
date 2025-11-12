@@ -9,17 +9,19 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.example.okak.network.ApiClient;
 import com.example.okak.network.ApiService;
+import com.example.okak.network.AuthTokenManager; // <-- ИМПОРТ
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import com.example.okak.network.ApiService;
 
 public class AllergySelectionActivity extends AppCompatActivity {
     private LinearLayout allergiesContainer;
     private Button saveButton;
+    private int currentUserId;
+
     private final List<String> availableAllergies = Arrays.asList(
             "Глютен", "Молоко", "Орехи", "Арахис", "Яйца", "Рыба", "Соя", "Моллюски"
     );
@@ -28,6 +30,17 @@ public class AllergySelectionActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_allergy_selection);
+
+        // Получаем сохраненный ID пользователя
+        currentUserId = AuthTokenManager.getUserId(getApplicationContext());
+        if (currentUserId == -1) {
+            // Этого не должно произойти, если логин/регистрация прошли успешно
+            Toast.makeText(this, "Ошибка: ID пользователя не найден", Toast.LENGTH_LONG).show();
+            // TODO: Выйти на экран логина
+            finish();
+            return;
+        }
+
         allergiesContainer = findViewById(R.id.allergies_container);
         saveButton = findViewById(R.id.btn_save_allergies);
         createAllergyCheckboxes();
@@ -58,17 +71,18 @@ public class AllergySelectionActivity extends AppCompatActivity {
 
     private void sendAllergiesToApi(List<String> allergies) {
         ApiService apiService = ApiClient.getApiService(this);
-
         ApiService.UpdateAllergiesDto allergiesDto = new ApiService.UpdateAllergiesDto(allergies);
 
-        apiService.updateUserAllergies(allergiesDto).enqueue(new Callback<ApiService.BaseResponse>() {
+        // ИСПРАВЛЕНО: Отправляем ID пользователя в пути
+        apiService.updateUserAllergies(currentUserId, allergiesDto).enqueue(new Callback<ApiService.BaseResponse>() {
             @Override
             public void onResponse(Call<ApiService.BaseResponse> call, Response<ApiService.BaseResponse> response) {
                 if (response.isSuccessful() && response.body() != null && response.body().success) {
                     Toast.makeText(AllergySelectionActivity.this, "Аллергии сохранены!", Toast.LENGTH_SHORT).show();
                     navigateToNextScreen();
                 } else {
-                    Toast.makeText(AllergySelectionActivity.this, "Ошибка сохранения", Toast.LENGTH_SHORT).show();
+                    // Эта ошибка больше не должна быть 500, так как мы починили C# API
+                    Toast.makeText(AllergySelectionActivity.this, "Ошибка сохранения: " + response.code(), Toast.LENGTH_SHORT).show();
                 }
             }
 
@@ -81,7 +95,6 @@ public class AllergySelectionActivity extends AppCompatActivity {
 
     private void navigateToNextScreen() {
         boolean fromRegistration = getIntent().getBooleanExtra("FROM_REGISTRATION", false);
-
         if (fromRegistration) {
             Intent intent = new Intent(AllergySelectionActivity.this, MainActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);

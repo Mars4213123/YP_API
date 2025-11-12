@@ -30,7 +30,6 @@ public class RegisterActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
-
         apiService = ApiClient.getApiService(getApplicationContext());
 
         etUsername = findViewById(R.id.etUsername);
@@ -67,21 +66,18 @@ public class RegisterActivity extends AppCompatActivity {
             @Override
             public void onResponse(@NonNull Call<ApiService.UserAuthResponse> call, @NonNull Response<ApiService.UserAuthResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    String token = response.body().token;
 
-                    if (token != null && !token.isEmpty()) {
-                        AuthTokenManager.saveToken(getApplicationContext(), token);
-                        Toast.makeText(RegisterActivity.this, "Регистрация успешна!", Toast.LENGTH_LONG).show();
+                    int userId = response.body().id;
+                    AuthTokenManager.saveUserId(getApplicationContext(), userId);
 
-                        Intent intent = new Intent(RegisterActivity.this, AllergySelectionActivity.class);
-                        intent.putExtra("FROM_REGISTRATION", true);
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                        startActivity(intent);
-                        finish();
-                    } else {
-                        Log.e(TAG, "Register success but token is null");
-                        Toast.makeText(RegisterActivity.this, "Ошибка регистрации: не удалось получить токен.", Toast.LENGTH_LONG).show();
-                    }
+                    Toast.makeText(RegisterActivity.this, "Регистрация успешна!", Toast.LENGTH_LONG).show();
+
+                    Intent intent = new Intent(RegisterActivity.this, AllergySelectionActivity.class);
+                    intent.putExtra("FROM_REGISTRATION", true);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    finish();
+
                 } else {
                     String errorMsg = "Ошибка регистрации. Код: " + response.code();
                     if (response.errorBody() != null) {

@@ -17,7 +17,6 @@ import java.util.List;
 
 public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder> {
     private List<ApiService.RecipeShort> recipes;
-
     public RecipeAdapter(List<ApiService.RecipeShort> recipes) {
         this.recipes = recipes;
     }
@@ -42,8 +41,11 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder
                 .error(R.drawable.ic_launcher_background)
                 .into(holder.ivImage);
 
+        // ИСПРАВЛЕНИЕ: Устанавливаем иконку и ее прозрачность
+        // (раньше тут была ошибка, всегда ставилась одна и та же иконка)
+        holder.ivFavorite.setImageResource(R.drawable.ic_favorite);
+        holder.ivFavorite.setAlpha(recipe.isFavorite ? 1.0f : 0.3f);
 
-        holder.ivFavorite.setImageResource(recipe.isFavorite ? R.drawable.ic_favorite : R.drawable.ic_favorite);
 
         holder.itemView.setOnClickListener(v -> {
             Bundle bundle = new Bundle();

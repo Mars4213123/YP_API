@@ -34,10 +34,13 @@ public class ShoppingItemAdapter extends RecyclerView.Adapter<ShoppingItemAdapte
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         ApiService.ShoppingListItem item = items.get(position);
+
+        // C# DTO использует 'ingredientName'
         holder.tvName.setText(item.name);
         holder.tvQuantity.setText(item.quantity + " " + item.unit);
 
         holder.cbBought.setOnCheckedChangeListener(null);
+        // C# DTO использует 'isPurchased'
         holder.cbBought.setChecked(item.isBought);
         holder.cbBought.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (listener != null) {

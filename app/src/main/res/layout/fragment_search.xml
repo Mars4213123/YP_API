@@ -26,6 +26,20 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/etSearchQuery" />
 
+    <TextView
+        android:id="@+id/tvEmptySearch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Ничего не найдено.\nПопробуйте другой запрос."
+        android:textColor="#757575"
+        android:textSize="16sp"
+        android:gravity="center"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/etSearchQuery" />
+
     <ProgressBar
         android:id="@+id/progressBarSearch"
         android:layout_width="wrap_content"

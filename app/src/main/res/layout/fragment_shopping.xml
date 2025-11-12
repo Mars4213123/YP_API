@@ -28,6 +28,20 @@
         app:layout_constraintTop_toBottomOf="@id/tvShoppingTitle"
         android:layout_marginTop="16dp" />
 
+    <TextView
+        android:id="@+id/tvEmptyShopping"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Список покупок пуст.\nСгенерируйте меню на главном экране."
+        android:textColor="#757575"
+        android:textSize="16sp"
+        android:gravity="center"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/btnGenerateShoppingList"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvShoppingTitle" />
+
     <Button
         android:id="@+id/btnGenerateShoppingList"
         android:layout_width="wrap_content"

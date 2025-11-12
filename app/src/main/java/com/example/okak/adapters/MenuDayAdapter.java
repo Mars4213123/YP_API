@@ -9,6 +9,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.okak.R;
 import com.example.okak.network.ApiService;
+
+import java.util.ArrayList;
 import java.util.List;
 
 public class MenuDayAdapter extends RecyclerView.Adapter<MenuDayAdapter.ViewHolder> {
@@ -29,14 +31,30 @@ public class MenuDayAdapter extends RecyclerView.Adapter<MenuDayAdapter.ViewHold
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         ApiService.MenuDay day = days.get(position);
         holder.tvDate.setText(day.date);
-        holder.tvCalories.setText("Общие калории: " + day.totalCalories);
 
-        List<ApiService.RecipeShort> mealsAsRecipes = new java.util.ArrayList<>();
+        // Считаем калории дня на клиенте, так как C# DTO не предоставляет
+        // 'totalCalories' на уровне дня.
+        double dailyCalories = 0;
         if (day.meals != null) {
             for (ApiService.Meal meal : day.meals) {
-                if (meal.recipe != null) {
-                    mealsAsRecipes.add(meal.recipe);
-                }
+                dailyCalories += meal.calories;
+            }
+        }
+        holder.tvCalories.setText("Общие калории: " + String.format("%.0f", dailyCalories));
+
+
+        // ИСПРАВЛЕНО: DTO Meal больше не содержит вложенный RecipeShort,
+        // а содержит поля рецепта напрямую.
+        List<ApiService.RecipeShort> mealsAsRecipes = new ArrayList<>();
+        if (day.meals != null) {
+            for (ApiService.Meal meal : day.meals) {
+                // Преобразуем Meal в RecipeShort для адаптера
+                ApiService.RecipeShort recipe = new ApiService.RecipeShort();
+                recipe.id = meal.recipeId;
+                recipe.title = meal.recipeTitle;
+                recipe.calories = meal.calories;
+                recipe.imageUrl = meal.imageUrl;
+                mealsAsRecipes.add(recipe);
             }
         }
 

@@ -7,6 +7,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import com.example.okak.network.ApiClient;
 import com.example.okak.network.ApiService;
+import com.example.okak.network.AuthTokenManager; // <-- ИМПОРТ
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -17,15 +18,24 @@ public class UserViewModel extends AndroidViewModel {
     private MutableLiveData<List<String>> allergiesLiveData = new MutableLiveData<>();
     private MutableLiveData<Boolean> loadingLiveData = new MutableLiveData<>(false);
     private MutableLiveData<String> errorLiveData = new MutableLiveData<>();
+    private int currentUserId; // <-- ДОБАВЛЕНО
 
     public UserViewModel(@NonNull Application application) {
         super(application);
+        // Получаем ID пользователя при создании ViewModel
+        currentUserId = AuthTokenManager.getUserId(application);
     }
 
     public void loadProfile() {
+        if (currentUserId == -1) {
+            errorLiveData.setValue("Ошибка: Пользователь не авторизован");
+            return;
+        }
         loadingLiveData.setValue(true);
         ApiService apiService = ApiClient.getApiService(getApplication());
-        apiService.getUserProfile().enqueue(new Callback<ApiService.UserProfile>() {
+
+        // ИСПРАВЛЕНО: Используем сохраненный userId
+        apiService.getUserProfile(currentUserId).enqueue(new Callback<ApiService.UserProfile>() {
             @Override
             public void onResponse(@NonNull Call<ApiService.UserProfile> call, @NonNull Response<ApiService.UserProfile> response) {
                 if (response.isSuccessful() && response.body() != null) {
@@ -33,6 +43,7 @@ public class UserViewModel extends AndroidViewModel {
                 } else {
                     errorLiveData.setValue("Ошибка загрузки профиля: " + response.code());
                 }
+                // Загружаем аллергии *после* профиля
                 loadAllergies();
             }
 
@@ -45,22 +56,29 @@ public class UserViewModel extends AndroidViewModel {
     }
 
     private void loadAllergies() {
+        if (currentUserId == -1) {
+            errorLiveData.setValue("Ошибка: Пользователь не авторизован");
+            loadingLiveData.setValue(false);
+            return;
+        }
         ApiService apiService = ApiClient.getApiService(getApplication());
-        apiService.getUserAllergies().enqueue(new Callback<List<String>>() {
+
+        // ИСПРАВЛЕНО: Используем сохраненный userId
+        apiService.getUserAllergies(currentUserId).enqueue(new Callback<List<String>>() {
             @Override
             public void onResponse(@NonNull Call<List<String>> call, @NonNull Response<List<String>> response) {
-                loadingLiveData.setValue(false);
+                loadingLiveData.setValue(false); // Завершаем загрузку здесь
                 if (response.isSuccessful() && response.body() != null) {
                     allergiesLiveData.setValue(response.body());
                 } else {
-                    errorLiveData.setValue("Ошибка загрузки аллергий");
+                    errorLiveData.setValue("Ошибка загрузки аллергий: " + response.code());
                 }
             }
 
             @Override
             public void onFailure(@NonNull Call<List<String>> call, @NonNull Throwable t) {
                 loadingLiveData.setValue(false);
-                errorLiveData.setValue("Сетевая ошибка");
+                errorLiveData.setValue("Сетевая ошибка: " + t.getMessage());
             }
         });
     }

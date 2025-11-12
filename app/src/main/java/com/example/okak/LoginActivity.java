@@ -16,7 +16,6 @@ import java.io.IOException;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
-
 public class LoginActivity extends AppCompatActivity {
     private static final String TAG = "LoginActivity";
     private EditText etUsername;
@@ -24,13 +23,13 @@ public class LoginActivity extends AppCompatActivity {
     private Button btnLogin;
     private TextView tvGoToRegister;
     private ApiService apiService;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Проверка токена
-        if (AuthTokenManager.hasToken(getApplicationContext())) {
+        // ИСПРАВЛЕНИЕ: Проверяем 'hasUserId' вместо 'hasToken',
+        // так как API не возвращает токен.
+        if (AuthTokenManager.hasUserId(getApplicationContext())) {
             goToMainActivity();
             return;
         }
@@ -60,30 +59,28 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         Call<ApiService.UserAuthResponse> call = apiService.login(username, password);
-
         call.enqueue(new Callback<ApiService.UserAuthResponse>() {
             @Override
             public void onResponse(@NonNull Call<ApiService.UserAuthResponse> call, @NonNull Response<ApiService.UserAuthResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
 
-                    String token = response.body().token;
+                    // ИСПРАВЛЕНИЕ: Сохраняем userId при входе,
+                    // это была главная ошибка.
+                    int userId = response.body().id;
+                    AuthTokenManager.saveUserId(getApplicationContext(), userId);
 
-                    // Строгая проверка, что токен не null и не пустой
-                    if (token != null && !token.isEmpty()) {
-                        AuthTokenManager.saveToken(getApplicationContext(), token);
-                        Toast.makeText(LoginActivity.this, "Вход выполнен!", Toast.LENGTH_SHORT).show();
-                        goToMainActivity();
-                    } else {
-                        Log.e(TAG, "Login successful but token was null or empty.");
-                        Toast.makeText(LoginActivity.this, "Ошибка входа: не удалось получить токен.", Toast.LENGTH_LONG).show();
-                    }
+                    Toast.makeText(LoginActivity.this, "Вход выполнен!", Toast.LENGTH_LONG).show();
+
+                    goToMainActivity();
 
                 } else {
                     String errorMsg = "Ошибка входа. Код: " + response.code();
                     if (response.errorBody() != null) {
+
                         try {
                             errorMsg += ", Тело: " + response.errorBody().string();
                         } catch (IOException e) {
+
                             Log.e(TAG, "Error reading errorBody", e);
                         }
                     }
