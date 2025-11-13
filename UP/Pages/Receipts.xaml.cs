@@ -7,7 +7,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using UP.Models;
-using UP.Services;
 
 namespace UP.Pages
 {

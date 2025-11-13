@@ -63,8 +63,7 @@ namespace UP.Services
                 var settings = new JsonSerializerSettings
                 {
                     MissingMemberHandling = MissingMemberHandling.Ignore,
-                    NullValueHandling = NullValueHandling.Ignore,
-                    Encoding = System.Text.Encoding.UTF8
+                    NullValueHandling = NullValueHandling.Ignore
                 };
 
                 try
@@ -233,7 +232,7 @@ namespace UP.Services
         {
             try
             {
-                var json = JsonConvert.SerializeObject(request, new JsonSerializerSettings { Encoding = System.Text.Encoding.UTF8 });
+                var json = JsonConvert.SerializeObject(request, new JsonSerializerSettings { });
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 var userId = AppData.CurrentUser?.Id ?? 0;

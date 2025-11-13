@@ -25,7 +25,7 @@ namespace YP_API.Controllers
 
         [HttpGet("current/{userId}")]
         public async Task<ActionResult> GetCurrentMenu(int userId)
-        {
+        {  // asd 
             try
             {
                 _logger.LogInformation($"Getting current menu for user ID: {userId}");
