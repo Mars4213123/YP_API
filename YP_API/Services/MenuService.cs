@@ -56,19 +56,30 @@ namespace YP_API.Services
                     .Include(r => r.Tags)
                     .AsQueryable();
 
-                // Cuisine filtering
+                // Cuisine filtering (support both English and Russian tags)
                 if (request.CuisineTags != null && request.CuisineTags.Any())
                 {
-                    var cuisines = request.CuisineTags.Select(t => t.ToLower()).ToList();
-                    query = query.Where(r => cuisines.Contains(r.CuisineType?.ToLower()) ||
-                                           r.Tags.Any(tag => cuisines.Contains(tag.ToLower())));
-                    _logger.LogInformation($"Filtering by cuisines: {string.Join(", ", cuisines)}");
+                    var cuisines = request.CuisineTags.Select(t => t.ToLowerInvariant()).ToList();
+                    // Map Russian to English for filtering
+                    var russianTags = new Dictionary<string, string>
+                    {
+                        {"русская", "russian"},
+                        {"европейская", "european"},
+                        {"американская", "american"},
+                        {"italian", "italian"},
+                        {"mediterranean", "mediterranean"}
+                    };
+
+                    var englishCuisines = cuisines.Select(c => russianTags.ContainsKey(c) ? russianTags[c] : c).ToList();
+                    query = query.Where(r => englishCuisines.Contains(r.CuisineType?.ToLowerInvariant()) ||
+                                           r.Tags.Any(tag => englishCuisines.Contains(tag.ToLowerInvariant())));
+                    _logger.LogInformation($"Filtering by cuisines: {string.Join(", ", englishCuisines)}");
                 }
 
                 // Exclude allergens
                 if (userAllergies.Any())
                 {
-                    query = query.Where(r => !r.Allergens.Any(a => userAllergies.Contains(a.ToLower())));
+                    query = query.Where(r => !r.Allergens.Any(a => userAllergies.Contains(a, StringComparison.OrdinalIgnoreCase)));
                     _logger.LogInformation($"Excluding allergens: {string.Join(", ", userAllergies)}");
                 }
 
@@ -118,7 +129,7 @@ namespace YP_API.Services
                         // Filter recipes by meal type (if tags match)
                         var mealRecipes = candidateRecipes
                             .Where(r => !usedRecipes.Contains(r.Id) &&
-                                      (r.Tags.Contains(mealType) || 
+                                      (r.Tags.Any(tag => tag.ToLower() == mealType) || 
                                        (mealType == "breakfast" && r.CookTime <= 30) ||
                                        (mealType == "lunch" && r.Servings >= 2) ||
                                        (mealType == "dinner" && r.Calories >= 500)))
@@ -129,7 +140,7 @@ namespace YP_API.Services
                             // Fallback to any unused recipe
                             mealRecipes = candidateRecipes
                                 .Where(r => !usedRecipes.Contains(r.Id))
-                                .OrderBy(r => Math.Abs(r.Calories / r.Servings - (request.TargetCaloriesPerDay / 3)))
+                                .OrderBy(r => Math.Abs(r.Calories / (decimal)r.Servings - (request.TargetCaloriesPerDay / (decimal)3)))
                                 .Take(5)
                                 .ToList();
                         }
@@ -137,7 +148,7 @@ namespace YP_API.Services
                         if (mealRecipes.Any())
                         {
                             var selectedRecipe = mealRecipes[random.Next(mealRecipes.Count)];
-                            var mealCalories = selectedRecipe.Calories * 1f / selectedRecipe.Servings;
+                            var mealCalories = selectedRecipe.Calories * (decimal)1.0 / selectedRecipe.Servings;
 
                             menuMeals.Add(new MenuMealDto
                             {
@@ -167,17 +178,26 @@ namespace YP_API.Services
                     MenuMeals = menuMeals.Select(m => new MenuMeal
                     {
                         RecipeId = m.RecipeId,
-                        MealDate = m.MealDate,
-                        MealType = GetMealTypeNumber(m.MealType)
+                        MealDate = m.MealDate.Date,
+                        MealType = GetMealTypeNumber(m.MealType),
+                        WeeklyMenuId = 0  // Will be set after saving WeeklyMenu
                     }).ToList()
                 };
 
                 _context.WeeklyMenus.Add(weeklyMenu);
                 await _context.SaveChangesAsync();
 
+                // Set WeeklyMenuId for MenuMeals
+                foreach (var meal in weeklyMenu.MenuMeals)
+                {
+                    meal.WeeklyMenuId = weeklyMenu.Id;
+                }
+                await _context.SaveChangesAsync();
+
                 // Generate shopping list
                 var shoppingList = await GenerateShoppingList(weeklyMenu.Id);
-                weeklyMenu.ShoppingList = shoppingList;
+                weeklyMenu.ShoppingListId = shoppingList.Id;
+                await _context.SaveChangesAsync();
 
                 var result = new MenuDto
                 {
@@ -231,7 +251,7 @@ namespace YP_API.Services
             var shoppingList = new ShoppingList
             {
                 MenuId = menuId,
-                UserId = 1,  // Default user
+                UserId = 1,  // Default user, adjust if needed
                 Name = $"Список покупок для меню #{menuId}",
                 IsCompleted = false
             };
@@ -272,7 +292,7 @@ namespace YP_API.Services
 
         private int GetMealTypeNumber(string mealType)
         {
-            return mealType.ToLower() switch
+            return mealType.ToLowerInvariant() switch
             {
                 "breakfast" => 1,
                 "lunch" => 2,
@@ -314,5 +334,14 @@ namespace YP_API.Services
         public decimal Quantity { get; set; }
         public string Unit { get; set; }
         public bool IsPurchased { get; set; }
+    }
+
+    public class GenerateMenuRequest
+    {
+        public int Days { get; set; } = 7;
+        public decimal? TargetCaloriesPerDay { get; set; }
+        public List<string> CuisineTags { get; set; } = new List<string>();
+        public bool UseInventory { get; set; } = false;
+        public int? MaxPrepTime { get; set; }
     }
 }
