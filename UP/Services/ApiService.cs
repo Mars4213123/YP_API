@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -28,6 +28,7 @@ namespace UP.Services
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
             _httpClient.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/json"));
+            _httpClient.DefaultRequestHeaders.AcceptCharset.Add(new StringWithQualityHeaderValue("utf-8"));
         }
 
         public void SetToken(string token)
@@ -62,7 +63,8 @@ namespace UP.Services
                 var settings = new JsonSerializerSettings
                 {
                     MissingMemberHandling = MissingMemberHandling.Ignore,
-                    NullValueHandling = NullValueHandling.Ignore
+                    NullValueHandling = NullValueHandling.Ignore,
+                    Encoding = System.Text.Encoding.UTF8
                 };
 
                 try
@@ -109,8 +111,8 @@ namespace UP.Services
             {
                 var formData = new MultipartFormDataContent
                 {
-                    { new StringContent(username), "username" },
-                    { new StringContent(password), "password" }
+                    { new StringContent(username, Encoding.UTF8), "username" },
+                    { new StringContent(password, Encoding.UTF8), "password" }
                 };
 
                 var response = await _httpClient.PostAsync($"{_baseUrl}Auth/login", formData);
@@ -142,16 +144,16 @@ namespace UP.Services
             {
                 var formData = new MultipartFormDataContent
                 {
-                    { new StringContent(username), "username" },
-                    { new StringContent(email), "email" },
-                    { new StringContent(password), "password" }
+                    { new StringContent(username, Encoding.UTF8), "username" },
+                    { new StringContent(email, Encoding.UTF8), "email" },
+                    { new StringContent(password, Encoding.UTF8), "password" }
                 };
 
                 if (allergies != null)
                 {
                     foreach (var allergy in allergies)
                     {
-                        formData.Add(new StringContent(allergy), "allergies");
+                        formData.Add(new StringContent(allergy, Encoding.UTF8), "allergies");
                     }
                 }
 
@@ -231,7 +233,7 @@ namespace UP.Services
         {
             try
             {
-                var json = JsonConvert.SerializeObject(request);
+                var json = JsonConvert.SerializeObject(request, new JsonSerializerSettings { Encoding = System.Text.Encoding.UTF8 });
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 var userId = AppData.CurrentUser?.Id ?? 0;
@@ -411,7 +413,7 @@ namespace UP.Services
         {
             { new StringContent(ingredientId.ToString()), "ingredientId" },
             { new StringContent(quantity.ToString()), "quantity" },
-            { new StringContent(unit), "unit" }
+            { new StringContent(unit, Encoding.UTF8), "unit" }
         };
 
                 var userId = AppData.CurrentUser?.Id ?? 0;
