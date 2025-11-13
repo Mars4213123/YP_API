@@ -20,28 +20,22 @@ public class RecipeViewModel extends AndroidViewModel {
     private MutableLiveData<Boolean> loadingLiveData = new MutableLiveData<>(false);
     private MutableLiveData<String> errorLiveData = new MutableLiveData<>();
     private int currentUserId;
-
     public RecipeViewModel(@NonNull Application application) {
         super(application);
         currentUserId = AuthTokenManager.getUserId(application);
     }
-
     public LiveData<List<ApiService.RecipeShort>> getRecipes() {
         return recipesLiveData;
     }
-
     public LiveData<ApiService.RecipeDetail> getRecipeDetail() {
         return recipeDetailLiveData;
     }
-
     public LiveData<Boolean> getLoading() {
         return loadingLiveData;
     }
-
     public LiveData<String> getError() {
         return errorLiveData;
     }
-
     public void loadFavorites() {
         if (currentUserId == -1) {
             errorLiveData.setValue("Пользователь не найден");
@@ -69,7 +63,6 @@ public class RecipeViewModel extends AndroidViewModel {
             }
         });
     }
-
     public void searchRecipes(String query, String cuisine, String difficulty, Integer maxCalories, int page, int size) {
         loadingLiveData.setValue(true);
         ApiService apiService = ApiClient.getApiService(getApplication());
@@ -98,7 +91,6 @@ public class RecipeViewModel extends AndroidViewModel {
                     }
                 });
     }
-
     public void loadRecipeDetail(int recipeId) {
         loadingLiveData.setValue(true);
         ApiService apiService = ApiClient.getApiService(getApplication());
@@ -122,7 +114,6 @@ public class RecipeViewModel extends AndroidViewModel {
             }
         });
     }
-
     public void toggleFavorite(int recipeId) {
         if (currentUserId == -1) {
             errorLiveData.setValue("Ошибка: не найден ID пользователя!");

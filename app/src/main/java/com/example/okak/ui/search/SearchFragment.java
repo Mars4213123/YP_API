@@ -77,8 +77,7 @@ public class SearchFragment extends Fragment {
     private void setupObservers() {
         recipeViewModel.getRecipes().observe(getViewLifecycleOwner(), recipes -> {
             if (recipes != null) {
-                adapter = new RecipeAdapter(recipes);
-                rvResults.setAdapter(adapter);
+                adapter.updateData(recipes);
                 if (recipes.isEmpty()) {
                     rvResults.setVisibility(View.GONE);
                     tvEmptySearch.setVisibility(View.VISIBLE);
@@ -103,4 +102,5 @@ public class SearchFragment extends Fragment {
             }
         });
     }
+
 }

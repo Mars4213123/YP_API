@@ -14,39 +14,29 @@ import com.bumptech.glide.Glide;
 import com.example.okak.R;
 import com.example.okak.network.ApiService;
 import java.util.List;
-
 public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder> {
     private List<ApiService.RecipeShort> recipes;
     public RecipeAdapter(List<ApiService.RecipeShort> recipes) {
         this.recipes = recipes;
     }
-
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_recipe, parent, false);
         return new ViewHolder(view);
     }
-
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         ApiService.RecipeShort recipe = recipes.get(position);
         holder.tvTitle.setText(recipe.title);
         holder.tvCalories.setText("Калории: " + recipe.calories);
-
-        // Загрузка изображения
         Glide.with(holder.itemView.getContext())
                 .load(recipe.imageUrl)
                 .placeholder(R.drawable.ic_launcher_foreground)
                 .error(R.drawable.ic_launcher_background)
                 .into(holder.ivImage);
-
-        // ИСПРАВЛЕНИЕ: Устанавливаем иконку и ее прозрачность
-        // (раньше тут была ошибка, всегда ставилась одна и та же иконка)
         holder.ivFavorite.setImageResource(R.drawable.ic_favorite);
         holder.ivFavorite.setAlpha(recipe.isFavorite ? 1.0f : 0.3f);
-
-
         holder.itemView.setOnClickListener(v -> {
             Bundle bundle = new Bundle();
             bundle.putInt("recipeId", recipe.id);
@@ -57,16 +47,13 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder
             }
         });
     }
-
     @Override
     public int getItemCount() {
         return recipes.size();
     }
-
     public static class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvTitle, tvCalories;
         ImageView ivImage, ivFavorite;
-
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvTitle = itemView.findViewById(R.id.tvRecipeTitle);
@@ -75,4 +62,10 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.ViewHolder
             ivFavorite = itemView.findViewById(R.id.ivFavorite);
         }
     }
+    public void updateData(List<ApiService.RecipeShort> newRecipes) {
+        this.recipes.clear();
+        this.recipes.addAll(newRecipes);
+        notifyDataSetChanged();
+    }
+
 }

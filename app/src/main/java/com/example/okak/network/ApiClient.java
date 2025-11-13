@@ -13,14 +13,12 @@ public class ApiClient {
     public static final String BASE_URL = "http://10.0.2.2:5286/";
     private static Retrofit retrofit = null;
     private static ApiService apiService = null;
-
     public static ApiService getApiService(Context context) {
         if (apiService == null) {
             apiService = getRetrofitInstance(context).create(ApiService.class);
         }
         return apiService;
     }
-
     public static Retrofit getRetrofitInstance(Context context) {
         if (retrofit == null) {
             OkHttpClient.Builder httpClient = new OkHttpClient.Builder();

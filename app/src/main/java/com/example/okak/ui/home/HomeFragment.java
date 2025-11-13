@@ -56,15 +56,18 @@ public class HomeFragment extends Fragment {
     }
 
     private void setupObservers() {
+        // Создаём адаптер один раз
+        MenuDayAdapter adapter = new MenuDayAdapter(new ArrayList<>());
+        rvMenuDays.setAdapter(adapter);
+
         menuViewModel.getCurrentMenu().observe(getViewLifecycleOwner(), menu -> {
             if (menu != null && menu.days != null && !menu.days.isEmpty()) {
-                MenuDayAdapter adapter = new MenuDayAdapter(menu.days);
-                rvMenuDays.setAdapter(adapter);
+                // Обновляем данные существующего адаптера
+                adapter.updateData(menu.days);
                 rvMenuDays.setVisibility(View.VISIBLE);
                 tvEmptyMenu.setVisibility(View.GONE);
             } else {
-                MenuDayAdapter adapter = new MenuDayAdapter(new ArrayList<>());
-                rvMenuDays.setAdapter(adapter);
+                adapter.updateData(new ArrayList<>());
                 rvMenuDays.setVisibility(View.GONE);
                 tvEmptyMenu.setVisibility(View.VISIBLE);
             }
@@ -86,5 +89,7 @@ public class HomeFragment extends Fragment {
                 rvMenuDays.setVisibility(View.GONE);
             }
         });
+
     }
+
 }

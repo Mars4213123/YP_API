@@ -60,31 +60,31 @@ public class ShoppingFragment extends Fragment implements ShoppingItemAdapter.On
     private void setupObservers() {
         shoppingViewModel.getShoppingList().observe(getViewLifecycleOwner(), list -> {
             if (list != null && list.items != null && !list.items.isEmpty()) {
-                adapter = new ShoppingItemAdapter(list.items, this);
-                rvItems.setAdapter(adapter);
+                adapter.updateData(list.items);
                 rvItems.setVisibility(View.VISIBLE);
                 tvEmptyShopping.setVisibility(View.GONE);
             } else {
-                adapter = new ShoppingItemAdapter(new java.util.ArrayList<>(), this);
-                rvItems.setAdapter(adapter);
+                adapter.updateData(new java.util.ArrayList<>());
                 rvItems.setVisibility(View.GONE);
                 tvEmptyShopping.setVisibility(View.VISIBLE);
             }
         });
+
         shoppingViewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {
             progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
             rvItems.setVisibility(loading ? View.GONE : View.VISIBLE);
             tvEmptyShopping.setVisibility(loading ? View.GONE : View.VISIBLE);
         });
+
         shoppingViewModel.getError().observe(getViewLifecycleOwner(), error -> {
             if (error != null) {
                 Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
-
                 rvItems.setVisibility(View.GONE);
                 tvEmptyShopping.setVisibility(View.VISIBLE);
             }
         });
     }
+
 
     @Override
     public void onItemToggle(int itemId, boolean isChecked) {

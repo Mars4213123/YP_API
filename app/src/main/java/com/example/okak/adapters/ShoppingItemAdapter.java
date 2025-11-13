@@ -65,4 +65,10 @@ public class ShoppingItemAdapter extends RecyclerView.Adapter<ShoppingItemAdapte
             cbBought = itemView.findViewById(R.id.ivToggleBought);
         }
     }
+    public void updateData(List<ApiService.ShoppingListItem> newItems) {
+        this.items.clear();
+        this.items.addAll(newItems);
+        notifyDataSetChanged();
+    }
+
 }

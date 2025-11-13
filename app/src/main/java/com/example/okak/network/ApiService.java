@@ -137,6 +137,7 @@ public interface ApiService {
             @Path("menuId") int menuId,
             @Path("userId") int userId
     );
+
     @FormUrlEncoded
     @POST("api/ShoppingList/{listId}/items/{itemId}/toggle")
     Call<BaseResponse> toggleShoppingListItem(

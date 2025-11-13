@@ -49,10 +49,7 @@ public class FavoritesFragment extends Fragment {
     private void setupObservers() {
         recipeViewModel.getRecipes().observe(getViewLifecycleOwner(), recipes -> {
             if (recipes != null) {
-                // ИСПРАВЛЕНИЕ: Обновляем адаптер и проверяем на пустоту
-                adapter = new RecipeAdapter(recipes);
-                rvFavorites.setAdapter(adapter);
-
+                adapter.updateData(recipes);
                 if (recipes.isEmpty()) {
                     rvFavorites.setVisibility(View.GONE);
                     tvEmptyFavorites.setVisibility(View.VISIBLE);
@@ -62,11 +59,13 @@ public class FavoritesFragment extends Fragment {
                 }
             }
         });
+
         recipeViewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {
             progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
             rvFavorites.setVisibility(loading ? View.GONE : View.VISIBLE);
             tvEmptyFavorites.setVisibility(loading ? View.GONE : View.VISIBLE);
         });
+
         recipeViewModel.getError().observe(getViewLifecycleOwner(), error -> {
             if (error != null) {
                 Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();

@@ -79,4 +79,10 @@ public class MenuDayAdapter extends RecyclerView.Adapter<MenuDayAdapter.ViewHold
             rvMeals = itemView.findViewById(R.id.rvDayMeals);
         }
     }
+    public void updateData(List<ApiService.MenuDay> newDays) {
+        this.days.clear();
+        this.days.addAll(newDays);
+        notifyDataSetChanged();
+    }
+
 }
