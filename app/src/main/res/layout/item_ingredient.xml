@@ -11,13 +11,15 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:text="Ингредиент"
-        android:textColor="#FFFFFF" />
+        android:textColor="#FFFFFF"
+        android:textSize="14sp" />
 
     <TextView
         android:id="@+id/tvIngredientQuantity"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="100 г"
-        android:textColor="#757575" />
+        android:textColor="#BBBBBB"
+        android:textSize="14sp" />
 
 </LinearLayout>

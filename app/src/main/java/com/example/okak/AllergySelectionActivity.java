@@ -52,9 +52,20 @@ public class AllergySelectionActivity extends AppCompatActivity {
             CheckBox checkBox = new CheckBox(this);
             checkBox.setText(allergy);
             checkBox.setTag(allergy);
+
+            checkBox.setTextColor(getResources().getColor(R.color.white, null));
+            checkBox.setTextSize(16);
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                checkBox.setButtonTintList(android.content.res.ColorStateList.valueOf(
+                        getResources().getColor(R.color.white, null)
+                ));
+            }
+
             allergiesContainer.addView(checkBox);
         }
     }
+
 
     private void saveAllergies() {
         List<String> selectedAllergies = new ArrayList<>();
@@ -73,7 +84,6 @@ public class AllergySelectionActivity extends AppCompatActivity {
         ApiService apiService = ApiClient.getApiService(this);
         ApiService.UpdateAllergiesDto allergiesDto = new ApiService.UpdateAllergiesDto(allergies);
 
-        // ИСПРАВЛЕНО: Отправляем ID пользователя в пути
         apiService.updateUserAllergies(currentUserId, allergiesDto).enqueue(new Callback<ApiService.BaseResponse>() {
             @Override
             public void onResponse(Call<ApiService.BaseResponse> call, Response<ApiService.BaseResponse> response) {
@@ -81,7 +91,6 @@ public class AllergySelectionActivity extends AppCompatActivity {
                     Toast.makeText(AllergySelectionActivity.this, "Аллергии сохранены!", Toast.LENGTH_SHORT).show();
                     navigateToNextScreen();
                 } else {
-                    // Эта ошибка больше не должна быть 500, так как мы починили C# API
                     Toast.makeText(AllergySelectionActivity.this, "Ошибка сохранения: " + response.code(), Toast.LENGTH_SHORT).show();
                 }
             }

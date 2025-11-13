@@ -15,6 +15,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.okak.R;
@@ -32,9 +33,11 @@ public class SearchFragment extends Fragment {
 
     private Handler searchHandler = new Handler(Looper.getMainLooper());
     private Runnable searchRunnable;
+    private String lastQuery = ""; // ДОБАВЛЕНО - отслеживание последнего запроса
 
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             ViewGroup container, Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_search, container, false);
 
         etSearch = root.findViewById(R.id.etSearchQuery);
@@ -42,28 +45,16 @@ public class SearchFragment extends Fragment {
         progressBar = root.findViewById(R.id.progressBarSearch);
         tvEmptySearch = root.findViewById(R.id.tvEmptySearch);
 
-        recipeViewModel = new ViewModelProvider(this).get(RecipeViewModel.class);
+        recipeViewModel = new ViewModelProvider(requireActivity()).get(RecipeViewModel.class); // ИЗМЕНЕНО на requireActivity()
 
         setupRecyclerView();
         setupObservers();
+        setupSearchListener();
 
-        etSearch.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void afterTextChanged(Editable s) {
-                if (searchRunnable != null) {
-                    searchHandler.removeCallbacks(searchRunnable);
-                }
-
-                searchRunnable = () -> recipeViewModel.searchRecipes(s.toString(), null, null, null, 1, 20);
-                searchHandler.postDelayed(searchRunnable, 500);
-            }
-
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
-        });
-
-        // Загружаем все рецепты при открытии
-        recipeViewModel.searchRecipes("", null, null, null, 1, 20);
+        // Загружаем все рецепты только при первом запуске
+        if (savedInstanceState == null) {
+            loadRecipes("");
+        }
 
         return root;
     }
@@ -72,15 +63,25 @@ public class SearchFragment extends Fragment {
         adapter = new RecipeAdapter(new ArrayList<>());
         rvResults.setLayoutManager(new LinearLayoutManager(getContext()));
         rvResults.setAdapter(adapter);
+
+        // ДОБАВЛЕНО - обработчик кликов
+        adapter.setOnRecipeClickListener(recipe -> {
+            Bundle bundle = new Bundle();
+            bundle.putInt("recipeId", recipe.id);
+            Navigation.findNavController(requireView())
+                    .navigate(R.id.action_to_recipeDetail, bundle);
+        });
     }
 
     private void setupObservers() {
         recipeViewModel.getRecipes().observe(getViewLifecycleOwner(), recipes -> {
             if (recipes != null) {
                 adapter.updateData(recipes);
+
                 if (recipes.isEmpty()) {
                     rvResults.setVisibility(View.GONE);
                     tvEmptySearch.setVisibility(View.VISIBLE);
+                    tvEmptySearch.setText("Рецепты не найдены");
                 } else {
                     rvResults.setVisibility(View.VISIBLE);
                     tvEmptySearch.setVisibility(View.GONE);
@@ -90,17 +91,72 @@ public class SearchFragment extends Fragment {
 
         recipeViewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {
             progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
-            if (loading) {
-                rvResults.setVisibility(View.GONE);
-                tvEmptySearch.setVisibility(View.GONE);
-            }
         });
 
         recipeViewModel.getError().observe(getViewLifecycleOwner(), error -> {
-            if (error != null) {
+            if (error != null && !error.isEmpty()) {
                 Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
+                tvEmptySearch.setVisibility(View.VISIBLE);
+                tvEmptySearch.setText("Ошибка загрузки");
             }
         });
     }
 
+    private void setupSearchListener() {
+        etSearch.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void afterTextChanged(Editable s) {
+                // Отменяем предыдущий поиск
+                if (searchRunnable != null) {
+                    searchHandler.removeCallbacks(searchRunnable);
+                }
+
+                // Запускаем новый поиск с задержкой 500ms
+                searchRunnable = () -> {
+                    String query = s.toString().trim();
+
+                    // ДОБАВЛЕНО - проверка на дубликат запроса
+                    if (!query.equals(lastQuery)) {
+                        lastQuery = query;
+                        loadRecipes(query);
+                    }
+                };
+
+                searchHandler.postDelayed(searchRunnable, 500);
+            }
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+        });
+    }
+
+    private void loadRecipes(String query) {
+        recipeViewModel.searchRecipes(
+                query.isEmpty() ? null : query,  // name
+                null,                            // tags
+                null,                            // excludedAllergens
+                null,                            // cuisineTypes
+                null,                            // maxPrepTime
+                null,                            // maxCookTime
+                null,                            // maxCalories
+                null,                            // difficulty
+                "Title",                         // sortBy
+                false,                           // sortDescending
+                1,                               // pageNumber
+                20                               // pageSize
+        );
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (searchHandler != null && searchRunnable != null) {
+            searchHandler.removeCallbacks(searchRunnable);
+        }
+    }
 }

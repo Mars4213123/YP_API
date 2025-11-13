@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/mobile_navigation" app:startDestination="@+id/navigation_home">
+
+
+    <fragment
+        android:id="@+id/navigation_home"
+        android:name="com.example.okak.ui.home.HomeFragment"
+        android:label="Главная" />
+
+    <fragment
+        android:id="@+id/navigation_search"
+        android:name="com.example.okak.ui.search.SearchFragment"
+        android:label="Поиск">
+        <action
+            android:id="@+id/action_to_recipeDetail"
+            app:destination="@id/recipeDetailFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_favorites"
+        android:name="com.example.okak.ui.favorites.FavoritesFragment"
+        android:label="Избранное">
+        <action
+            android:id="@+id/action_to_recipeDetail"
+            app:destination="@id/recipeDetailFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_shopping"
+        android:name="com.example.okak.ui.shopping.ShoppingFragment"
+        android:label="Покупки" />
+
+    <fragment
+        android:id="@+id/navigation_profile"
+        android:name="com.example.okak.ui.profile.ProfileFragment"
+        android:label="Профиль" />
+
+    <fragment
+        android:id="@+id/recipeDetailFragment"
+        android:name="com.example.okak.ui.detail.RecipeDetailFragment"
+        android:label="Детали рецепта" />
+</navigation>

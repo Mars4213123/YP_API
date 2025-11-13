@@ -15,42 +15,48 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.okak.R;
 import com.example.okak.adapters.RecipeAdapter;
 import com.example.okak.viewmodel.RecipeViewModel;
+import java.util.ArrayList;
+
 public class FavoritesFragment extends Fragment {
+
     private RecipeViewModel recipeViewModel;
     private RecyclerView rvFavorites;
     private ProgressBar progressBar;
-    private TextView tvEmptyFavorites; // ИСПРАВЛЕНИЕ: Добавлено
+    private TextView tvEmptyFavorites;
     private RecipeAdapter adapter;
 
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             ViewGroup container, Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_favorites, container, false);
+
         rvFavorites = root.findViewById(R.id.rvFavorites);
         progressBar = root.findViewById(R.id.progressBarFavorites);
-        tvEmptyFavorites = root.findViewById(R.id.tvEmptyFavorites); // ИСПРАВЛЕНИЕ: Найдено
+        tvEmptyFavorites = root.findViewById(R.id.tvEmptyFavorites);
+
         recipeViewModel = new ViewModelProvider(requireActivity()).get(RecipeViewModel.class);
+
         setupRecyclerView();
         setupObservers();
+
+        // Загружаем избранное
+        recipeViewModel.loadFavorites();
+
         return root;
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        recipeViewModel.loadFavorites();
-    }
-
     private void setupRecyclerView() {
-        adapter = new RecipeAdapter(new java.util.ArrayList<>());
+        adapter = new RecipeAdapter(new ArrayList<>());
         rvFavorites.setLayoutManager(new LinearLayoutManager(getContext()));
         rvFavorites.setAdapter(adapter);
     }
 
     private void setupObservers() {
-        recipeViewModel.getRecipes().observe(getViewLifecycleOwner(), recipes -> {
-            if (recipes != null) {
-                adapter.updateData(recipes);
-                if (recipes.isEmpty()) {
+        recipeViewModel.getFavorites().observe(getViewLifecycleOwner(), favorites -> {
+            if (favorites != null) {
+                adapter.updateData(favorites);
+
+                if (favorites.isEmpty()) {
                     rvFavorites.setVisibility(View.GONE);
                     tvEmptyFavorites.setVisibility(View.VISIBLE);
                 } else {
@@ -62,14 +68,24 @@ public class FavoritesFragment extends Fragment {
 
         recipeViewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {
             progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
-            rvFavorites.setVisibility(loading ? View.GONE : View.VISIBLE);
-            tvEmptyFavorites.setVisibility(loading ? View.GONE : View.VISIBLE);
+
+            if (loading) {
+                rvFavorites.setVisibility(View.GONE);
+                tvEmptyFavorites.setVisibility(View.GONE);
+            }
         });
 
         recipeViewModel.getError().observe(getViewLifecycleOwner(), error -> {
-            if (error != null) {
+            if (error != null && !error.isEmpty()) {
                 Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Перезагружаем избранное при возврате на фрагмент
+        recipeViewModel.loadFavorites();
     }
 }

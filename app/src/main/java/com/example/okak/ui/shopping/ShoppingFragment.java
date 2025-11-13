@@ -11,6 +11,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.okak.R;
@@ -18,36 +19,54 @@ import com.example.okak.adapters.ShoppingItemAdapter;
 import com.example.okak.network.ApiService;
 import com.example.okak.viewmodel.MenuViewModel;
 import com.example.okak.viewmodel.ShoppingViewModel;
-public class ShoppingFragment extends Fragment implements ShoppingItemAdapter.OnItemToggleListener {
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+public class ShoppingFragment extends Fragment
+        implements ShoppingItemAdapter.OnItemToggleListener {
+
     private ShoppingViewModel shoppingViewModel;
     private MenuViewModel menuViewModel;
     private RecyclerView rvItems;
     private ProgressBar progressBar;
     private Button btnGenerate;
-    private TextView tvEmptyShopping; // ИСПРАВЛЕНИЕ: Добавлено
+    private TextView tvEmptyShopping;
     private ShoppingItemAdapter adapter;
 
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             ViewGroup container, Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_shopping, container, false);
+
         rvItems = root.findViewById(R.id.rvShoppingItems);
         progressBar = root.findViewById(R.id.progressBarShopping);
         btnGenerate = root.findViewById(R.id.btnGenerateShoppingList);
-        tvEmptyShopping = root.findViewById(R.id.tvEmptyShopping); // ИСПРАВЛЕНИЕ: Найдено
+        tvEmptyShopping = root.findViewById(R.id.tvEmptyShopping);
 
         shoppingViewModel = new ViewModelProvider(this).get(ShoppingViewModel.class);
         menuViewModel = new ViewModelProvider(requireActivity()).get(MenuViewModel.class);
+
         setupRecyclerView();
         setupObservers();
+
         btnGenerate.setOnClickListener(v -> {
             ApiService.MenuDetail currentMenu = menuViewModel.getCurrentMenu().getValue();
-            if (currentMenu != null) {
+            if (currentMenu != null && currentMenu.id > 0) {
                 shoppingViewModel.generateShoppingList(currentMenu.id);
             } else {
-                Toast.makeText(getContext(), "Сначала сгенерируйте меню на главном экране", Toast.LENGTH_LONG).show();
+                Toast.makeText(getContext(),
+                        "Сначала создайте меню на главной странице",
+                        Toast.LENGTH_LONG).show();
+
+                // Перейти на вкладку Home
+                Navigation.findNavController(v).navigate(R.id.navigation_home);
             }
         });
+
         shoppingViewModel.loadCurrentShoppingList();
+
         return root;
     }
 
@@ -60,11 +79,23 @@ public class ShoppingFragment extends Fragment implements ShoppingItemAdapter.On
     private void setupObservers() {
         shoppingViewModel.getShoppingList().observe(getViewLifecycleOwner(), list -> {
             if (list != null && list.items != null && !list.items.isEmpty()) {
-                adapter.updateData(list.items);
-                rvItems.setVisibility(View.VISIBLE);
-                tvEmptyShopping.setVisibility(View.GONE);
+                // Фильтруем элементы с пустыми названиями
+                List<ApiService.ShoppingListItem> validItems = list.items.stream()
+                        .filter(item -> item.name != null && !item.name.trim().isEmpty())
+                        .collect(Collectors.toList());
+
+                if (!validItems.isEmpty()) {
+                    adapter.updateData(validItems);
+                    rvItems.setVisibility(View.VISIBLE);
+                    tvEmptyShopping.setVisibility(View.GONE);
+                } else {
+                    adapter.updateData(new ArrayList<>());
+                    rvItems.setVisibility(View.GONE);
+                    tvEmptyShopping.setVisibility(View.VISIBLE);
+                    tvEmptyShopping.setText("Список покупок пуст или содержит некорректные данные");
+                }
             } else {
-                adapter.updateData(new java.util.ArrayList<>());
+                adapter.updateData(new ArrayList<>());
                 rvItems.setVisibility(View.GONE);
                 tvEmptyShopping.setVisibility(View.VISIBLE);
             }
@@ -84,7 +115,6 @@ public class ShoppingFragment extends Fragment implements ShoppingItemAdapter.On
             }
         });
     }
-
 
     @Override
     public void onItemToggle(int itemId, boolean isChecked) {

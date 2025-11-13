@@ -42,28 +42,51 @@ public class ProfileFragment extends Fragment {
     private void setupObservers() {
         userViewModel.getProfile().observe(getViewLifecycleOwner(), profile -> {
             if (profile != null) {
-                tvUsername.setText("Username: " + profile.username);
+                // Отображаем данные профиля
+                tvUsername.setText("Имя пользователя: " + profile.username);
                 tvEmail.setText("Email: " + profile.email);
-                tvFullName.setText("Полное имя: " + profile.fullName);
+
+                // ИСПРАВЛЕНИЕ: Проверка на null для fullName
+                if (profile.fullName != null && !profile.fullName.isEmpty()) {
+                    tvFullName.setText("Полное имя: " + profile.fullName);
+                    tvFullName.setVisibility(View.VISIBLE);
+                } else {
+                    tvFullName.setVisibility(View.GONE);
+                }
+            } else {
+                // Если профиль не загрузился, показываем заглушку
+                tvUsername.setText("Имя пользователя: Не загружено");
+                tvEmail.setText("Email: Не загружено");
+                tvFullName.setText("Полное имя: Не указано");
             }
         });
+
         userViewModel.getAllergies().observe(getViewLifecycleOwner(), allergies -> {
             if (allergies != null && !allergies.isEmpty()) {
+                // Отображаем аллергии белым текстом
                 String allergiesStr = String.join(", ", allergies);
                 tvAllergies.setText("Аллергии: " + allergiesStr);
+                tvAllergies.setTextColor(getResources().getColor(R.color.white, null));
+                tvAllergies.setVisibility(View.VISIBLE);
             } else {
-                tvAllergies.setText("Аллергии: Нет");
+                // Если аллергий нет, показываем сообщение
+                tvAllergies.setText("Аллергии: Не указаны");
+                tvAllergies.setTextColor(getResources().getColor(android.R.color.darker_gray, null));
+                tvAllergies.setVisibility(View.VISIBLE);
             }
         });
+
         userViewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {
             progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
         });
+
         userViewModel.getError().observe(getViewLifecycleOwner(), error -> {
             if (error != null) {
-                Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Ошибка: " + error, Toast.LENGTH_SHORT).show();
             }
         });
     }
+
 
     private void logout() {
         AuthTokenManager.clearToken(requireContext().getApplicationContext());

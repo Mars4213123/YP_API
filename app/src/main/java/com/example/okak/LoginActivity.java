@@ -1,106 +1,108 @@
 package com.example.okak;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import com.example.okak.network.ApiClient;
 import com.example.okak.network.ApiService;
-import com.example.okak.network.AuthTokenManager;
-import java.io.IOException;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+
 public class LoginActivity extends AppCompatActivity {
-    private static final String TAG = "LoginActivity";
-    private EditText etUsername;
-    private EditText etPassword;
+
+    private EditText etUsername, etPassword;
     private Button btnLogin;
-    private TextView tvGoToRegister;
-    private ApiService apiService;
+    private TextView tvRegister;
+    private ProgressBar progressBar;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        // ИСПРАВЛЕНИЕ: Проверяем 'hasUserId' вместо 'hasToken',
-        // так как API не возвращает токен.
-        if (AuthTokenManager.hasUserId(getApplicationContext())) {
-            goToMainActivity();
-            return;
-        }
-
         setContentView(R.layout.activity_login);
-        apiService = ApiClient.getApiService(getApplicationContext());
 
         etUsername = findViewById(R.id.etUsername);
         etPassword = findViewById(R.id.etPassword);
         btnLogin = findViewById(R.id.btnLogin);
-        tvGoToRegister = findViewById(R.id.tvRegister);
+        tvRegister = findViewById(R.id.tvRegister);
+        progressBar = findViewById(R.id.progressBarLogin);
 
-        btnLogin.setOnClickListener(v -> attemptLogin());
+        btnLogin.setOnClickListener(v -> {
+            String username = etUsername.getText().toString().trim();
+            String password = etPassword.getText().toString().trim();
 
-        tvGoToRegister.setOnClickListener(v -> {
-            startActivity(new Intent(LoginActivity.this, RegisterActivity.class));
+            if (username.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Заполните все поля", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            login(username, password);
+        });
+
+        tvRegister.setOnClickListener(v -> {
+            Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
+            startActivity(intent);
         });
     }
 
-    private void attemptLogin() {
-        String username = etUsername.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
+    private void login(String username, String password) {
+        progressBar.setVisibility(android.view.View.VISIBLE);
+        btnLogin.setEnabled(false);
 
-        if (username.isEmpty() || password.isEmpty()) {
-            Toast.makeText(this, "Пожалуйста, введите имя пользователя и пароль.", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        ApiService apiService = ApiClient.getApiService(this);
 
-        Call<ApiService.UserAuthResponse> call = apiService.login(username, password);
-        call.enqueue(new Callback<ApiService.UserAuthResponse>() {
-            @Override
-            public void onResponse(@NonNull Call<ApiService.UserAuthResponse> call, @NonNull Response<ApiService.UserAuthResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
+        apiService.login(username, password)
+                .enqueue(new Callback<ApiService.UserAuthResponse>() {
+                    @Override
+                    public void onResponse(Call<ApiService.UserAuthResponse> call,
+                                           Response<ApiService.UserAuthResponse> response) {
+                        progressBar.setVisibility(android.view.View.GONE);
+                        btnLogin.setEnabled(true);
 
-                    // ИСПРАВЛЕНИЕ: Сохраняем userId при входе,
-                    // это была главная ошибка.
-                    int userId = response.body().id;
-                    AuthTokenManager.saveUserId(getApplicationContext(), userId);
+                        if (response.isSuccessful() && response.body() != null) {
+                            ApiService.UserAuthResponse result = response.body();
 
-                    Toast.makeText(LoginActivity.this, "Вход выполнен!", Toast.LENGTH_LONG).show();
+                            if (result.id > 0) {
+                                // Сохраняем userId
+                                SharedPreferences prefs = getSharedPreferences("user_prefs", MODE_PRIVATE);
+                                prefs.edit().putInt("user_id", result.id).apply();
+                                prefs.edit().putString("username", result.username).apply();
 
-                    goToMainActivity();
+                                Toast.makeText(LoginActivity.this,
+                                        "Добро пожаловать, " + result.username,
+                                        Toast.LENGTH_SHORT).show();
 
-                } else {
-                    String errorMsg = "Ошибка входа. Код: " + response.code();
-                    if (response.errorBody() != null) {
-
-                        try {
-                            errorMsg += ", Тело: " + response.errorBody().string();
-                        } catch (IOException e) {
-
-                            Log.e(TAG, "Error reading errorBody", e);
+                                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                                intent.putExtra("USER_ID", result.id);
+                                startActivity(intent);
+                                finish();
+                            } else {
+                                Toast.makeText(LoginActivity.this,
+                                        "Ошибка авторизации",
+                                        Toast.LENGTH_SHORT).show();
+                            }
+                        } else {
+                            Toast.makeText(LoginActivity.this,
+                                    "Неверный логин или пароль",
+                                    Toast.LENGTH_SHORT).show();
                         }
                     }
-                    Log.e(TAG, "Login failed: " + errorMsg);
-                    Toast.makeText(LoginActivity.this, errorMsg, Toast.LENGTH_LONG).show();
-                }
-            }
 
-            @Override
-            public void onFailure(@NonNull Call<ApiService.UserAuthResponse> call, @NonNull Throwable t) {
-                Log.e(TAG, "Network Error: " + t.getMessage(), t);
-                Toast.makeText(LoginActivity.this, "Ошибка сети: " + t.getMessage(), Toast.LENGTH_LONG).show();
-            }
-        });
-    }
+                    @Override
+                    public void onFailure(Call<ApiService.UserAuthResponse> call, Throwable t) {
+                        progressBar.setVisibility(android.view.View.GONE);
+                        btnLogin.setEnabled(true);
 
-    private void goToMainActivity() {
-        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        startActivity(intent);
-        finish();
+                        Toast.makeText(LoginActivity.this,
+                                "Ошибка сети: " + t.getMessage(),
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 }

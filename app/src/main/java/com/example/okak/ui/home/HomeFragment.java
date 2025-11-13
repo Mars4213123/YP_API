@@ -18,9 +18,9 @@ import com.example.okak.adapters.MenuDayAdapter;
 import com.example.okak.viewmodel.MenuViewModel;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 public class HomeFragment extends Fragment {
+
     private MenuViewModel menuViewModel;
     private RecyclerView rvMenuDays;
     private ProgressBar progressBar;
@@ -28,7 +28,8 @@ public class HomeFragment extends Fragment {
     private TextView tvEmptyMenu;
 
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             ViewGroup container, Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_home, container, false);
 
         rvMenuDays = root.findViewById(R.id.rvMenuDays);
@@ -43,26 +44,26 @@ public class HomeFragment extends Fragment {
 
         btnGenerateMenu.setOnClickListener(v -> {
             int days = 7;
-            Double targetCalories = 2000.0; // ИСПОЛЬЗУЕМ КОНКРЕТНОЕ ЗНАЧЕНИЕ вместо null
-            List<String> mealTypes = Arrays.asList("breakfast", "lunch", "dinner");
-            List<String> cuisines = new ArrayList<>();
-
-            menuViewModel.generateMenu(days, targetCalories, cuisines, mealTypes, false);
+            // УБРАЛИ targetCalories
+            menuViewModel.generateMenu(
+                    days,
+                    null, // targetCalories = null
+                    new ArrayList<>(), // cuisines
+                    Arrays.asList("breakfast", "lunch", "dinner"),
+                    false
+            );
         });
 
         menuViewModel.loadCurrentMenu();
-
         return root;
     }
 
     private void setupObservers() {
-        // Создаём адаптер один раз
         MenuDayAdapter adapter = new MenuDayAdapter(new ArrayList<>());
         rvMenuDays.setAdapter(adapter);
 
         menuViewModel.getCurrentMenu().observe(getViewLifecycleOwner(), menu -> {
             if (menu != null && menu.days != null && !menu.days.isEmpty()) {
-                // Обновляем данные существующего адаптера
                 adapter.updateData(menu.days);
                 rvMenuDays.setVisibility(View.VISIBLE);
                 tvEmptyMenu.setVisibility(View.GONE);
@@ -76,6 +77,7 @@ public class HomeFragment extends Fragment {
         menuViewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {
             progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
             btnGenerateMenu.setEnabled(!loading);
+
             if (loading) {
                 rvMenuDays.setVisibility(View.GONE);
                 tvEmptyMenu.setVisibility(View.GONE);
@@ -89,7 +91,5 @@ public class HomeFragment extends Fragment {
                 rvMenuDays.setVisibility(View.GONE);
             }
         });
-
     }
-
 }

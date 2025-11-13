@@ -7,118 +7,179 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import com.example.okak.network.ApiClient;
 import com.example.okak.network.ApiService;
-import com.example.okak.network.AuthTokenManager;
+import java.util.List;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
-import java.util.Collections;
-import java.util.List;
 
 public class RecipeViewModel extends AndroidViewModel {
-    private MutableLiveData<List<ApiService.RecipeShort>> recipesLiveData = new MutableLiveData<>();
-    private MutableLiveData<ApiService.RecipeDetail> recipeDetailLiveData = new MutableLiveData<>();
-    private MutableLiveData<Boolean> loadingLiveData = new MutableLiveData<>(false);
-    private MutableLiveData<String> errorLiveData = new MutableLiveData<>();
-    private int currentUserId;
+    // LiveData для списка рецептов
+    private final MutableLiveData<List<ApiService.RecipeShort>> recipesLiveData = new MutableLiveData<>();
+
+    // LiveData для детальной информации о рецепте
+    private final MutableLiveData<ApiService.RecipeDetail> recipeDetailLiveData = new MutableLiveData<>();
+
+    // LiveData для избранных рецептов
+    private final MutableLiveData<List<ApiService.RecipeShort>> favoritesLiveData = new MutableLiveData<>();
+
+    // Общие LiveData
+    private final MutableLiveData<Boolean> loadingLiveData = new MutableLiveData<>(false);
+    private final MutableLiveData<String> errorLiveData = new MutableLiveData<>();
+
+    private int currentUserId = -1;
+
     public RecipeViewModel(@NonNull Application application) {
         super(application);
-        currentUserId = AuthTokenManager.getUserId(application);
     }
+
+// ============================================
+// Getters для LiveData
+// ============================================
+
     public LiveData<List<ApiService.RecipeShort>> getRecipes() {
         return recipesLiveData;
     }
+
     public LiveData<ApiService.RecipeDetail> getRecipeDetail() {
         return recipeDetailLiveData;
     }
+
+    public LiveData<List<ApiService.RecipeShort>> getFavorites() {
+        return favoritesLiveData;
+    }
+
     public LiveData<Boolean> getLoading() {
         return loadingLiveData;
     }
+
     public LiveData<String> getError() {
         return errorLiveData;
     }
-    public void loadFavorites() {
-        if (currentUserId == -1) {
-            errorLiveData.setValue("Пользователь не найден");
-            return;
-        }
+
+    public void setUserId(int userId) {
+        this.currentUserId = userId;
+    }
+
+// ============================================
+// Поиск рецептов
+// ============================================
+
+    public void searchRecipes(
+            String name,
+            List<String> tags,
+            List<String> excludedAllergens,
+            List<String> cuisineTypes,
+            Integer maxPrepTime,
+            Integer maxCookTime,
+            Double maxCalories,
+            String difficulty,
+            String sortBy,
+            Boolean sortDescending,
+            Integer pageNumber,
+            Integer pageSize) {
+
+        if (Boolean.TRUE.equals(loadingLiveData.getValue())) return;
+
         loadingLiveData.setValue(true);
         ApiService apiService = ApiClient.getApiService(getApplication());
 
-        apiService.getFavorites(currentUserId).enqueue(new Callback<ApiService.ApiResponse<List<ApiService.RecipeShort>>>() {
+        apiService.getRecipes(
+                name, tags, excludedAllergens, cuisineTypes,
+                maxPrepTime, maxCookTime, maxCalories, difficulty,
+                sortBy, sortDescending, pageNumber, pageSize
+        ).enqueue(new Callback<ApiService.ApiResponse<List<ApiService.RecipeShort>>>() {
             @Override
             public void onResponse(@NonNull Call<ApiService.ApiResponse<List<ApiService.RecipeShort>>> call,
                                    @NonNull Response<ApiService.ApiResponse<List<ApiService.RecipeShort>>> response) {
                 loadingLiveData.setValue(false);
-                if (response.isSuccessful() && response.body() != null && response.body().success) {
-                    recipesLiveData.setValue(response.body().data);
+
+                if (response.isSuccessful() && response.body() != null) {
+                    if (response.body().success) {
+                        recipesLiveData.setValue(response.body().data);
+                    } else {
+                        errorLiveData.setValue(response.body().error != null ?
+                                response.body().error : "Failed to load recipes");
+                    }
                 } else {
-                    errorLiveData.setValue("Ошибка загрузки: " + response.code());
+                    errorLiveData.setValue("Error: " + response.code());
                 }
             }
 
             @Override
-            public void onFailure(@NonNull Call<ApiService.ApiResponse<List<ApiService.RecipeShort>>> call, @NonNull Throwable t) {
+            public void onFailure(@NonNull Call<ApiService.ApiResponse<List<ApiService.RecipeShort>>> call,
+                                  @NonNull Throwable t) {
                 loadingLiveData.setValue(false);
-                errorLiveData.setValue("Ошибка сети: " + t.getMessage());
+                errorLiveData.setValue("Network error: " + t.getMessage());
             }
         });
     }
-    public void searchRecipes(String query, String cuisine, String difficulty, Integer maxCalories, int page, int size) {
+
+    /**
+     * Упрощенный поиск по имени
+     */
+    public void searchByName(String name) {
+        searchRecipes(name, null, null, null, null, null, null, null,
+                "Title", false, 1, 20);
+    }
+
+    /**
+     * Загрузить все рецепты
+     */
+    public void loadAllRecipes() {
+        searchRecipes(null, null, null, null, null, null, null, null,
+                "Title", false, 1, 20);
+    }
+
+// ============================================
+// Детальная информация о рецепте
+// ============================================
+
+    public void loadRecipeDetail(int recipeId) {
+        if (Boolean.TRUE.equals(loadingLiveData.getValue())) return;
+
         loadingLiveData.setValue(true);
         ApiService apiService = ApiClient.getApiService(getApplication());
 
-        List<String> cuisineTypes = cuisine != null ? Collections.singletonList(cuisine) : null;
+        Integer userId = currentUserId == -1 ? null : currentUserId;
 
-        apiService.getRecipes(query, cuisineTypes, difficulty, null, null, maxCalories, "Title", false, page, size, currentUserId)
-                .enqueue(new Callback<ApiService.ApiResponse<List<ApiService.RecipeShort>>>() {
+        apiService.getRecipeDetail(recipeId, userId)
+                .enqueue(new Callback<ApiService.ApiResponse<ApiService.RecipeDetail>>() {
                     @Override
-                    public void onResponse(@NonNull Call<ApiService.ApiResponse<List<ApiService.RecipeShort>>> call,
-                                           @NonNull Response<ApiService.ApiResponse<List<ApiService.RecipeShort>>> response) {
+                    public void onResponse(@NonNull Call<ApiService.ApiResponse<ApiService.RecipeDetail>> call,
+                                           @NonNull Response<ApiService.ApiResponse<ApiService.RecipeDetail>> response) {
                         loadingLiveData.setValue(false);
-                        if (response.isSuccessful() && response.body() != null && response.body().success) {
-                            recipesLiveData.setValue(response.body().data);
-                        } else if (response.body() != null && !response.body().success) {
-                            errorLiveData.setValue(response.body().message != null ? response.body().message : "Ошибка поиска рецептов");
+
+                        if (response.isSuccessful() && response.body() != null) {
+                            if (response.body().success) {
+                                recipeDetailLiveData.setValue(response.body().data);
+                            } else {
+                                errorLiveData.setValue(response.body().error != null ?
+                                        response.body().error : "Failed to load recipe details");
+                            }
                         } else {
-                            errorLiveData.setValue("Ошибка соединения: " + response.code());
+                            errorLiveData.setValue("Error: " + response.code());
                         }
                     }
 
                     @Override
-                    public void onFailure(@NonNull Call<ApiService.ApiResponse<List<ApiService.RecipeShort>>> call, @NonNull Throwable t) {
+                    public void onFailure(@NonNull Call<ApiService.ApiResponse<ApiService.RecipeDetail>> call,
+                                          @NonNull Throwable t) {
                         loadingLiveData.setValue(false);
-                        errorLiveData.setValue("Ошибка поиска: " + t.getMessage());
+                        errorLiveData.setValue("Network error: " + t.getMessage());
                     }
                 });
     }
-    public void loadRecipeDetail(int recipeId) {
-        loadingLiveData.setValue(true);
-        ApiService apiService = ApiClient.getApiService(getApplication());
 
-        apiService.getRecipeDetail(recipeId, currentUserId).enqueue(new Callback<ApiService.ApiResponse<ApiService.RecipeDetail>>() {
-            @Override
-            public void onResponse(@NonNull Call<ApiService.ApiResponse<ApiService.RecipeDetail>> call,
-                                   @NonNull Response<ApiService.ApiResponse<ApiService.RecipeDetail>> response) {
-                loadingLiveData.setValue(false);
-                if (response.isSuccessful() && response.body() != null && response.body().success) {
-                    recipeDetailLiveData.setValue(response.body().data);
-                } else {
-                    errorLiveData.setValue("Ошибка загрузки: " + response.code());
-                }
-            }
+// ============================================
+// Избранное
+// ============================================
 
-            @Override
-            public void onFailure(@NonNull Call<ApiService.ApiResponse<ApiService.RecipeDetail>> call, @NonNull Throwable t) {
-                loadingLiveData.setValue(false);
-                errorLiveData.setValue("Ошибка сети: " + t.getMessage());
-            }
-        });
-    }
     public void toggleFavorite(int recipeId) {
         if (currentUserId == -1) {
-            errorLiveData.setValue("Ошибка: не найден ID пользователя!");
+            errorLiveData.setValue("Пользователь не авторизован");
             return;
         }
+
         ApiService apiService = ApiClient.getApiService(getApplication());
 
         apiService.toggleFavorite(recipeId, currentUserId)
@@ -126,25 +187,71 @@ public class RecipeViewModel extends AndroidViewModel {
                     @Override
                     public void onResponse(@NonNull Call<ApiService.ApiResponse<ApiService.ToggleFavoriteResponse>> call,
                                            @NonNull Response<ApiService.ApiResponse<ApiService.ToggleFavoriteResponse>> response) {
-                        if (response.isSuccessful() && response.body() != null && response.body().success) {
-                            // Сразу обновить детальный рецепт и избранные
-                            if (recipeDetailLiveData.getValue() != null && recipeDetailLiveData.getValue().id == recipeId) {
-                                ApiService.RecipeDetail detail = recipeDetailLiveData.getValue();
-                                detail.isFavorite = response.body().data.isFavorite;
-                                recipeDetailLiveData.setValue(detail);
+                        if (response.isSuccessful() && response.body() != null) {
+                            if (response.body().success) {
+                                // Обновить статус избранного в текущем рецепте
+                                ApiService.RecipeDetail currentDetail = recipeDetailLiveData.getValue();
+                                if (currentDetail != null) {
+                                    currentDetail.isFavorite = response.body().data.isFavorite;
+                                    recipeDetailLiveData.setValue(currentDetail);
+                                }
+
+                                // Перезагрузить избранное
+                                loadFavorites();
+                            } else {
+                                errorLiveData.setValue(response.body().error != null ?
+                                        response.body().error : "Failed to toggle favorite");
                             }
-                            loadFavorites();
-                        } else if (response.body() != null) {
-                            errorLiveData.setValue(response.body().message != null ? response.body().message : "Ошибка избранного");
                         } else {
-                            errorLiveData.setValue("Ошибка соединения");
+                            errorLiveData.setValue("Error: " + response.code());
                         }
                     }
 
                     @Override
-                    public void onFailure(@NonNull Call<ApiService.ApiResponse<ApiService.ToggleFavoriteResponse>> call, @NonNull Throwable t) {
-                        errorLiveData.setValue("Ошибка избранного: " + t.getMessage());
+                    public void onFailure(@NonNull Call<ApiService.ApiResponse<ApiService.ToggleFavoriteResponse>> call,
+                                          @NonNull Throwable t) {
+                        errorLiveData.setValue("Network error: " + t.getMessage());
                     }
                 });
     }
+
+    public void loadFavorites() {
+        if (currentUserId == -1) {
+            errorLiveData.setValue("Пользователь не авторизован");
+            return;
+        }
+
+        if (Boolean.TRUE.equals(loadingLiveData.getValue())) return;
+
+        loadingLiveData.setValue(true);
+        ApiService apiService = ApiClient.getApiService(getApplication());
+
+        apiService.getFavorites(currentUserId)
+                .enqueue(new Callback<ApiService.ApiResponse<List<ApiService.RecipeShort>>>() {
+                    @Override
+                    public void onResponse(@NonNull Call<ApiService.ApiResponse<List<ApiService.RecipeShort>>> call,
+                                           @NonNull Response<ApiService.ApiResponse<List<ApiService.RecipeShort>>> response) {
+                        loadingLiveData.setValue(false);
+
+                        if (response.isSuccessful() && response.body() != null) {
+                            if (response.body().success) {
+                                favoritesLiveData.setValue(response.body().data);
+                            } else {
+                                errorLiveData.setValue(response.body().error != null ?
+                                        response.body().error : "Failed to load favorites");
+                            }
+                        } else {
+                            errorLiveData.setValue("Error: " + response.code());
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull Call<ApiService.ApiResponse<List<ApiService.RecipeShort>>> call,
+                                          @NonNull Throwable t) {
+                        loadingLiveData.setValue(false);
+                        errorLiveData.setValue("Network error: " + t.getMessage());
+                    }
+                });
+    }
+
 }
