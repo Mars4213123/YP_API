@@ -10,7 +10,7 @@ using YP_API.Interfaces;
 namespace YP_API.Services
 {
     public class MenuService : IMenuService
-    {
+    { //asd 
         private readonly RecipePlannerContext _context;
         private readonly ILogger<MenuService> _logger;
 
