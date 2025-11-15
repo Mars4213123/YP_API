@@ -35,44 +35,88 @@ namespace YP_API.Services
                 Console.WriteLine($"MenuId: {menuId}, UserId: {userId}");
 
                 var menu = await _menuRepository.GetByIdAsync(menuId);
-                Console.WriteLine($"Menu exists: {menu != null}");
-
                 if (menu == null)
                 {
-                    Console.WriteLine("Menu not found");
-                    return new ShoppingList
-                    {
-                        Id = 0,
-                        Name = "Menu not found",
-                        IsCompleted = false,
-                        Items = new List<ShoppingListItem>()
-                    };
+                    throw new Exception($"Меню с ID {menuId} не найдено");
                 }
 
+                // Проверяем, что меню принадлежит пользователю
+                if (menu.UserId != userId)
+                {
+                    throw new Exception("Меню не принадлежит пользователю");
+                }
+
+                // Получаем меню с деталями (рецептами и ингредиентами)
+                var menuWithDetails = await _menuRepository.GetMenuWithDetailsAsync(menuId);
+                if (menuWithDetails == null)
+                {
+                    throw new Exception("Не удалось загрузить детали меню");
+                }
+
+                Console.WriteLine($"Menu has {menuWithDetails.MenuMeals?.Count} meals");
+
+                // Создаем список покупок
                 var shoppingList = new ShoppingList
                 {
                     MenuId = menuId,
-                    Name = $"Shopping List {DateTime.Now:HHmmss}",
+                    UserId = userId,
+                    Name = $"Список покупок для {menu.Name}",
                     CreatedAt = DateTime.UtcNow,
-                    IsCompleted = false
+                    IsCompleted = false,
+                    Items = new List<ShoppingListItem>() // Инициализируем коллекцию
                 };
 
-                Console.WriteLine($"Created shopping list: MenuId={shoppingList.MenuId}, Name={shoppingList.Name}");
+                // Собираем все ингредиенты из всех рецептов меню
+                var ingredientQuantities = new Dictionary<int, (decimal Quantity, string Unit, string Category)>();
 
-                shoppingList.Items = new List<ShoppingListItem>
+                foreach (var menuMeal in menuWithDetails.MenuMeals ?? new List<MenuMeal>())
                 {
-                    new ShoppingListItem
+                    var recipe = menuMeal.Recipe;
+                    if (recipe?.RecipeIngredients == null) continue;
+
+                    foreach (var recipeIngredient in recipe.RecipeIngredients)
                     {
-                        IngredientId = 1,
-                        Quantity = 1,
-                        Unit = "шт",
-                        Category = "Мясо",
-                        IsPurchased = false
+                        var ingredient = recipeIngredient.Ingredient;
+                        if (ingredient == null) continue;
+
+                        if (ingredientQuantities.ContainsKey(ingredient.Id))
+                        {
+                            // Суммируем количество если ингредиент уже есть
+                            var existing = ingredientQuantities[ingredient.Id];
+                            ingredientQuantities[ingredient.Id] = (
+                                existing.Quantity + recipeIngredient.Quantity,
+                                existing.Unit,
+                                existing.Category
+                            );
+                        }
+                        else
+                        {
+                            // Добавляем новый ингредиент
+                            ingredientQuantities[ingredient.Id] = (
+                                recipeIngredient.Quantity,
+                                recipeIngredient.Unit,
+                                ingredient.Category
+                            );
+                        }
                     }
-                };
+                }
 
-                Console.WriteLine($"Added {shoppingList.Items.Count} items");
+                // Создаем элементы списка покупок
+                foreach (var (ingredientId, (quantity, unit, category)) in ingredientQuantities)
+                {
+                    shoppingList.Items.Add(new ShoppingListItem
+                    {
+                        IngredientId = ingredientId,
+                        Quantity = quantity,
+                        Unit = unit,
+                        Category = category,
+                        IsPurchased = false
+                    });
+                }
 
+                Console.WriteLine($"Created shopping list with {shoppingList.Items.Count} items");
+
+                // Сохраняем список покупок (включая элементы)
                 await _shoppingListRepository.AddAsync(shoppingList);
                 Console.WriteLine("ShoppingList added to repository");
 
@@ -81,8 +125,7 @@ namespace YP_API.Services
 
                 if (!saveResult)
                 {
-                    Console.WriteLine("Save failed");
-                    throw new Exception("Failed to save shopping list");
+                    throw new Exception("Не удалось сохранить список покупок");
                 }
 
                 Console.WriteLine($"ShoppingList saved with ID: {shoppingList.Id}");
@@ -95,28 +138,9 @@ namespace YP_API.Services
                 Console.WriteLine($"=== ERROR ===");
                 Console.WriteLine($"Message: {ex.Message}");
                 Console.WriteLine($"Inner Exception: {ex.InnerException?.Message}");
-                Console.WriteLine($"Inner Exception Type: {ex.InnerException?.GetType()}");
-                Console.WriteLine($"Inner Stack Trace: {ex.InnerException?.StackTrace}");
-
-                Exception current = ex;
-                int depth = 0;
-                while (current != null && depth < 5)
-                {
-                    Console.WriteLine($"Exception depth {depth}: {current.GetType()} - {current.Message}");
-                    current = current.InnerException;
-                    depth++;
-                }
-
-                return new ShoppingList
-                {
-                    Id = 0,
-                    Name = $"Error: {ex.Message}",
-                    IsCompleted = false,
-                    Items = new List<ShoppingListItem>()
-                };
+                throw new Exception($"Ошибка при создании списка покупок: {ex.Message}");
             }
         }
-
         public async Task<ShoppingList> GetCurrentShoppingListAsync(int userId)
         {
             var shoppingList = await _shoppingListRepository.GetShoppingListByUserIdAsync(userId);

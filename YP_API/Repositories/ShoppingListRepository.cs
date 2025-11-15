@@ -12,13 +12,9 @@ namespace YP_API.Repositories
         public async Task<ShoppingList> GetCurrentShoppingListAsync(int userId)
         {
             return await _context.ShoppingLists
-                .Include(sl => sl.WeeklyMenu) 
                 .Include(sl => sl.Items)
                     .ThenInclude(sli => sli.Ingredient)
-                .Where(sl => sl.MenuId != null &&
-                           sl.WeeklyMenu != null &&
-                           sl.WeeklyMenu.UserId == userId && 
-                           !sl.IsCompleted)
+                .Where(sl => sl.UserId == userId && !sl.IsCompleted)
                 .OrderByDescending(sl => sl.CreatedAt)
                 .FirstOrDefaultAsync();
         }
