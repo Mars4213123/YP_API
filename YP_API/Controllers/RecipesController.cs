@@ -251,6 +251,8 @@ namespace YP_API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError($"Error in ToggleFavorite: {ex.Message}");
+                _logger.LogError($"Stack trace: {ex.StackTrace}");
+
                 return BadRequest(new
                 {
                     success = false,

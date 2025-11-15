@@ -61,7 +61,6 @@ builder.Services.AddDbContext<RecipePlannerContext>(options =>
     options.EnableSensitiveDataLogging();
     options.EnableDetailedErrors();
 });
-
 builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
 builder.Services.AddScoped<IIngredientRepository, IngredientRepository>();
 builder.Services.AddScoped<IMenuRepository, MenuRepository>();
