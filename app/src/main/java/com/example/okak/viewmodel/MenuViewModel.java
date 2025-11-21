@@ -7,6 +7,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import com.example.okak.network.ApiClient;
 import com.example.okak.network.ApiService;
+import java.util.ArrayList;
 import java.util.List;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -25,23 +26,11 @@ public class MenuViewModel extends AndroidViewModel {
         super(application);
     }
 
-    public LiveData<ApiService.MenuDetail> getCurrentMenu() {
-        return currentMenuLiveData;
-    }
+    public LiveData<ApiService.MenuDetail> getCurrentMenu() { return currentMenuLiveData; }
+    public LiveData<List<ApiService.MenuShort>> getMenuHistory() { return menuHistoryLiveData; }
+    public LiveData<Boolean> getLoading() { return loadingLiveData; }
+    public LiveData<String> getError() { return errorLiveData; }
 
-    public LiveData<List<ApiService.MenuShort>> getMenuHistory() {
-        return menuHistoryLiveData;
-    }
-
-    public LiveData<Boolean> getLoading() {
-        return loadingLiveData;
-    }
-
-    public LiveData<String> getError() {
-        return errorLiveData;
-    }
-
-    // ДОБАВЛЕН МЕТОД
     public void setUserId(int userId) {
         this.currentUserId = userId;
     }
@@ -56,7 +45,6 @@ public class MenuViewModel extends AndroidViewModel {
 
         loadingLiveData.setValue(true);
         ApiService apiService = ApiClient.getApiService(getApplication());
-
         apiService.getCurrentMenu(currentUserId)
                 .enqueue(new Callback<ApiService.ApiResponse<ApiService.MenuDetail>>() {
                     @Override
@@ -67,6 +55,7 @@ public class MenuViewModel extends AndroidViewModel {
                         if (response.isSuccessful() && response.body() != null && response.body().success) {
                             currentMenuLiveData.setValue(response.body().data);
                         } else {
+                            // It's acceptable to have no menu
                             errorLiveData.setValue("Меню не найдено");
                         }
                     }
@@ -92,7 +81,13 @@ public class MenuViewModel extends AndroidViewModel {
         loadingLiveData.setValue(true);
         ApiService apiService = ApiClient.getApiService(getApplication());
 
-        apiService.generateMenu(currentUserId, days, mealTypes, useInventory)
+        // Handle nulls for safe API call
+        List<String> safeCuisines = cuisines != null ? cuisines : new ArrayList<>();
+        List<String> safeMealTypes = mealTypes != null ? mealTypes : new ArrayList<>();
+
+        // Note: Passing null for targetCalories is fine for Retrofit Double objects, it sends null.
+
+        apiService.generateMenu(currentUserId, days, targetCalories, safeCuisines, safeMealTypes, useInventory)
                 .enqueue(new Callback<ApiService.ApiResponse<ApiService.MenuShort>>() {
                     @Override
                     public void onResponse(@NonNull Call<ApiService.ApiResponse<ApiService.MenuShort>> call,
@@ -102,7 +97,13 @@ public class MenuViewModel extends AndroidViewModel {
                         if (response.isSuccessful() && response.body() != null && response.body().success) {
                             loadCurrentMenu();
                         } else {
-                            errorLiveData.setValue("Ошибка генерации меню");
+                            String errMsg = "Ошибка генерации меню";
+                            if (response.body() != null && response.body().message != null) {
+                                errMsg = response.body().message;
+                            } else if (response.errorBody() != null) {
+                                errMsg += " (Code: " + response.code() + ")";
+                            }
+                            errorLiveData.setValue(errMsg);
                         }
                     }
 

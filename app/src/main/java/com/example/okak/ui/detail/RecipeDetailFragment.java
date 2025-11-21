@@ -1,8 +1,6 @@
 package com.example.okak.ui.detail;
 
-import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -21,16 +19,17 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.example.okak.R;
 import com.example.okak.adapters.IngredientAdapter;
+import com.example.okak.network.AuthTokenManager;
 import com.example.okak.viewmodel.RecipeViewModel;
 
 public class RecipeDetailFragment extends Fragment {
 
     private RecipeViewModel recipeViewModel;
-    private int recipeId;
+    private int recipeId = -1;
     private int userId = -1;
 
     private ImageView ivImage;
-    private TextView tvTitle, tvDescription, tvInstructions;
+    private TextView tvTitle, tvDescription, tvInstructions, tvInfo;
     private RecyclerView rvIngredients;
     private Button btnFavorite;
     private ProgressBar progressBar;
@@ -46,30 +45,33 @@ public class RecipeDetailFragment extends Fragment {
         rvIngredients = root.findViewById(R.id.rvIngredients);
         btnFavorite = root.findViewById(R.id.btnToggleFavorite);
         progressBar = root.findViewById(R.id.progressBarDetail);
+        // Предположим, что у вас есть tvRecipeCalories, если нет - игнорируем
+        // TextView tvCalories = root.findViewById(R.id.tvRecipeCalories);
 
         recipeViewModel = new ViewModelProvider(requireActivity()).get(RecipeViewModel.class);
-
-        // Получаем userId
-        SharedPreferences prefs = requireContext().getSharedPreferences("user_prefs", requireContext().MODE_PRIVATE);
-        userId = prefs.getInt("user_id", -1);
-
-        // Устанавливаем userId в ViewModel
+        userId = AuthTokenManager.getUserId(requireContext());
         if (userId != -1) {
             recipeViewModel.setUserId(userId);
         }
 
+        // Получаем ID рецепта из аргументов
         if (getArguments() != null) {
-            recipeId = getArguments().getInt("recipeId");
+            recipeId = getArguments().getInt("recipeId", -1);
         }
 
-        recipeViewModel.loadRecipeDetail(recipeId);
+        if (recipeId != -1) {
+            recipeViewModel.loadRecipeDetail(recipeId);
+        } else {
+            Toast.makeText(getContext(), "Ошибка: ID рецепта не найден", Toast.LENGTH_SHORT).show();
+        }
+
         setupObservers();
 
         rvIngredients.setLayoutManager(new LinearLayoutManager(getContext()));
 
         btnFavorite.setOnClickListener(v -> {
             if (userId == -1) {
-                Toast.makeText(getContext(), "Необходимо авторизоваться", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Сначала авторизуйтесь", Toast.LENGTH_SHORT).show();
                 return;
             }
             recipeViewModel.toggleFavorite(recipeId);
@@ -82,27 +84,28 @@ public class RecipeDetailFragment extends Fragment {
         recipeViewModel.getRecipeDetail().observe(getViewLifecycleOwner(), detail -> {
             if (detail != null) {
                 tvTitle.setText(detail.title);
-                tvDescription.setText(detail.description);
-                tvInstructions.setText(detail.instructions);
+                tvDescription.setText(detail.description != null ? detail.description : "Описание отсутствует");
+                tvInstructions.setText(detail.instructions != null ? detail.instructions : "Инструкции отсутствуют");
 
-                // ИСПРАВЛЕНО - загрузка изображения
-                Glide.with(this)
-                        .load(detail.imageUrl)
-                        .placeholder(R.drawable.placeholder_recipe) // ИСПРАВЛЕНО
-                        .error(R.drawable.placeholder_recipe)       // ИСПРАВЛЕНО
-                        .into(ivImage);
+                // Загрузка фото
+                if (detail.imageUrl != null && !detail.imageUrl.isEmpty()) {
+                    Glide.with(this)
+                            .load(detail.imageUrl)
+                            .placeholder(R.drawable.placeholder_recipe)
+                            .error(R.drawable.placeholder_recipe)
+                            .into(ivImage);
+                } else {
+                    ivImage.setImageResource(R.drawable.placeholder_recipe);
+                }
 
-                IngredientAdapter adapter = new IngredientAdapter(detail.ingredients);
-                rvIngredients.setAdapter(adapter);
+                // Ингредиенты
+                if (detail.ingredients != null) {
+                    IngredientAdapter adapter = new IngredientAdapter(detail.ingredients);
+                    rvIngredients.setAdapter(adapter);
+                }
 
-                // ИСПРАВЛЕНО - установка цвета кнопки
-                btnFavorite.setText(detail.isFavorite ? "Удалить из избранного" : "В избранное");
-
-                int color = detail.isFavorite
-                        ? ContextCompat.getColor(requireContext(), R.color.red)
-                        : ContextCompat.getColor(requireContext(), R.color.primary_green);
-
-                btnFavorite.setBackgroundTintList(ColorStateList.valueOf(color)); // ИСПРАВЛЕНО
+                // Кнопка избранного
+                updateFavoriteButton(detail.isFavorite);
             }
         });
 
@@ -115,5 +118,17 @@ public class RecipeDetailFragment extends Fragment {
                 Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void updateFavoriteButton(boolean isFavorite) {
+        btnFavorite.setText(isFavorite ? "Удалить из избранного" : "В избранное");
+        int colorRes = isFavorite ? R.color.red : R.color.primary_green; // Убедитесь, что эти цвета есть в colors.xml
+        // Fallback, если цветов нет, используем системные
+        try {
+            int color = ContextCompat.getColor(requireContext(), colorRes);
+            btnFavorite.setBackgroundTintList(ColorStateList.valueOf(color));
+        } catch (Exception e) {
+            // Игнорируем, если цвет не найден
+        }
     }
 }

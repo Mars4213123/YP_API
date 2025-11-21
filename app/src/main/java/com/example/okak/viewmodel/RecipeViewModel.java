@@ -7,22 +7,17 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import com.example.okak.network.ApiClient;
 import com.example.okak.network.ApiService;
+import com.example.okak.network.AuthTokenManager;
 import java.util.List;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
 public class RecipeViewModel extends AndroidViewModel {
-    // LiveData для списка рецептов
+    // LiveData
     private final MutableLiveData<List<ApiService.RecipeShort>> recipesLiveData = new MutableLiveData<>();
-
-    // LiveData для детальной информации о рецепте
     private final MutableLiveData<ApiService.RecipeDetail> recipeDetailLiveData = new MutableLiveData<>();
-
-    // LiveData для избранных рецептов
     private final MutableLiveData<List<ApiService.RecipeShort>> favoritesLiveData = new MutableLiveData<>();
-
-    // Общие LiveData
     private final MutableLiveData<Boolean> loadingLiveData = new MutableLiveData<>(false);
     private final MutableLiveData<String> errorLiveData = new MutableLiveData<>();
 
@@ -30,40 +25,23 @@ public class RecipeViewModel extends AndroidViewModel {
 
     public RecipeViewModel(@NonNull Application application) {
         super(application);
+        currentUserId = AuthTokenManager.getUserId(application);
     }
 
-// ============================================
-// Getters для LiveData
-// ============================================
-
-    public LiveData<List<ApiService.RecipeShort>> getRecipes() {
-        return recipesLiveData;
-    }
-
-    public LiveData<ApiService.RecipeDetail> getRecipeDetail() {
-        return recipeDetailLiveData;
-    }
-
-    public LiveData<List<ApiService.RecipeShort>> getFavorites() {
-        return favoritesLiveData;
-    }
-
-    public LiveData<Boolean> getLoading() {
-        return loadingLiveData;
-    }
-
-    public LiveData<String> getError() {
-        return errorLiveData;
-    }
+    // Getters
+    public LiveData<List<ApiService.RecipeShort>> getRecipes() { return recipesLiveData; }
+    public LiveData<ApiService.RecipeDetail> getRecipeDetail() { return recipeDetailLiveData; }
+    public LiveData<List<ApiService.RecipeShort>> getFavorites() { return favoritesLiveData; }
+    public LiveData<Boolean> getLoading() { return loadingLiveData; }
+    public LiveData<String> getError() { return errorLiveData; }
 
     public void setUserId(int userId) {
         this.currentUserId = userId;
     }
 
-// ============================================
-// Поиск рецептов
-// ============================================
-
+    // ============================================
+    // ПОИСК
+    // ============================================
     public void searchRecipes(
             String name,
             List<String> tags,
@@ -79,13 +57,17 @@ public class RecipeViewModel extends AndroidViewModel {
             Integer pageSize) {
 
         if (Boolean.TRUE.equals(loadingLiveData.getValue())) return;
-
         loadingLiveData.setValue(true);
+
         ApiService apiService = ApiClient.getApiService(getApplication());
 
+        // ИСПРАВЛЕНИЕ ДЛЯ ПОИСКА: Сервер требует строки не null
+        String safeName = (name == null) ? "" : name;
+        String safeDifficulty = (difficulty == null) ? "" : difficulty;
+
         apiService.getRecipes(
-                name, tags, excludedAllergens, cuisineTypes,
-                maxPrepTime, maxCookTime, maxCalories, difficulty,
+                safeName, tags, excludedAllergens, cuisineTypes,
+                maxPrepTime, maxCookTime, maxCalories, safeDifficulty,
                 sortBy, sortDescending, pageNumber, pageSize
         ).enqueue(new Callback<ApiService.ApiResponse<List<ApiService.RecipeShort>>>() {
             @Override
@@ -98,10 +80,15 @@ public class RecipeViewModel extends AndroidViewModel {
                         recipesLiveData.setValue(response.body().data);
                     } else {
                         errorLiveData.setValue(response.body().error != null ?
-                                response.body().error : "Failed to load recipes");
+                                response.body().error : "Не удалось загрузить рецепты");
                     }
                 } else {
-                    errorLiveData.setValue("Error: " + response.code());
+                    // Логирование ошибки валидации (400)
+                    if (response.code() == 400) {
+                        errorLiveData.setValue("Ничего не найдено (400)");
+                    } else {
+                        errorLiveData.setValue("Ошибка сервера: " + response.code());
+                    }
                 }
             }
 
@@ -109,40 +96,32 @@ public class RecipeViewModel extends AndroidViewModel {
             public void onFailure(@NonNull Call<ApiService.ApiResponse<List<ApiService.RecipeShort>>> call,
                                   @NonNull Throwable t) {
                 loadingLiveData.setValue(false);
-                errorLiveData.setValue("Network error: " + t.getMessage());
+                errorLiveData.setValue("Ошибка сети: " + t.getMessage());
             }
         });
     }
 
-    /**
-     * Упрощенный поиск по имени
-     */
     public void searchByName(String name) {
         searchRecipes(name, null, null, null, null, null, null, null,
                 "Title", false, 1, 20);
     }
 
-    /**
-     * Загрузить все рецепты
-     */
     public void loadAllRecipes() {
         searchRecipes(null, null, null, null, null, null, null, null,
                 "Title", false, 1, 20);
     }
 
-// ============================================
-// Детальная информация о рецепте
-// ============================================
-
+    // ============================================
+    // ДЕТАЛИ РЕЦЕПТА
+    // ============================================
     public void loadRecipeDetail(int recipeId) {
-        if (Boolean.TRUE.equals(loadingLiveData.getValue())) return;
-
         loadingLiveData.setValue(true);
         ApiService apiService = ApiClient.getApiService(getApplication());
 
-        Integer userId = currentUserId == -1 ? null : currentUserId;
+        // Если ID пользователя есть, отправляем его для проверки "Избранного"
+        Integer userIdParam = currentUserId != -1 ? currentUserId : null;
 
-        apiService.getRecipeDetail(recipeId, userId)
+        apiService.getRecipeDetail(recipeId, userIdParam)
                 .enqueue(new Callback<ApiService.ApiResponse<ApiService.RecipeDetail>>() {
                     @Override
                     public void onResponse(@NonNull Call<ApiService.ApiResponse<ApiService.RecipeDetail>> call,
@@ -153,11 +132,10 @@ public class RecipeViewModel extends AndroidViewModel {
                             if (response.body().success) {
                                 recipeDetailLiveData.setValue(response.body().data);
                             } else {
-                                errorLiveData.setValue(response.body().error != null ?
-                                        response.body().error : "Failed to load recipe details");
+                                errorLiveData.setValue("Ошибка данных рецепта");
                             }
                         } else {
-                            errorLiveData.setValue("Error: " + response.code());
+                            errorLiveData.setValue("Ошибка загрузки: " + response.code());
                         }
                     }
 
@@ -165,23 +143,21 @@ public class RecipeViewModel extends AndroidViewModel {
                     public void onFailure(@NonNull Call<ApiService.ApiResponse<ApiService.RecipeDetail>> call,
                                           @NonNull Throwable t) {
                         loadingLiveData.setValue(false);
-                        errorLiveData.setValue("Network error: " + t.getMessage());
+                        errorLiveData.setValue("Ошибка сети: " + t.getMessage());
                     }
                 });
     }
 
-// ============================================
-// Избранное
-// ============================================
-
+    // ============================================
+    // ИЗБРАННОЕ
+    // ============================================
     public void toggleFavorite(int recipeId) {
         if (currentUserId == -1) {
-            errorLiveData.setValue("Пользователь не авторизован");
+            errorLiveData.setValue("Необходимо авторизоваться");
             return;
         }
 
         ApiService apiService = ApiClient.getApiService(getApplication());
-
         apiService.toggleFavorite(recipeId, currentUserId)
                 .enqueue(new Callback<ApiService.ApiResponse<ApiService.ToggleFavoriteResponse>>() {
                     @Override
@@ -189,69 +165,53 @@ public class RecipeViewModel extends AndroidViewModel {
                                            @NonNull Response<ApiService.ApiResponse<ApiService.ToggleFavoriteResponse>> response) {
                         if (response.isSuccessful() && response.body() != null) {
                             if (response.body().success) {
-                                // Обновить статус избранного в текущем рецепте
-                                ApiService.RecipeDetail currentDetail = recipeDetailLiveData.getValue();
-                                if (currentDetail != null) {
-                                    currentDetail.isFavorite = response.body().data.isFavorite;
-                                    recipeDetailLiveData.setValue(currentDetail);
+                                // Обновляем локально состояние в деталях
+                                ApiService.RecipeDetail current = recipeDetailLiveData.getValue();
+                                if (current != null && current.id == recipeId) {
+                                    current.isFavorite = response.body().data.isFavorite;
+                                    recipeDetailLiveData.setValue(current);
                                 }
-
-                                // Перезагрузить избранное
+                                // Обновляем список избранного
                                 loadFavorites();
-                            } else {
-                                errorLiveData.setValue(response.body().error != null ?
-                                        response.body().error : "Failed to toggle favorite");
                             }
                         } else {
-                            errorLiveData.setValue("Error: " + response.code());
+                            errorLiveData.setValue("Не удалось изменить избранное");
                         }
                     }
 
                     @Override
                     public void onFailure(@NonNull Call<ApiService.ApiResponse<ApiService.ToggleFavoriteResponse>> call,
                                           @NonNull Throwable t) {
-                        errorLiveData.setValue("Network error: " + t.getMessage());
+                        errorLiveData.setValue("Ошибка сети");
                     }
                 });
     }
 
     public void loadFavorites() {
-        if (currentUserId == -1) {
-            errorLiveData.setValue("Пользователь не авторизован");
-            return;
-        }
+        if (currentUserId == -1) return;
 
-        if (Boolean.TRUE.equals(loadingLiveData.getValue())) return;
+        // Не блокируем UI загрузкой при обновлении списка в фоне
+        // loadingLiveData.setValue(true);
 
-        loadingLiveData.setValue(true);
         ApiService apiService = ApiClient.getApiService(getApplication());
-
         apiService.getFavorites(currentUserId)
                 .enqueue(new Callback<ApiService.ApiResponse<List<ApiService.RecipeShort>>>() {
                     @Override
                     public void onResponse(@NonNull Call<ApiService.ApiResponse<List<ApiService.RecipeShort>>> call,
                                            @NonNull Response<ApiService.ApiResponse<List<ApiService.RecipeShort>>> response) {
-                        loadingLiveData.setValue(false);
-
+                        // loadingLiveData.setValue(false);
                         if (response.isSuccessful() && response.body() != null) {
                             if (response.body().success) {
                                 favoritesLiveData.setValue(response.body().data);
-                            } else {
-                                errorLiveData.setValue(response.body().error != null ?
-                                        response.body().error : "Failed to load favorites");
                             }
-                        } else {
-                            errorLiveData.setValue("Error: " + response.code());
                         }
                     }
 
                     @Override
                     public void onFailure(@NonNull Call<ApiService.ApiResponse<List<ApiService.RecipeShort>>> call,
                                           @NonNull Throwable t) {
-                        loadingLiveData.setValue(false);
-                        errorLiveData.setValue("Network error: " + t.getMessage());
+                        // loadingLiveData.setValue(false);
                     }
                 });
     }
-
 }

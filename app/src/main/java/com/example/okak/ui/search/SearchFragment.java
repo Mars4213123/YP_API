@@ -33,7 +33,7 @@ public class SearchFragment extends Fragment {
 
     private Handler searchHandler = new Handler(Looper.getMainLooper());
     private Runnable searchRunnable;
-    private String lastQuery = ""; // ДОБАВЛЕНО - отслеживание последнего запроса
+    private String lastQuery = "";
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -45,13 +45,13 @@ public class SearchFragment extends Fragment {
         progressBar = root.findViewById(R.id.progressBarSearch);
         tvEmptySearch = root.findViewById(R.id.tvEmptySearch);
 
-        recipeViewModel = new ViewModelProvider(requireActivity()).get(RecipeViewModel.class); // ИЗМЕНЕНО на requireActivity()
+        recipeViewModel = new ViewModelProvider(requireActivity()).get(RecipeViewModel.class);
 
         setupRecyclerView();
         setupObservers();
         setupSearchListener();
 
-        // Загружаем все рецепты только при первом запуске
+        // Грузим все рецепты при первом запуске
         if (savedInstanceState == null) {
             loadRecipes("");
         }
@@ -64,12 +64,13 @@ public class SearchFragment extends Fragment {
         rvResults.setLayoutManager(new LinearLayoutManager(getContext()));
         rvResults.setAdapter(adapter);
 
-        // ДОБАВЛЕНО - обработчик кликов
+        // Навигация при клике
         adapter.setOnRecipeClickListener(recipe -> {
             Bundle bundle = new Bundle();
             bundle.putInt("recipeId", recipe.id);
+            // Переход по ID фрагмента
             Navigation.findNavController(requireView())
-                    .navigate(R.id.action_to_recipeDetail, bundle);
+                    .navigate(R.id.recipeDetailFragment, bundle);
         });
     }
 
@@ -95,9 +96,12 @@ public class SearchFragment extends Fragment {
 
         recipeViewModel.getError().observe(getViewLifecycleOwner(), error -> {
             if (error != null && !error.isEmpty()) {
-                Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
-                tvEmptySearch.setVisibility(View.VISIBLE);
-                tvEmptySearch.setText("Ошибка загрузки");
+                // Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
+                // Не показываем тост, если это просто "ничего не найдено"
+                if (adapter.getItemCount() == 0) {
+                    tvEmptySearch.setVisibility(View.VISIBLE);
+                    tvEmptySearch.setText(error);
+                }
             }
         });
     }
@@ -106,49 +110,41 @@ public class SearchFragment extends Fragment {
         etSearch.addTextChangedListener(new TextWatcher() {
             @Override
             public void afterTextChanged(Editable s) {
-                // Отменяем предыдущий поиск
                 if (searchRunnable != null) {
                     searchHandler.removeCallbacks(searchRunnable);
                 }
 
-                // Запускаем новый поиск с задержкой 500ms
                 searchRunnable = () -> {
                     String query = s.toString().trim();
-
-                    // ДОБАВЛЕНО - проверка на дубликат запроса
                     if (!query.equals(lastQuery)) {
                         lastQuery = query;
                         loadRecipes(query);
                     }
                 };
-
-                searchHandler.postDelayed(searchRunnable, 500);
+                // Задержка 600мс перед поиском
+                searchHandler.postDelayed(searchRunnable, 600);
             }
 
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-            }
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
         });
     }
 
     private void loadRecipes(String query) {
+        // Передаем пустые строки вместо null там, где сервер может ругаться
         recipeViewModel.searchRecipes(
-                query.isEmpty() ? null : query,  // name
-                null,                            // tags
-                null,                            // excludedAllergens
-                null,                            // cuisineTypes
-                null,                            // maxPrepTime
-                null,                            // maxCookTime
-                null,                            // maxCalories
-                null,                            // difficulty
-                "Title",                         // sortBy
-                false,                           // sortDescending
-                1,                               // pageNumber
-                20                               // pageSize
+                query,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "easy",
+                "Title",
+                false,
+                1,
+                20
         );
     }
 

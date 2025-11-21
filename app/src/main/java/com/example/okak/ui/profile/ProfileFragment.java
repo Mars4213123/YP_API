@@ -32,46 +32,40 @@ public class ProfileFragment extends Fragment {
         tvAllergies = root.findViewById(R.id.tvAllergies);
         btnLogout = root.findViewById(R.id.btnLogout);
         progressBar = root.findViewById(R.id.progressBarProfile);
+
         userViewModel = new ViewModelProvider(this).get(UserViewModel.class);
         setupObservers();
+
         btnLogout.setOnClickListener(v -> logout());
+
+        // Загружаем профиль
         userViewModel.loadProfile();
+
         return root;
     }
 
     private void setupObservers() {
         userViewModel.getProfile().observe(getViewLifecycleOwner(), profile -> {
             if (profile != null) {
-                // Отображаем данные профиля
-                tvUsername.setText("Имя пользователя: " + profile.username);
+                tvUsername.setText("Никнейм: " + profile.username);
                 tvEmail.setText("Email: " + profile.email);
 
-                // ИСПРАВЛЕНИЕ: Проверка на null для fullName
                 if (profile.fullName != null && !profile.fullName.isEmpty()) {
-                    tvFullName.setText("Полное имя: " + profile.fullName);
+                    tvFullName.setText("Имя: " + profile.fullName);
                     tvFullName.setVisibility(View.VISIBLE);
                 } else {
                     tvFullName.setVisibility(View.GONE);
                 }
-            } else {
-                // Если профиль не загрузился, показываем заглушку
-                tvUsername.setText("Имя пользователя: Не загружено");
-                tvEmail.setText("Email: Не загружено");
-                tvFullName.setText("Полное имя: Не указано");
             }
         });
 
         userViewModel.getAllergies().observe(getViewLifecycleOwner(), allergies -> {
             if (allergies != null && !allergies.isEmpty()) {
-                // Отображаем аллергии белым текстом
                 String allergiesStr = String.join(", ", allergies);
                 tvAllergies.setText("Аллергии: " + allergiesStr);
-                tvAllergies.setTextColor(getResources().getColor(R.color.white, null));
                 tvAllergies.setVisibility(View.VISIBLE);
             } else {
-                // Если аллергий нет, показываем сообщение
-                tvAllergies.setText("Аллергии: Не указаны");
-                tvAllergies.setTextColor(getResources().getColor(android.R.color.darker_gray, null));
+                tvAllergies.setText("Аллергии: Нет");
                 tvAllergies.setVisibility(View.VISIBLE);
             }
         });
@@ -79,17 +73,12 @@ public class ProfileFragment extends Fragment {
         userViewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {
             progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
         });
-
-        userViewModel.getError().observe(getViewLifecycleOwner(), error -> {
-            if (error != null) {
-                Toast.makeText(getContext(), "Ошибка: " + error, Toast.LENGTH_SHORT).show();
-            }
-        });
     }
 
-
     private void logout() {
-        AuthTokenManager.clearToken(requireContext().getApplicationContext());
+        // Полная очистка через менеджер
+        AuthTokenManager.clearData(requireContext());
+
         Toast.makeText(getContext(), "Выход выполнен", Toast.LENGTH_SHORT).show();
         Intent intent = new Intent(getActivity(), LoginActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);

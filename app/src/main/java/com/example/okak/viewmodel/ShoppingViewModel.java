@@ -13,10 +13,10 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 public class ShoppingViewModel extends AndroidViewModel {
-    private MutableLiveData<ApiService.ShoppingList> shoppingListLiveData = new MutableLiveData<>();
-    private MutableLiveData<Boolean> loadingLiveData = new MutableLiveData<>(false);
-    private MutableLiveData<String> errorLiveData = new MutableLiveData<>();
-    private int currentUserId = -1;
+    private final MutableLiveData<ApiService.ShoppingList> shoppingListLiveData = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> loadingLiveData = new MutableLiveData<>(false);
+    private final MutableLiveData<String> errorLiveData = new MutableLiveData<>();
+    private int currentUserId;
 
     public ShoppingViewModel(@NonNull Application application) {
         super(application);
@@ -25,23 +25,28 @@ public class ShoppingViewModel extends AndroidViewModel {
 
     public void loadCurrentShoppingList() {
         if (currentUserId == -1) {
-            errorLiveData.setValue("Ошибка: не найден ID пользователя!");
-            return;
+            // Пробуем обновить ID, если он был сохранен позже
+            currentUserId = AuthTokenManager.getUserId(getApplication());
+            if (currentUserId == -1) {
+                errorLiveData.setValue("Пользователь не найден");
+                return;
+            }
         }
         loadingLiveData.setValue(true);
         ApiService apiService = ApiClient.getApiService(getApplication());
-
         apiService.getCurrentShoppingList(currentUserId).enqueue(new Callback<ApiService.ShoppingList>() {
             @Override
             public void onResponse(@NonNull Call<ApiService.ShoppingList> call,
                                    @NonNull Response<ApiService.ShoppingList> response) {
                 loadingLiveData.setValue(false);
+
                 if (response.isSuccessful() && response.body() != null) {
                     shoppingListLiveData.setValue(response.body());
                 } else {
+                    // 404 - это нормально, если списка еще нет
                     shoppingListLiveData.setValue(null);
                     if (response.code() != 404) {
-                        errorLiveData.setValue("Ошибка загрузки списка");
+                        errorLiveData.setValue("Ошибка: " + response.code());
                     }
                 }
             }
@@ -55,10 +60,8 @@ public class ShoppingViewModel extends AndroidViewModel {
     }
 
     public void generateShoppingList(int menuId) {
-        if (currentUserId == -1) {
-            errorLiveData.setValue("Ошибка: не найден ID пользователя!");
-            return;
-        }
+        if (currentUserId == -1) return;
+
         loadingLiveData.setValue(true);
         ApiService apiService = ApiClient.getApiService(getApplication());
 
@@ -68,12 +71,14 @@ public class ShoppingViewModel extends AndroidViewModel {
                     public void onResponse(@NonNull Call<ApiService.ApiResponse<ApiService.GenerateShoppingListResponse>> call,
                                            @NonNull Response<ApiService.ApiResponse<ApiService.GenerateShoppingListResponse>> response) {
                         loadingLiveData.setValue(false);
+                        // Обработка успешного ответа или ошибки 500 (из-за бага на бэкенде)
                         if (response.isSuccessful() && response.body() != null && response.body().success) {
                             loadCurrentShoppingList();
-                        } else if (response.body() != null) {
-                            errorLiveData.setValue(response.body().message != null ? response.body().message : "Ошибка генерации");
                         } else {
-                            errorLiveData.setValue("Ошибка соединения: " + response.code());
+                            // Даже если бэк упал, попробуем загрузить список, вдруг он создался
+                            loadCurrentShoppingList();
+                            String msg = (response.body() != null) ? response.body().message : "Ошибка генерации (Server Error)";
+                            errorLiveData.setValue(msg);
                         }
                     }
 
@@ -86,52 +91,27 @@ public class ShoppingViewModel extends AndroidViewModel {
     }
 
     public void toggleItem(int itemId, boolean isChecked) {
-        if (shoppingListLiveData.getValue() == null) {
-            errorLiveData.setValue("Список покупок не загружен");
-            return;
-        }
+        if (shoppingListLiveData.getValue() == null) return;
 
         int listId = shoppingListLiveData.getValue().id;
         ApiService apiService = ApiClient.getApiService(getApplication());
 
         apiService.toggleShoppingListItem(listId, itemId, isChecked).enqueue(new Callback<ApiService.BaseResponse>() {
             @Override
-            public void onResponse(@NonNull Call<ApiService.BaseResponse> call,
-                                   @NonNull Response<ApiService.BaseResponse> response) {
-                if (response.isSuccessful()) {
-                    ApiService.ShoppingList currentList = shoppingListLiveData.getValue();
-                    if (currentList != null && currentList.items != null) {
-                        for (ApiService.ShoppingListItem item : currentList.items) {
-                            if (item.id == itemId) {
-                                item.isBought = isChecked;
-                                break;
-                            }
-                        }
-                        shoppingListLiveData.setValue(currentList);
-                    }
-                } else {
-                    errorLiveData.setValue("Ошибка обновления");
-                    loadCurrentShoppingList();
+            public void onResponse(@NonNull Call<ApiService.BaseResponse> call, @NonNull Response<ApiService.BaseResponse> response) {
+                if (!response.isSuccessful()) {
+                    errorLiveData.setValue("Не удалось обновить статус");
+                    loadCurrentShoppingList(); // Откат изменений
                 }
             }
-
             @Override
             public void onFailure(@NonNull Call<ApiService.BaseResponse> call, @NonNull Throwable t) {
-                errorLiveData.setValue("Ошибка сети: " + t.getMessage());
-                loadCurrentShoppingList();
+                errorLiveData.setValue("Ошибка сети");
             }
         });
     }
 
-    public LiveData<ApiService.ShoppingList> getShoppingList() {
-        return shoppingListLiveData;
-    }
-
-    public LiveData<Boolean> getLoading() {
-        return loadingLiveData;
-    }
-
-    public LiveData<String> getError() {
-        return errorLiveData;
-    }
+    public LiveData<ApiService.ShoppingList> getShoppingList() { return shoppingListLiveData; }
+    public LiveData<Boolean> getLoading() { return loadingLiveData; }
+    public LiveData<String> getError() { return errorLiveData; }
 }

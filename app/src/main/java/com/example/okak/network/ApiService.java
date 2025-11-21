@@ -34,29 +34,27 @@ public interface ApiService {
 
     @GET("api/Recipes")
     Call<ApiResponse<List<RecipeShort>>> getRecipes(
-            @Query("Name") String name,                           // string (опционально)
-            @Query("Tags[]") List<String> tags,                   // array[string]
-            @Query("ExcludedAllergens[]") List<String> excludedAllergens, // array[string]
-            @Query("CuisineTypes[]") List<String> cuisineTypes,   // array[string]
-            @Query("MaxPrepTime") Integer maxPrepTime,            // integer
-            @Query("MaxCookTime") Integer maxCookTime,            // integer
-            @Query("MaxCalories") Double maxCalories,             // number (double)
-            @Query("Difficulty") String difficulty,               // string (опционально)
-            @Query("SortBy") String sortBy,                       // string
-            @Query("SortDescending") Boolean sortDescending,      // boolean
-            @Query("PageNumber") Integer pageNumber,              // integer
-            @Query("PageSize") Integer pageSize                   // integer
+            @Query("Name") String name,
+            @Query("Tags") List<String> tags,
+            @Query("ExcludedAllergens") List<String> excludedAllergens,
+            @Query("CuisineTypes") List<String> cuisineTypes,
+            @Query("MaxPrepTime") Integer maxPrepTime,
+            @Query("MaxCookTime") Integer maxCookTime,
+            @Query("MaxCalories") Double maxCalories,
+            @Query("Difficulty") String difficulty,
+            @Query("SortBy") String sortBy,
+            @Query("SortDescending") Boolean sortDescending,
+            @Query("PageNumber") Integer pageNumber,
+            @Query("PageSize") Integer pageSize
     );
+
     class ApiResponse<T> {
         @SerializedName("success")
         public boolean success;
-
         @SerializedName("message")
         public String message;
-
         @SerializedName("error")
         public String error;
-
         @SerializedName("data")
         public T data;
     }
@@ -92,7 +90,9 @@ public interface ApiService {
     Call<ApiResponse<MenuShort>> generateMenu(
             @Path("userId") int userId,
             @Field("days") int days,
-            @Field("mealTypes[]") List<String> mealTypes,
+            @Field("targetCaloriesPerDay") Double targetCaloriesPerDay,
+            @Field("cuisineTags") List<String> cuisineTags,
+            @Field("mealTypes") List<String> mealTypes,
             @Field("useInventory") boolean useInventory
     );
 
@@ -156,15 +156,11 @@ public interface ApiService {
     // DTOs and Response Classes
     // ============================================
 
-
-
     class BaseResponse {
         @SerializedName("success")
         public boolean success;
-
         @SerializedName("message")
         public String message;
-
         @SerializedName("error")
         public String error;
     }
@@ -172,16 +168,12 @@ public interface ApiService {
     class UserAuthResponse {
         @SerializedName("id")
         public int id;
-
         @SerializedName("username")
         public String username;
-
         @SerializedName("email")
         public String email;
-
         @SerializedName("fullName")
         public String fullName;
-
         @SerializedName("message")
         public String message;
     }
@@ -189,28 +181,20 @@ public interface ApiService {
     class RecipeShort {
         @SerializedName("id")
         public int id;
-
         @SerializedName("title")
         public String title;
-
         @SerializedName("imageUrl")
         public String imageUrl;
-
         @SerializedName("calories")
         public double calories;
-
         @SerializedName("prepTime")
         public int prepTime;
-
         @SerializedName("cookTime")
         public int cookTime;
-
         @SerializedName("cuisineType")
         public String cuisineType;
-
         @SerializedName("difficulty")
         public String difficulty;
-
         @SerializedName("isFavorite")
         public boolean isFavorite;
     }
@@ -218,13 +202,10 @@ public interface ApiService {
     class RecipeDetail extends RecipeShort {
         @SerializedName("description")
         public String description;
-
         @SerializedName("instructions")
         public String instructions;
-
         @SerializedName("servings")
         public int servings;
-
         @SerializedName("ingredients")
         public List<Ingredient> ingredients;
     }
@@ -232,10 +213,8 @@ public interface ApiService {
     class Ingredient {
         @SerializedName("name")
         public String name;
-
         @SerializedName("quantity")
         public double quantity;
-
         @SerializedName("unit")
         public String unit;
     }
@@ -243,16 +222,12 @@ public interface ApiService {
     class MenuShort {
         @SerializedName("id")
         public int id;
-
         @SerializedName("name")
         public String name;
-
         @SerializedName("startDate")
         public String startDate;
-
         @SerializedName("endDate")
         public String endDate;
-
         @SerializedName("totalCalories")
         public double totalCalories;
     }
@@ -265,7 +240,6 @@ public interface ApiService {
     class MenuDay {
         @SerializedName("date")
         public String date;
-
         public double totalCalories;
 
         @SerializedName("meals")
@@ -275,19 +249,14 @@ public interface ApiService {
     class Meal {
         @SerializedName("id")
         public int id;
-
         @SerializedName("recipeId")
         public int recipeId;
-
         @SerializedName("recipeTitle")
         public String recipeTitle;
-
         @SerializedName("mealType")
         public String mealType;
-
         @SerializedName("calories")
         public double calories;
-
         @SerializedName("imageUrl")
         public String imageUrl;
     }
@@ -295,13 +264,10 @@ public interface ApiService {
     class ShoppingList {
         @SerializedName("id")
         public int id;
-
         @SerializedName("name")
         public String name;
-
         @SerializedName("isCompleted")
         public boolean isCompleted;
-
         @SerializedName("items")
         public List<ShoppingListItem> items;
     }
@@ -309,16 +275,12 @@ public interface ApiService {
     class ShoppingListItem {
         @SerializedName("id")
         public int id;
-
         @SerializedName("ingredientName")
         public String name;
-
         @SerializedName("quantity")
         public double quantity;
-
         @SerializedName("unit")
         public String unit;
-
         @SerializedName("isPurchased")
         public boolean isBought;
     }
@@ -326,16 +288,12 @@ public interface ApiService {
     class UserProfile {
         @SerializedName("username")
         public String username;
-
         @SerializedName("email")
         public String email;
-
         @SerializedName("fullName")
         public String fullName;
-
         @SerializedName("createdAt")
         public String createdAt;
-
         @SerializedName("allergies")
         public List<String> allergies;
     }
@@ -343,7 +301,6 @@ public interface ApiService {
     class ToggleFavoriteResponse {
         @SerializedName("recipeId")
         public int recipeId;
-
         @SerializedName("isFavorite")
         public boolean isFavorite;
     }
@@ -351,13 +308,10 @@ public interface ApiService {
     class GenerateShoppingListResponse {
         @SerializedName("id")
         public int id;
-
         @SerializedName("name")
         public String name;
-
         @SerializedName("message")
         public String message;
-
         @SerializedName("itemsCount")
         public int itemsCount;
     }
@@ -365,7 +319,6 @@ public interface ApiService {
     class UpdateAllergiesDto {
         @SerializedName("Allergies")
         public List<String> allergies;
-
         public UpdateAllergiesDto(List<String> allergies) {
             this.allergies = allergies;
         }
