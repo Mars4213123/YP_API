@@ -11,6 +11,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -30,9 +31,9 @@ public class HomeFragment extends Fragment {
     private MenuDayAdapter adapter;
 
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             ViewGroup container, Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_home, container, false);
+
         rvMenuDays = root.findViewById(R.id.rvMenuDays);
         progressBar = root.findViewById(R.id.progressBarHome);
         btnGenerateMenu = root.findViewById(R.id.btnGenerateMenu);
@@ -40,41 +41,33 @@ public class HomeFragment extends Fragment {
 
         menuViewModel = new ViewModelProvider(requireActivity()).get(MenuViewModel.class);
 
-        // Настраиваем адаптер с обработчиком нажатия
         setupRecyclerView();
         setupObservers();
 
         btnGenerateMenu.setOnClickListener(v -> {
-            int days = 7;
-            // Генерируем меню
-            menuViewModel.generateMenu(
-                    days,
-                    null,
-                    new ArrayList<>(),
-                    Arrays.asList("breakfast", "lunch", "dinner"),
-                    false
-            );
+            menuViewModel.generateMenu(7, null, new ArrayList<>(), Arrays.asList("breakfast", "lunch", "dinner"), false);
+            menuViewModel.loadCurrentMenu();
         });
 
-        // Загружаем меню при открытии
         menuViewModel.loadCurrentMenu();
 
         return root;
     }
 
     private void setupRecyclerView() {
-        // Создаем адаптер и передаем обработчик клика (Lambda)
         adapter = new MenuDayAdapter(new ArrayList<>(), recipe -> {
-            // Логика перехода на экран деталей
             if (recipe != null && recipe.id > 0) {
                 Bundle bundle = new Bundle();
                 bundle.putInt("recipeId", recipe.id);
-                // Используем ID фрагмента назначения напрямую для надежности
-                Navigation.findNavController(requireView())
-                        .navigate(R.id.recipeDetailFragment, bundle);
+                NavController navController = Navigation.findNavController(requireView());
+                try {
+                    // ИСПРАВЛЕНО: правильный ID навигации
+                    navController.navigate(R.id.navigationrecipedetail, bundle);
+                } catch (IllegalArgumentException e) {
+                    Toast.makeText(getContext(), "Ошибка навигации", Toast.LENGTH_SHORT).show();
+                }
             }
         });
-
         rvMenuDays.setLayoutManager(new LinearLayoutManager(getContext()));
         rvMenuDays.setAdapter(adapter);
     }
@@ -86,7 +79,6 @@ public class HomeFragment extends Fragment {
                 rvMenuDays.setVisibility(View.VISIBLE);
                 tvEmptyMenu.setVisibility(View.GONE);
             } else {
-                adapter.updateData(new ArrayList<>());
                 rvMenuDays.setVisibility(View.GONE);
                 tvEmptyMenu.setVisibility(View.VISIBLE);
             }
@@ -95,26 +87,11 @@ public class HomeFragment extends Fragment {
         menuViewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {
             progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
             btnGenerateMenu.setEnabled(!loading);
-
-            // Скрываем список только если он пуст во время загрузки
-            if (loading && adapter.getItemCount() == 0) {
-                rvMenuDays.setVisibility(View.GONE);
-            } else if (!loading && adapter.getItemCount() > 0) {
-                rvMenuDays.setVisibility(View.VISIBLE);
-            }
         });
 
         menuViewModel.getError().observe(getViewLifecycleOwner(), error -> {
-            if (error != null) {
-                // Показываем ошибку только тостом, не скрывая контент если он есть
-                if (!error.equals("Меню не найдено")) {
-                    Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
-                }
-
-                if (adapter.getItemCount() == 0) {
-                    tvEmptyMenu.setVisibility(View.VISIBLE);
-                    rvMenuDays.setVisibility(View.GONE);
-                }
+            if (error != null && !error.equals("")) {
+                Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
             }
         });
     }

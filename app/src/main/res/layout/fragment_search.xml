@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -9,13 +10,43 @@
         android:id="@+id/etSearchQuery"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:hint="Поиск рецептов..."
+        android:hint="@string/search_hint"
         android:textColor="#FFFFFF"
         android:textColorHint="#757575"
+        android:background="#2D2D2D"
+        android:padding="12dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         android:layout_margin="16dp" />
+
+    <!-- ИСПРАВЛЕНО: Spinner с правильным фоном и цветом текста -->
+    <Spinner
+        android:id="@+id/spinnerDifficulty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:padding="12dp"
+        android:background="#2D2D2D"
+        android:popupBackground="#2D2D2D"
+        app:layout_constraintTop_toBottomOf="@id/etSearchQuery"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- ИСПРАВЛЕНО: ProgressBar поверх всего -->
+    <ProgressBar
+        android:id="@+id/progressBarSearch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:indeterminateTint="#4CAF50"
+        android:elevation="10dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvSearchResults"
@@ -24,13 +55,14 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/etSearchQuery" />
+        app:layout_constraintTop_toBottomOf="@id/spinnerDifficulty"
+        android:layout_marginTop="8dp" />
 
     <TextView
         android:id="@+id/tvEmptySearch"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Ничего не найдено.\nПопробуйте другой запрос."
+        android:text="Начните поиск рецептов"
         android:textColor="#757575"
         android:textSize="16sp"
         android:gravity="center"
@@ -38,16 +70,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/etSearchQuery" />
-
-    <ProgressBar
-        android:id="@+id/progressBarSearch"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@id/spinnerDifficulty" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

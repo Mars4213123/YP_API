@@ -29,7 +29,7 @@ public class RecipeDetailFragment extends Fragment {
     private int userId = -1;
 
     private ImageView ivImage;
-    private TextView tvTitle, tvDescription, tvInstructions, tvInfo;
+    private TextView tvTitle, tvDescription, tvInstructions;
     private RecyclerView rvIngredients;
     private Button btnFavorite;
     private ProgressBar progressBar;
@@ -45,8 +45,6 @@ public class RecipeDetailFragment extends Fragment {
         rvIngredients = root.findViewById(R.id.rvIngredients);
         btnFavorite = root.findViewById(R.id.btnToggleFavorite);
         progressBar = root.findViewById(R.id.progressBarDetail);
-        // Предположим, что у вас есть tvRecipeCalories, если нет - игнорируем
-        // TextView tvCalories = root.findViewById(R.id.tvRecipeCalories);
 
         recipeViewModel = new ViewModelProvider(requireActivity()).get(RecipeViewModel.class);
         userId = AuthTokenManager.getUserId(requireContext());
@@ -54,27 +52,23 @@ public class RecipeDetailFragment extends Fragment {
             recipeViewModel.setUserId(userId);
         }
 
-        // Получаем ID рецепта из аргументов
         if (getArguments() != null) {
             recipeId = getArguments().getInt("recipeId", -1);
         }
 
         if (recipeId != -1) {
             recipeViewModel.loadRecipeDetail(recipeId);
-        } else {
-            Toast.makeText(getContext(), "Ошибка: ID рецепта не найден", Toast.LENGTH_SHORT).show();
         }
 
         setupObservers();
-
         rvIngredients.setLayoutManager(new LinearLayoutManager(getContext()));
 
         btnFavorite.setOnClickListener(v -> {
-            if (userId == -1) {
-                Toast.makeText(getContext(), "Сначала авторизуйтесь", Toast.LENGTH_SHORT).show();
-                return;
+            if (userId != -1) {
+                recipeViewModel.toggleFavorite(recipeId);
+            } else {
+                Toast.makeText(getContext(), "Авторизуйтесь", Toast.LENGTH_SHORT).show();
             }
-            recipeViewModel.toggleFavorite(recipeId);
         });
 
         return root;
@@ -82,53 +76,31 @@ public class RecipeDetailFragment extends Fragment {
 
     private void setupObservers() {
         recipeViewModel.getRecipeDetail().observe(getViewLifecycleOwner(), detail -> {
-            if (detail != null) {
+            if (detail != null && detail.id == recipeId) {
                 tvTitle.setText(detail.title);
-                tvDescription.setText(detail.description != null ? detail.description : "Описание отсутствует");
-                tvInstructions.setText(detail.instructions != null ? detail.instructions : "Инструкции отсутствуют");
+                tvDescription.setText(detail.description != null ? detail.description : "");
+                tvInstructions.setText(detail.instructions != null ? detail.instructions : "");
 
-                // Загрузка фото
                 if (detail.imageUrl != null && !detail.imageUrl.isEmpty()) {
-                    Glide.with(this)
-                            .load(detail.imageUrl)
-                            .placeholder(R.drawable.placeholder_recipe)
-                            .error(R.drawable.placeholder_recipe)
-                            .into(ivImage);
+                    Glide.with(this).load(detail.imageUrl).placeholder(R.drawable.placeholder_recipe).into(ivImage);
                 } else {
                     ivImage.setImageResource(R.drawable.placeholder_recipe);
                 }
 
-                // Ингредиенты
                 if (detail.ingredients != null) {
-                    IngredientAdapter adapter = new IngredientAdapter(detail.ingredients);
-                    rvIngredients.setAdapter(adapter);
+                    rvIngredients.setAdapter(new IngredientAdapter(detail.ingredients));
                 }
 
-                // Кнопка избранного
-                updateFavoriteButton(detail.isFavorite);
+                btnFavorite.setText(detail.isFavorite ? "В избранном" : "В избранное");
+                int color = detail.isFavorite ? R.color.red : R.color.primary_green;
+                try {
+                    btnFavorite.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(requireContext(), color)));
+                } catch (Exception e) {}
             }
         });
 
         recipeViewModel.getLoading().observe(getViewLifecycleOwner(), loading -> {
             progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
         });
-
-        recipeViewModel.getError().observe(getViewLifecycleOwner(), error -> {
-            if (error != null) {
-                Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-    private void updateFavoriteButton(boolean isFavorite) {
-        btnFavorite.setText(isFavorite ? "Удалить из избранного" : "В избранное");
-        int colorRes = isFavorite ? R.color.red : R.color.primary_green; // Убедитесь, что эти цвета есть в colors.xml
-        // Fallback, если цветов нет, используем системные
-        try {
-            int color = ContextCompat.getColor(requireContext(), colorRes);
-            btnFavorite.setBackgroundTintList(ColorStateList.valueOf(color));
-        } catch (Exception e) {
-            // Игнорируем, если цвет не найден
-        }
     }
 }
