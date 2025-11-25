@@ -136,8 +136,19 @@ namespace YP_API.Repositories
                 );
             }
 
+            if (!string.IsNullOrEmpty(searchParams.Difficulty) &&
+                !string.IsNullOrWhiteSpace(searchParams.Difficulty) &&
+                searchParams.Difficulty.ToLower() != "все" &&
+                searchParams.Difficulty.ToLower() != "all")
+            {
+                query = query.Where(r => r.Difficulty.ToLower() == searchParams.Difficulty.ToLower());
+            }
+
             if (searchParams.MaxPrepTime.HasValue)
                 query = query.Where(r => r.PrepTime <= searchParams.MaxPrepTime.Value);
+
+            if (searchParams.MaxCookTime.HasValue)
+                query = query.Where(r => r.CookTime <= searchParams.MaxCookTime.Value);
 
             if (searchParams.MaxCalories.HasValue)
                 query = query.Where(r => r.Calories <= searchParams.MaxCalories.Value);

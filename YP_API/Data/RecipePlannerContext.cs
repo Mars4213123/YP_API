@@ -130,6 +130,10 @@ namespace YP_API.Data
                     .HasForeignKey<ShoppingList>(sl => sl.MenuId)
                     .OnDelete(DeleteBehavior.Cascade);
 
+                entity.HasOne(sl => sl.User)
+                    .WithMany(u => u.ShoppingLists)
+                    .HasForeignKey(sl => sl.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<ShoppingListItem>(entity =>

@@ -75,18 +75,11 @@ namespace YP_API.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in GenerateFromMenu: {ex.Message}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
-                }
-
                 return BadRequest(new
                 {
                     success = false,
                     error = "Ошибка генерации списка покупок",
-                    message = ex.Message,
-                    details = ex.InnerException?.Message
+                    message = ex.Message
                 });
             }
         }

@@ -42,13 +42,12 @@ namespace YP_API.Repositories
                     .Include(sl => sl.WeeklyMenu)
                     .Include(sl => sl.Items)
                         .ThenInclude(sli => sli.Ingredient)
-                    .Where(sl => sl.WeeklyMenu != null && sl.WeeklyMenu.UserId == userId)
+                    .Where(sl => sl.UserId == userId)
                     .OrderByDescending(sl => sl.CreatedAt)
                     .FirstOrDefaultAsync();
             }
             catch (Exception ex)
             {
-                
                 Console.WriteLine($"Error in GetShoppingListByUserIdAsync: {ex.Message}");
                 return null;
             }
