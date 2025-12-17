@@ -1,4 +1,5 @@
-﻿using System;
+﻿// Исправление в AppData.cs - добавление недостающих моделей
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -95,7 +96,8 @@ namespace UP
                             {
                                 Day = day.Date,
                                 Meal = meal.RecipeTitle,
-                                Description = $"Калории: {meal.Calories} | Время: {meal.PrepTime} мин"
+                                Description = $"Калории: {meal.Calories} | Время: {meal.PrepTime} мин",
+                                RecipeId = meal.RecipeId
                             });
                         }
                     }

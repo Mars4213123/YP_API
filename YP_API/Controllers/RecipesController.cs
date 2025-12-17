@@ -24,6 +24,31 @@ namespace YP_API.Controllers
         {
             try
             {
+                if (!ModelState.IsValid)
+                {
+                    ModelState.Remove("Difficulty");
+
+                    if (ModelState.ErrorCount > 0)
+                    {
+                        var errors = ModelState
+                            .Where(x => x.Key != "Difficulty" && x.Value.Errors.Count > 0)
+                            .ToDictionary(
+                                x => x.Key,
+                                x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()
+                            );
+
+                        if (errors.Count > 0)
+                        {
+                            return BadRequest(new
+                            {
+                                success = false,
+                                error = "Ошибки валидации",
+                                errors = errors
+                            });
+                        }
+                    }
+                }
+
                 var recipes = await _recipeRepository.GetRecipesAsync(searchParams);
 
                 Response.Headers.Add("X-Pagination", System.Text.Json.JsonSerializer.Serialize(new
@@ -251,6 +276,8 @@ namespace YP_API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError($"Error in ToggleFavorite: {ex.Message}");
+                _logger.LogError($"Stack trace: {ex.StackTrace}");
+
                 return BadRequest(new
                 {
                     success = false,

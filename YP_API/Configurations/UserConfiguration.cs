@@ -18,10 +18,10 @@ namespace YP_API.Configurations
                 .IsRequired()
                 .HasMaxLength(100);
 
-            builder.Property(u => u.PasswordHash)
+            builder.Property(u => u.Password)
                 .IsRequired();
 
-            builder.Property(u => u.PasswordSalt)
+            builder.Property(u => u.Password)
                 .IsRequired();
 
             builder.HasIndex(u => u.Username)

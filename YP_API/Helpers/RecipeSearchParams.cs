@@ -9,7 +9,7 @@ namespace YP_API.Helpers
         public int? MaxPrepTime { get; set; }
         public int? MaxCookTime { get; set; }
         public decimal? MaxCalories { get; set; }
-        public string Difficulty { get; set; }
+        public string? Difficulty { get; set; }
         public string SortBy { get; set; } = "name";
         public bool SortDescending { get; set; } = false;
     }

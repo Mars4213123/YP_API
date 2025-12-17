@@ -61,15 +61,27 @@ namespace YP_API.Controllers
         [HttpPost("generate-from-menu/{menuId}/{userId}")]
         public async Task<ActionResult> GenerateFromMenu(int menuId, int userId)
         {
-            var shoppingList = await _shoppingListService.GenerateShoppingListFromMenuAsync(menuId, userId);
-
-            return Ok(new
+            try
             {
-                Id = shoppingList.Id,
-                Name = shoppingList.Name,
-                Message = "Список покупок успешно сгенерирован",
-                ItemsCount = shoppingList.Items?.Count ?? 0
-            });
+                var shoppingList = await _shoppingListService.GenerateShoppingListFromMenuAsync(menuId, userId);
+
+                return Ok(new
+                {
+                    Id = shoppingList.Id,
+                    Name = shoppingList.Name,
+                    Message = "Список покупок успешно сгенерирован",
+                    ItemsCount = shoppingList.Items?.Count ?? 0
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "Ошибка генерации списка покупок",
+                    message = ex.Message
+                });
+            }
         }
     }
 }

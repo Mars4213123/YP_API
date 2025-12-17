@@ -1,347 +1,136 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using YP_API.Data;
-using YP_API.Models;
 using YP_API.Interfaces;
+using YP_API.Models;
+using YP_API.Repositories;
 
 namespace YP_API.Services
 {
     public class MenuService : IMenuService
-    { //asd 
-        private readonly RecipePlannerContext _context;
+    {
+        private readonly IMenuRepository _menuRepository;
+        private readonly IRecipeRepository _recipeRepository;
         private readonly ILogger<MenuService> _logger;
 
-        public MenuService(RecipePlannerContext context, ILogger<MenuService> logger)
+        public MenuService(IMenuRepository menuRepository, IRecipeRepository recipeRepository, ILogger<MenuService> logger)
         {
-            _context = context;
+            _menuRepository = menuRepository;
+            _recipeRepository = recipeRepository;
             _logger = logger;
         }
 
-        public async Task<MenuDto> GenerateMenuAsync(int userId, GenerateMenuRequest request)
+        public async Task<WeeklyMenu> GenerateWeeklyMenuAsync(int userId, Controllers.GenerateMenuRequest request, List<string> userAllergies)
         {
-            try
+            _logger.LogInformation($"Generating menu for user {userId}, days: {request.Days}");
+
+            var availableRecipes = (await _recipeRepository.GetRecipesForMenuAsync(
+                userAllergies ?? new List<string>(),
+                request.CuisineTags ?? new List<string>(),
+                request.TargetCaloriesPerDay)).ToList();
+
+            _logger.LogInformation($"Found {availableRecipes.Count} available recipes");
+
+            if (!availableRecipes.Any())
             {
-                _logger.LogInformation($"Generating menu for user {userId}: {request.Days} days, {request.TargetCaloriesPerDay} calories");
-
-                // Get user allergies
-                var user = await _context.Users
-                    .Include(u => u.Allergies)
-                    .FirstOrDefaultAsync(u => u.Id == userId);
-                if (user == null)
-                {
-                    _logger.LogError($"User {userId} not found");
-                    return null;
-                }
-
-                var userAllergies = user.Allergies?.ToList() ?? new List<string>();
-                _logger.LogInformation($"User allergies: {string.Join(", ", userAllergies)}");
-
-                // Get inventory
-                var inventory = await _context.UserInventories
-                    .Include(ui => ui.Ingredient)
-                    .Where(ui => ui.UserId == userId)
-                    .ToListAsync();
-
-                var availableIngredients = inventory.Select(i => i.IngredientId).ToList();
-                var useInventory = request.UseInventory && availableIngredients.Any();
-                _logger.LogInformation($"Using inventory: {useInventory}, available: {availableIngredients.Count}");
-
-                // Filter recipes by criteria
-                var query = _context.Recipes
-                    .Include(r => r.RecipeIngredients)
-                    .Include(r => r.Allergens)
-                    .Include(r => r.Tags)
-                    .AsQueryable();
-
-                // Cuisine filtering (support both English and Russian tags)
-                if (request.CuisineTags != null && request.CuisineTags.Any())
-                {
-                    var cuisines = request.CuisineTags.Select(t => t.ToLowerInvariant()).ToList();
-                    // Map Russian to English for filtering
-                    var russianTags = new Dictionary<string, string>
-                    {
-                        {"русская", "russian"},
-                        {"европейская", "european"},
-                        {"американская", "american"},
-                        {"italian", "italian"},
-                        {"mediterranean", "mediterranean"}
-                    };
-
-                    var englishCuisines = cuisines.Select(c => russianTags.ContainsKey(c) ? russianTags[c] : c).ToList();
-                    query = query.Where(r => englishCuisines.Contains(r.CuisineType?.ToLowerInvariant()) ||
-                                           r.Tags.Any(tag => englishCuisines.Contains(tag.ToLowerInvariant())));
-                    _logger.LogInformation($"Filtering by cuisines: {string.Join(", ", englishCuisines)}");
-                }
-
-                // Exclude allergens
-                if (userAllergies.Any())
-                {
-                    query = query.Where(r => !r.Allergens.Any(a => userAllergies.Contains(a, StringComparison.OrdinalIgnoreCase)));
-                    _logger.LogInformation($"Excluding allergens: {string.Join(", ", userAllergies)}");
-                }
-
-                // Use inventory if requested
-                if (useInventory)
-                {
-                    query = query.Where(r => r.RecipeIngredients.All(ri => availableIngredients.Contains(ri.IngredientId)));
-                    _logger.LogInformation("Filtering recipes that can be made from inventory");
-                }
-
-                // Time filter
-                if (request.MaxPrepTime.HasValue)
-                {
-                    query = query.Where(r => r.PrepTime + r.CookTime <= request.MaxPrepTime);
-                }
-
-                // Get candidate recipes
-                var candidateRecipes = await query
-                    .Where(r => r.Calories > 0 && r.Servings > 0)
-                    .OrderBy(r => r.Difficulty)
-                    .ThenBy(r => r.PrepTime + r.CookTime)
-                    .Take(50)  // Limit to reasonable number
-                    .ToListAsync();
-
-                _logger.LogInformation($"Found {candidateRecipes.Count} candidate recipes");
-
-                if (!candidateRecipes.Any())
-                {
-                    _logger.LogWarning("No recipes found matching criteria");
-                    return null;
-                }
-
-                // Generate menu for each day
-                var menuMeals = new List<MenuMealDto>();
-                var random = new Random();
-                var usedRecipes = new HashSet<int>();
-                var dailyCalories = 0m;
-
-                for (int day = 0; day < request.Days; day++)
-                {
-                    var dayCalories = 0m;
-                    var dayMeals = new List<string> { "breakfast", "lunch", "dinner" };
-                    random.Shuffle(dayMeals);  // Randomize meal order
-
-                    foreach (var mealType in dayMeals)
-                    {
-                        // Filter recipes by meal type (if tags match)
-                        var mealRecipes = candidateRecipes
-                            .Where(r => !usedRecipes.Contains(r.Id) &&
-                                      (r.Tags.Any(tag => tag.ToLower() == mealType) || 
-                                       (mealType == "breakfast" && r.CookTime <= 30) ||
-                                       (mealType == "lunch" && r.Servings >= 2) ||
-                                       (mealType == "dinner" && r.Calories >= 500)))
-                            .ToList();
-
-                        if (!mealRecipes.Any())
-                        {
-                            // Fallback to any unused recipe
-                            mealRecipes = candidateRecipes
-                                .Where(r => !usedRecipes.Contains(r.Id))
-                                .OrderBy(r => Math.Abs(r.Calories / (decimal)r.Servings - (request.TargetCaloriesPerDay / (decimal)3)))
-                                .Take(5)
-                                .ToList();
-                        }
-
-                        if (mealRecipes.Any())
-                        {
-                            var selectedRecipe = mealRecipes[random.Next(mealRecipes.Count)];
-                            var mealCalories = selectedRecipe.Calories * (decimal)1.0 / selectedRecipe.Servings;
-
-                            menuMeals.Add(new MenuMealDto
-                            {
-                                RecipeId = selectedRecipe.Id,
-                                MealType = mealType,
-                                MealDate = DateTime.Today.AddDays(day),
-                                Calories = mealCalories
-                            });
-
-                            usedRecipes.Add(selectedRecipe.Id);
-                            dayCalories += mealCalories;
-                            _logger.LogInformation($"Day {day + 1}, {mealType}: {selectedRecipe.Title} ({mealCalories:F0} cal)");
-                        }
-                    }
-
-                    dailyCalories += dayCalories;
-                }
-
-                // Create weekly menu
-                var weeklyMenu = new WeeklyMenu
-                {
-                    UserId = userId,
-                    Name = $"Автоматическое меню с {DateTime.Today:dd.MM.yyyy}",
-                    StartDate = DateTime.Today,
-                    EndDate = DateTime.Today.AddDays(request.Days - 1),
-                    TotalCalories = dailyCalories,
-                    MenuMeals = menuMeals.Select(m => new MenuMeal
-                    {
-                        RecipeId = m.RecipeId,
-                        MealDate = m.MealDate.Date,
-                        MealType = GetMealTypeNumber(m.MealType),
-                        WeeklyMenuId = 0  // Will be set after saving WeeklyMenu
-                    }).ToList()
-                };
-
-                _context.WeeklyMenus.Add(weeklyMenu);
-                await _context.SaveChangesAsync();
-
-                // Set WeeklyMenuId for MenuMeals
-                foreach (var meal in weeklyMenu.MenuMeals)
-                {
-                    meal.WeeklyMenuId = weeklyMenu.Id;
-                }
-                await _context.SaveChangesAsync();
-
-                // Generate shopping list
-                var shoppingList = await GenerateShoppingList(weeklyMenu.Id);
-                weeklyMenu.ShoppingListId = shoppingList.Id;
-                await _context.SaveChangesAsync();
-
-                var result = new MenuDto
-                {
-                    Id = weeklyMenu.Id,
-                    Name = weeklyMenu.Name,
-                    StartDate = weeklyMenu.StartDate,
-                    EndDate = weeklyMenu.EndDate,
-                    TotalCalories = weeklyMenu.TotalCalories,
-                    MenuMeals = menuMeals,
-                    ShoppingList = shoppingList
-                };
-
-                _logger.LogInformation($"Menu generated successfully: {result.Id}, {dailyCalories:F0} total calories");
-                return result;
+                throw new Exception("No recipes available for menu generation with current filters");
             }
-            catch (Exception ex)
+
+            var menu = new WeeklyMenu
             {
-                _logger.LogError(ex, $"Error generating menu for user {userId}");
-                return null;
-            }
-        }
+                UserId = userId,
+                Name = $"���� �� {request.Days} ����",
+                StartDate = DateTime.Today,
+                EndDate = DateTime.Today.AddDays(request.Days - 1),
+                CreatedAt = DateTime.UtcNow
+            };
 
-        private async Task<ShoppingListDto> GenerateShoppingList(int menuId)
-        {
-            var menuMeals = await _context.MenuMeals
-                .Include(mm => mm.Recipe)
-                .ThenInclude(r => r.RecipeIngredients)
-                .ThenInclude(ri => ri.Ingredient)
-                .Where(mm => mm.WeeklyMenuId == menuId)
-                .ToListAsync();
+            var random = new Random();
+            var totalCalories = 0m;
+            var usedRecipeIds = new HashSet<int>();
 
-            var ingredientsNeeded = new Dictionary<int, (decimal Quantity, string Unit)>();
-
-            foreach (var meal in menuMeals)
+            for (int i = 0; i < request.Days; i++)
             {
-                foreach (var ri in meal.Recipe.RecipeIngredients)
+                var date = DateTime.Today.AddDays(i);
+
+                foreach (var mealType in request.MealTypes ?? new List<string> { "breakfast", "lunch", "dinner" })
                 {
-                    var key = ri.IngredientId;
-                    if (ingredientsNeeded.ContainsKey(key))
+                    var suitableRecipes = availableRecipes
+                        .Where(r => !usedRecipeIds.Contains(r.Id))
+                        .Where(r => r.Tags.Contains(mealType) || IsSuitableForMealType(r, mealType))
+                        .ToList();
+
+                    if (suitableRecipes.Any())
                     {
-                        var current = ingredientsNeeded[key];
-                        ingredientsNeeded[key] = (current.Quantity + ri.Quantity, current.Unit);
+                        var selectedRecipe = suitableRecipes[random.Next(suitableRecipes.Count)];
+                        usedRecipeIds.Add(selectedRecipe.Id);
+
+                        menu.MenuMeals.Add(new MenuMeal
+                        {
+                            MealDate = date,
+                            MealType = Enum.Parse<MealType>(mealType, true),
+                            RecipeId = selectedRecipe.Id
+                        });
+
+                        totalCalories += selectedRecipe.Calories;
+                        _logger.LogInformation($"Added {mealType}: {selectedRecipe.Title} ({selectedRecipe.Calories} cal)");
                     }
                     else
                     {
-                        ingredientsNeeded[key] = (ri.Quantity, ri.Unit);
+                        _logger.LogWarning($"No suitable recipes found for {mealType} on {date.ToShortDateString()}");
                     }
                 }
             }
 
-            var shoppingList = new ShoppingList
-            {
-                MenuId = menuId,
-                UserId = 1,  // Default user, adjust if needed
-                Name = $"Список покупок для меню #{menuId}",
-                IsCompleted = false
-            };
+            menu.TotalCalories = totalCalories;
 
-            _context.ShoppingLists.Add(shoppingList);
-            await _context.SaveChangesAsync();
+            var createdMenu = await _menuRepository.CreateMenuAsync(menu);
+            await _menuRepository.SaveAllAsync();
 
-            foreach (var kvp in ingredientsNeeded)
-            {
-                var item = new ShoppingListItem
-                {
-                    ShoppingListId = shoppingList.Id,
-                    IngredientId = kvp.Key,
-                    Quantity = kvp.Value.Quantity,
-                    Unit = kvp.Value.Unit,
-                    IsPurchased = false
-                };
-                _context.ShoppingListItems.Add(item);
-            }
+            _logger.LogInformation($"Menu created successfully with ID: {createdMenu.Id}, {menu.MenuMeals.Count} meals, {totalCalories} total calories");
 
-            await _context.SaveChangesAsync();
-
-            var dto = new ShoppingListDto
-            {
-                Id = shoppingList.Id,
-                Name = shoppingList.Name,
-                Items = ingredientsNeeded.Select(kvp => new ShoppingItemDto
-                {
-                    IngredientId = kvp.Key,
-                    Quantity = kvp.Value.Quantity,
-                    Unit = kvp.Value.Unit,
-                    IsPurchased = false
-                }).ToList()
-            };
-
-            return dto;
+            return await GetMenuWithDetailsAsync(createdMenu.Id);
         }
 
-        private int GetMealTypeNumber(string mealType)
+        public async Task<WeeklyMenu> GetCurrentMenuAsync(int userId)
         {
-            return mealType.ToLowerInvariant() switch
+            return await _menuRepository.GetCurrentMenuAsync(userId);
+        }
+
+        public async Task<List<WeeklyMenu>> GetUserMenuHistoryAsync(int userId)
+        {
+            var menus = await _menuRepository.GetUserMenusAsync(userId);
+            return menus.ToList();
+        }
+
+        public async Task<WeeklyMenu> RegenerateDayAsync(int menuId, DateTime date, List<string> userAllergies)
+        {
+            return await _menuRepository.GetMenuWithDetailsAsync(menuId);
+        }
+
+        private async Task<WeeklyMenu> GetMenuWithDetailsAsync(int menuId)
+        {
+            return await _menuRepository.GetMenuWithDetailsAsync(menuId);
+        }
+
+        private bool IsSuitableForMealType(Recipe recipe, string mealType)
+        {
+            if (recipe.Tags == null || !recipe.Tags.Any())
+                return false;
+
+            return mealType.ToLower() switch
             {
-                "breakfast" => 1,
-                "lunch" => 2,
-                "dinner" => 3,
-                _ => 1
+                "breakfast" => recipe.Tags.Any(t => t.Contains("breakfast") || t.Contains("morning") || t.Contains("�������")),
+                "lunch" => recipe.Tags.Any(t => t.Contains("lunch") || t.Contains("main") || t.Contains("����")),
+                "dinner" => recipe.Tags.Any(t => t.Contains("dinner") || t.Contains("main") || t.Contains("����")),
+                "snack" => recipe.Tags.Any(t => t.Contains("snack") || t.Contains("quick") || t.Contains("�������")),
+                _ => false
             };
         }
     }
 
-    public class MenuDto
+    public interface IMenuService
     {
-        public int Id { get; set; }
-        public string Name { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
-        public decimal TotalCalories { get; set; }
-        public List<MenuMealDto> MenuMeals { get; set; } = new();
-        public ShoppingListDto? ShoppingList { get; set; }
-    }
-
-    public class MenuMealDto
-    {
-        public int RecipeId { get; set; }
-        public string MealType { get; set; }
-        public DateTime MealDate { get; set; }
-        public decimal Calories { get; set; }
-    }
-
-    public class ShoppingListDto
-    {
-        public int Id { get; set; }
-        public string Name { get; set; }
-        public List<ShoppingItemDto> Items { get; set; } = new();
-    }
-
-    public class ShoppingItemDto
-    {
-        public int IngredientId { get; set; }
-        public decimal Quantity { get; set; }
-        public string Unit { get; set; }
-        public bool IsPurchased { get; set; }
-    }
-
-    public class GenerateMenuRequest
-    {
-        public int Days { get; set; } = 7;
-        public decimal? TargetCaloriesPerDay { get; set; }
-        public List<string> CuisineTags { get; set; } = new List<string>();
-        public bool UseInventory { get; set; } = false;
-        public int? MaxPrepTime { get; set; }
+        Task<WeeklyMenu> GenerateWeeklyMenuAsync(int userId, Controllers.GenerateMenuRequest request, List<string> userAllergies);
+        Task<WeeklyMenu> GetCurrentMenuAsync(int userId);
+        Task<List<WeeklyMenu>> GetUserMenuHistoryAsync(int userId);
+        Task<WeeklyMenu> RegenerateDayAsync(int menuId, DateTime date, List<string> userAllergies);
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using YP_API.Data;
 using YP_API.Helpers;
 using YP_API.Interfaces;
@@ -8,7 +9,12 @@ namespace YP_API.Repositories
 {
     public class RecipeRepository : Repository<Recipe>, IRecipeRepository
     {
-        public RecipeRepository(RecipePlannerContext context) : base(context) { }
+        private readonly ILogger<RecipeRepository> _logger;
+
+        public RecipeRepository(RecipePlannerContext context, ILogger<RecipeRepository> logger) : base(context)
+        {
+            _logger = logger;
+        }
 
         public async Task<bool> ToggleFavoriteAsync(int userId, int recipeId)
         {
@@ -18,7 +24,6 @@ namespace YP_API.Repositories
             {
                 _logger.LogInformation($"ToggleFavoriteAsync: UserId={userId}, RecipeId={recipeId}");
 
-                // Проверяем существование рецепта
                 var recipe = await _context.Recipes.FindAsync(recipeId);
                 if (recipe == null)
                 {
@@ -26,7 +31,6 @@ namespace YP_API.Repositories
                     throw new Exception($"Рецепт с ID {recipeId} не найден");
                 }
 
-                // Проверяем существование пользователя
                 var user = await _context.Users.FindAsync(userId);
                 if (user == null)
                 {
@@ -34,20 +38,17 @@ namespace YP_API.Repositories
                     throw new Exception($"Пользователь с ID {userId} не найден");
                 }
 
-                // Ищем существующий избранный рецепт
                 var existingFavorite = await _context.UserFavorites
                     .AsNoTracking()
                     .FirstOrDefaultAsync(uf => uf.UserId == userId && uf.RecipeId == recipeId);
 
                 if (existingFavorite != null)
                 {
-                    // Удаляем из избранного
                     _logger.LogInformation($"Removing recipe {recipeId} from favorites for user {userId}");
                     _context.UserFavorites.Remove(existingFavorite);
                 }
                 else
                 {
-                    // Добавляем в избранное
                     _logger.LogInformation($"Adding recipe {recipeId} to favorites for user {userId}");
                     var favorite = new UserFavorite
                     {
@@ -58,7 +59,6 @@ namespace YP_API.Repositories
                     await _context.UserFavorites.AddAsync(favorite);
                 }
 
-                // Сохраняем изменения
                 var result = await _context.SaveChangesAsync() > 0;
 
                 if (result)
@@ -85,14 +85,14 @@ namespace YP_API.Repositories
                     throw new Exception("Ошибка связи с базой данных. Проверьте существование рецепта и пользователя.");
                 }
 
-                throw new Exception("Ошибка базы данных при обновлении избранного");
+                throw new Exception("Ошибка базы данных при изменении избранного");
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
                 _logger.LogError($"Error in ToggleFavoriteAsync: {ex.Message}");
                 _logger.LogError($"Inner exception: {ex.InnerException?.Message}");
-                throw new Exception($"Ошибка при обновлении избранного: {ex.Message}");
+                throw new Exception($"Ошибка при изменении избранного: {ex.Message}");
             }
         }
 
@@ -102,7 +102,6 @@ namespace YP_API.Repositories
                 .AnyAsync(uf => uf.UserId == userId && uf.RecipeId == recipeId);
         }
 
-        // Остальные методы остаются без изменений...
         public async Task<PagedList<Recipe>> GetRecipesAsync(RecipeSearchParams searchParams)
         {
             var query = _context.Recipes
@@ -137,8 +136,19 @@ namespace YP_API.Repositories
                 );
             }
 
+            if (!string.IsNullOrEmpty(searchParams.Difficulty) &&
+                !string.IsNullOrWhiteSpace(searchParams.Difficulty) &&
+                searchParams.Difficulty.ToLower() != "все" &&
+                searchParams.Difficulty.ToLower() != "all")
+            {
+                query = query.Where(r => r.Difficulty.ToLower() == searchParams.Difficulty.ToLower());
+            }
+
             if (searchParams.MaxPrepTime.HasValue)
                 query = query.Where(r => r.PrepTime <= searchParams.MaxPrepTime.Value);
+
+            if (searchParams.MaxCookTime.HasValue)
+                query = query.Where(r => r.CookTime <= searchParams.MaxCookTime.Value);
 
             if (searchParams.MaxCalories.HasValue)
                 query = query.Where(r => r.Calories <= searchParams.MaxCalories.Value);
@@ -250,7 +260,5 @@ namespace YP_API.Repositories
 
             return await searchQuery.Take(50).ToListAsync();
         }
-
-        private readonly ILogger<RecipeRepository> _logger;
     }
 }

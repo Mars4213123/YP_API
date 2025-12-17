@@ -29,14 +29,8 @@ namespace UP.Models
         public int Id { get; set; }
         public string Username { get; set; }
         public string Email { get; set; }
+        public string FullName { get; set; }
         public string Token { get; set; }
-    }
-
-    public class ApiResponse<T>
-    {
-        public bool Success { get; set; }
-        public string Message { get; set; }
-        public T Data { get; set; }
     }
 
     public class RecipeDto
@@ -53,15 +47,10 @@ namespace UP.Models
         public string CuisineType { get; set; }
         public string Difficulty { get; set; }
     }
-    public class DailyMenu
-    {
-        public string Day { get; set; }
-        public string Meal { get; set; }
-        public string Description { get; set; }
-        public int RecipeId { get; set; }
-    }
+
     public class IngredientDto
     {
+        public int Id { get; set; }
         public string Name { get; set; }
         public decimal Quantity { get; set; }
         public string Unit { get; set; }
@@ -91,14 +80,6 @@ namespace UP.Models
         public List<MenuMealDto> Meals { get; set; } = new List<MenuMealDto>();
     }
 
-    public class SimpleAuthResponse
-    {
-        public int Id { get; set; }
-        public string Username { get; set; }
-        public string Email { get; set; }
-        public string FullName { get; set; }
-        public string Token { get; set; }
-    }
     public class MenuMealDto
     {
         public int Id { get; set; }

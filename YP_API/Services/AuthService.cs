@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using YP_API.Interfaces;
 using YP_API.Models;
 
@@ -17,25 +15,22 @@ namespace YP_API.Services
         public async Task<User> Register(string username, string email, string fullName, string password, List<string> allergies)
         {
             if (await _userRepository.UserExistsAsync(username, email))
-                throw new Exception("Username or email already exists");
-
-            using var hmac = new HMACSHA512();
+                throw new Exception("Имя пользователя или email уже существуют");
 
             var user = new User
             {
                 Username = username.ToLower().Trim(),
                 Email = email.ToLower().Trim(),
                 FullName = fullName?.Trim() ?? "",
+                Password = password, // Просто сохраняем пароль как есть
                 Allergies = allergies ?? new List<string>(),
-                PasswordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password)),
-                PasswordSalt = hmac.Key,
                 CreatedAt = DateTime.UtcNow
             };
 
             await _userRepository.AddAsync(user);
 
             if (!await _userRepository.SaveAllAsync())
-                throw new Exception("Failed to save user");
+                throw new Exception("Не удалось сохранить пользователя");
 
             return user;
         }
@@ -45,16 +40,10 @@ namespace YP_API.Services
             var user = await _userRepository.GetUserByUsernameAsync(username.ToLower());
 
             if (user == null)
-                throw new Exception("Invalid username");
+                throw new Exception("Пользователь не найден");
 
-            using var hmac = new HMACSHA512(user.PasswordSalt);
-            var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
-
-            for (int i = 0; i < computedHash.Length; i++)
-            {
-                if (computedHash[i] != user.PasswordHash[i])
-                    throw new Exception("Invalid password");
-            }
+            if (user.Password != password)
+                throw new Exception("Неверный пароль");
 
             return user;
         }

@@ -70,24 +70,24 @@ namespace UP.Pages
         {
             try
             {
-                var ingredients = await AppData.ApiService.GetIngredientsAsync();
-                var ingredient = ingredients.FirstOrDefault(i =>
-                    i.Name.Contains(productName));
+                Console.WriteLine($"Saving product to inventory: {productName}");
 
-                if (ingredient != null)
+                var success = await AppData.ApiService.AddToInventoryByNameAsync(productName, 1, "шт");
+
+                if (success)
                 {
-                    var success = await AppData.ApiService.AddToInventoryAsync(
-                        ingredient.Id, 1, "шт");
-
-                    if (success)
-                    {
-                        Console.WriteLine($"Product {productName} added to inventory");
-                    }
+                    Console.WriteLine($"Product {productName} added to inventory successfully");
+                }
+                else
+                {
+                    Console.WriteLine($"Failed to add {productName} to inventory, adding locally");
+                    AppData.Products.Add(productName);
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error saving product to inventory: {ex.Message}");
+                AppData.Products.Add(productName);
             }
         }
 
@@ -109,18 +109,13 @@ namespace UP.Pages
                     GenerateMenuButton.Content = "Генерация...";
                 }
 
-                var cuisineTags = GetSelectedCuisineTags();
-
-                if (cuisineTags.Count == 0)
-                {
-                    cuisineTags = new List<string> { "русская", "европейская", "американская" };
-                }
+                var allergies = GetSelectedAllergies();
 
                 var request = new GenerateMenuRequest
                 {
                     Days = 7,
                     TargetCaloriesPerDay = 2000,
-                    CuisineTags = cuisineTags,
+                    CuisineTags = new List<string> { "russian", "italian", "mediterranean" },
                     UseInventory = _products.Count > 0,
                     MealTypes = new List<string> { "breakfast", "lunch", "dinner" }
                 };
@@ -153,33 +148,28 @@ namespace UP.Pages
             }
         }
 
-        private List<string> GetSelectedCuisineTags()
+        private List<string> GetSelectedAllergies()
         {
-            var tags = new List<string>();
+            var allergies = new List<string>();
 
             if (GlutenCheckBox?.IsChecked == true)
-                tags.Add("безглютеновое");
+                allergies.Add("глютен");
             if (LactoseCheckBox?.IsChecked == true)
-                tags.Add("безлактозное");
+                allergies.Add("лактоза");
             if (NutsCheckBox?.IsChecked == true)
-                tags.Add("безореховое");
+                allergies.Add("орехи");
             if (SeafoodCheckBox?.IsChecked == true)
-                tags.Add("безморепродуктов");
+                allergies.Add("морепродукты");
 
             if (!string.IsNullOrWhiteSpace(OtherAllergiesTextBox?.Text))
             {
                 var customAllergies = OtherAllergiesTextBox.Text.Split(',')
                     .Select(t => t.Trim())
                     .Where(t => !string.IsNullOrEmpty(t));
-                tags.AddRange(customAllergies);
+                allergies.AddRange(customAllergies);
             }
 
-            if (tags.Count == 0)
-            {
-                tags.AddRange(new[] { "русская", "европейская", "американская" });
-            }
-
-            return tags;
+            return allergies;
         }
 
         private async void OpenRecipe_Click(object sender, RoutedEventArgs e)

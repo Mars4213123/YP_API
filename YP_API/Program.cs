@@ -53,7 +53,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Server=localhost;Port=3306;Database=recipe_planner;Uid=root;Pwd=;";
+    ?? "Server=127.0.0.1;Port=3306;Database=recipe_planner;Uid=root;Pwd=;";
 
 builder.Services.AddDbContext<RecipePlannerContext>(options =>
 {
@@ -61,7 +61,6 @@ builder.Services.AddDbContext<RecipePlannerContext>(options =>
     options.EnableSensitiveDataLogging();
     options.EnableDetailedErrors();
 });
-
 builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
 builder.Services.AddScoped<IIngredientRepository, IngredientRepository>();
 builder.Services.AddScoped<IMenuRepository, MenuRepository>();
@@ -74,6 +73,8 @@ builder.Services.AddScoped<IRepository<ShoppingListItem>, Repository<ShoppingLis
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMenuService, MenuService>();
 builder.Services.AddScoped<IShoppingListService, ShoppingListService>();
+
+builder.Services.AddScoped<IRepository<UserInventory>, Repository<UserInventory>>();
 
 var app = builder.Build();
 

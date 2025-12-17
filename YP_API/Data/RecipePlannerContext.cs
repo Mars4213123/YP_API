@@ -29,6 +29,7 @@ namespace YP_API.Data
                 entity.Property(u => u.Username).IsRequired().HasMaxLength(50);
                 entity.Property(u => u.Email).IsRequired().HasMaxLength(100);
                 entity.Property(u => u.FullName).IsRequired().HasMaxLength(100);
+                entity.Property(u => u.Password).IsRequired().HasMaxLength(100); // Добавлено
                 entity.Property(u => u.Allergies)
                     .HasConversion(
                         v => string.Join(',', v),
@@ -130,6 +131,10 @@ namespace YP_API.Data
                     .HasForeignKey<ShoppingList>(sl => sl.MenuId)
                     .OnDelete(DeleteBehavior.Cascade);
 
+                entity.HasOne(sl => sl.User)
+                    .WithMany(u => u.ShoppingLists)
+                    .HasForeignKey(sl => sl.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<ShoppingListItem>(entity =>
