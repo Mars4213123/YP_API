@@ -135,7 +135,6 @@
 
         <!-- Нижняя панель -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
-            <Button Content="⏱️ Таймер" Style="{StaticResource PrimaryButton}" Click="StartTimer_Click"/>
             <Button Content="🛒 Добавить в список покупок" Style="{StaticResource PrimaryButton}" Click="AddToShoppingList_Click"/>
             <Button Content="⭐ В избранное" Style="{StaticResource PrimaryButton}" Click="AddToFavorites_Click"/>
         </StackPanel>

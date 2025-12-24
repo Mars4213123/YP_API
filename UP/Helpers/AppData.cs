@@ -126,11 +126,18 @@ namespace UP
                             ShoppingList.Add($"{item.Name} - {item.Quantity} {item.Unit}");
                         }
                     }
+
+                    Console.WriteLine($"Загружено {shoppingList.Items.Count} товаров в список покупок");
+                }
+                else
+                {
+                    Console.WriteLine("Список покупок пуст или не загружен");
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error loading shopping list: {ex.Message}");
+                MessageBox.Show($"Ошибка загрузки списка покупок: {ex.Message}", "Ошибка");
             }
         }
 

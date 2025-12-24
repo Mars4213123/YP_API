@@ -364,7 +364,6 @@ namespace UP.Pages
 
         private void OtherAllergiesTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            // TODO: Сохранить аллергии в профиль пользователя
         }
 
         private async void RefreshMenus_Click(object sender, RoutedEventArgs e)

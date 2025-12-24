@@ -84,11 +84,6 @@ namespace UP.Pages
             MainWindow.mainWindow.OpenPages(new Receipts());
         }
 
-        private void StartTimer_Click(object sender, RoutedEventArgs e)
-        {
-            var timerWindow = new Receipts.TimerWindow(RecipeTitleText.Text);
-            timerWindow.ShowDialog();
-        }
 
         private void AddToShoppingList_Click(object sender, RoutedEventArgs e)
         {
