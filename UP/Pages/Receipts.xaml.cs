@@ -5,8 +5,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
+using System.Windows.Input;
 using UP.Models;
+using UP.Services;
 
 namespace UP.Pages
 {
@@ -20,38 +21,114 @@ namespace UP.Pages
             public int RecipeId { get; set; }
         }
 
-        public class TimerItem
+        public class AvailableMenu
         {
+            public int Id { get; set; }
             public string Name { get; set; }
-            public string TimeLeft { get; set; }
-            public System.Windows.Threading.DispatcherTimer Timer { get; set; }
-            public DateTime EndTime { get; set; }
+            public string Description { get; set; }
+            public int RecipeCount { get; set; }
+            public int TotalDays { get; set; }
         }
 
         private ObservableCollection<string> _products;
         private ObservableCollection<DailyMenu> _weeklyMenu;
-        private ObservableCollection<TimerItem> _activeTimers;
-        private ObservableCollection<string> _shoppingList;
+        private ObservableCollection<AvailableMenu> _availableMenus;
+        private ObservableCollection<ShoppingListItemDto> _shoppingList;
+        private MenuDto _selectedMenu;
 
         public Receipts()
         {
             InitializeComponent();
             InitializeData();
+            LoadUserInfo();
         }
 
         private void InitializeData()
         {
             _products = AppData.Products;
             _weeklyMenu = AppData.WeeklyMenu;
-            _shoppingList = AppData.ShoppingList;
-            _activeTimers = new ObservableCollection<TimerItem>();
+            _shoppingList = new ObservableCollection<ShoppingListItemDto>();
+            _availableMenus = new ObservableCollection<AvailableMenu>();
 
             ProductsListView.ItemsSource = _products;
             WeeklyMenuItemsControl.ItemsSource = _weeklyMenu;
-            ActiveTimersItemsControl.ItemsSource = _activeTimers;
+            AvailableMenusListView.ItemsSource = _availableMenus;
             ShoppingListListView.ItemsSource = _shoppingList;
 
-            UpdateNoTimersVisibility();
+            // Загружаем доступные меню
+            _ = LoadAvailableMenus();
+        }
+
+        private void LoadUserInfo()
+        {
+            if (AppData.CurrentUser != null)
+            {
+                UserInfoText.Text = $"Пользователь: {AppData.CurrentUser.Username}";
+            }
+        }
+
+        private async Task LoadAvailableMenus()
+        {
+            try
+            {
+                _availableMenus.Clear();
+
+                // Загружаем доступные меню из API
+                var menus = await LoadMenusFromApi();
+
+                foreach (var menu in menus)
+                {
+                    _availableMenus.Add(menu);
+                }
+
+                // Если есть текущее меню, показываем его
+                if (_weeklyMenu.Any())
+                {
+                    CurrentMenuTitle.Text = "Текущее меню";
+                    CurrentMenuDescription.Text = "Ваше текущее меню на неделю";
+                    SelectMenuButton.IsEnabled = false; // Меню уже выбрано
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки меню: {ex.Message}", "Ошибка");
+            }
+        }
+
+        private async Task<List<AvailableMenu>> LoadMenusFromApi()
+        {
+            // TODO: Реализовать загрузку доступных меню из API
+            // Пример:
+            // var response = await AppData.ApiService.GetAvailableMenusAsync();
+
+            // Временные данные для примера
+            return new List<AvailableMenu>
+            {
+                new AvailableMenu
+                {
+                    Id = 1,
+                    Name = "Здоровое питание",
+                    Description = "Низкокалорийные рецепты",
+                    RecipeCount = 14,
+                    TotalDays = 7
+                },
+                new AvailableMenu
+                {
+                    Id = 2,
+                    Name = "Вегетарианское",
+                    Description = "Без мяса и рыбы",
+                    RecipeCount = 21,
+                    TotalDays = 7
+                },
+                new AvailableMenu
+                {
+                    Id = 3,
+                    Name = "Быстрое приготовление",
+                    Description = "Рецепты до 30 минут",
+                    RecipeCount = 14,
+                    TotalDays = 7
+                }
+            };
         }
 
         private async void AddProduct_Click(object sender, RoutedEventArgs e)
@@ -70,24 +147,19 @@ namespace UP.Pages
         {
             try
             {
-                Console.WriteLine($"Saving product to inventory: {productName}");
-
                 var success = await AppData.ApiService.AddToInventoryByNameAsync(productName, 1, "шт");
-
                 if (success)
                 {
-                    Console.WriteLine($"Product {productName} added to inventory successfully");
+                    MessageBox.Show($"Продукт '{productName}' добавлен в инвентарь", "Успех");
                 }
                 else
                 {
-                    Console.WriteLine($"Failed to add {productName} to inventory, adding locally");
-                    AppData.Products.Add(productName);
+                    MessageBox.Show($"Не удалось добавить продукт '{productName}'", "Ошибка");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error saving product to inventory: {ex.Message}");
-                AppData.Products.Add(productName);
+                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка");
             }
         }
 
@@ -97,79 +169,6 @@ namespace UP.Pages
             {
                 _products.Remove(product);
             }
-        }
-
-        private async void GenerateMenu_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (GenerateMenuButton != null)
-                {
-                    GenerateMenuButton.IsEnabled = false;
-                    GenerateMenuButton.Content = "Генерация...";
-                }
-
-                var allergies = GetSelectedAllergies();
-
-                var request = new GenerateMenuRequest
-                {
-                    Days = 7,
-                    TargetCaloriesPerDay = 2000,
-                    CuisineTags = new List<string> { "russian", "italian", "mediterranean" },
-                    UseInventory = _products.Count > 0,
-                    MealTypes = new List<string> { "breakfast", "lunch", "dinner" }
-                };
-
-                var success = await AppData.GenerateNewMenu(request);
-
-                if (success)
-                {
-                    MessageBox.Show("Меню успешно сгенерировано!", "Успех",
-                                  MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                else
-                {
-                    MessageBox.Show("Не удалось сгенерировать меню. Попробуйте другие настройки.", "Ошибка",
-                                  MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка генерации меню: {ex.Message}", "Ошибка",
-                              MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            finally
-            {
-                if (GenerateMenuButton != null)
-                {
-                    GenerateMenuButton.IsEnabled = true;
-                    GenerateMenuButton.Content = "🎲 Сгенерировать меню на неделю";
-                }
-            }
-        }
-
-        private List<string> GetSelectedAllergies()
-        {
-            var allergies = new List<string>();
-
-            if (GlutenCheckBox?.IsChecked == true)
-                allergies.Add("глютен");
-            if (LactoseCheckBox?.IsChecked == true)
-                allergies.Add("лактоза");
-            if (NutsCheckBox?.IsChecked == true)
-                allergies.Add("орехи");
-            if (SeafoodCheckBox?.IsChecked == true)
-                allergies.Add("морепродукты");
-
-            if (!string.IsNullOrWhiteSpace(OtherAllergiesTextBox?.Text))
-            {
-                var customAllergies = OtherAllergiesTextBox.Text.Split(',')
-                    .Select(t => t.Trim())
-                    .Where(t => !string.IsNullOrEmpty(t));
-                allergies.AddRange(customAllergies);
-            }
-
-            return allergies;
         }
 
         private async void OpenRecipe_Click(object sender, RoutedEventArgs e)
@@ -184,14 +183,7 @@ namespace UP.Pages
 
                         if (recipe != null)
                         {
-                            var detailsPage = new RecipeDetailsPage(
-                                recipe.Title,
-                                recipe.Description,
-                                recipe.ImageUrl,
-                                recipe.Ingredients.ConvertAll(i => $"{i.Name} - {i.Quantity} {i.Unit}"),
-                                recipe.Instructions
-                            );
-
+                            var detailsPage = new RecipeDetailsPage(recipe);
                             MainWindow.mainWindow.OpenPages(detailsPage);
                             return;
                         }
@@ -202,14 +194,7 @@ namespace UP.Pages
 
                     if (recipeByName != null)
                     {
-                        var detailsPage = new RecipeDetailsPage(
-                            recipeByName.Title,
-                            recipeByName.Description,
-                            recipeByName.ImageUrl,
-                            recipeByName.Ingredients.ConvertAll(i => $"{i.Name} - {i.Quantity} {i.Unit}"),
-                            recipeByName.Instructions
-                        );
-
+                        var detailsPage = new RecipeDetailsPage(recipeByName);
                         MainWindow.mainWindow.OpenPages(detailsPage);
                     }
                     else
@@ -224,76 +209,113 @@ namespace UP.Pages
             }
         }
 
+        private void MenuCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Border border && border.DataContext is AvailableMenu menu)
+            {
+                // Показываем информацию о выбранном меню
+                ShowMenuPreview(menu);
+            }
+        }
+
+        private void AvailableMenu_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (AvailableMenusListView.SelectedItem is AvailableMenu selectedMenu)
+            {
+                ShowMenuPreview(selectedMenu);
+            }
+        }
+
+        private void ShowMenuPreview(AvailableMenu menu)
+        {
+            CurrentMenuTitle.Text = menu.Name;
+            CurrentMenuDescription.Text = menu.Description;
+            SelectMenuButton.IsEnabled = true;
+
+            // TODO: Загрузить детали меню и показать в центральной панели
+        }
+
+        private async void SelectCurrentMenu_Click(object sender, RoutedEventArgs e)
+        {
+            if (AvailableMenusListView.SelectedItem is AvailableMenu selectedMenu)
+            {
+                try
+                {
+                    // TODO: Выбрать меню через API
+                    // var success = await AppData.ApiService.SelectMenuAsync(selectedMenu.Id);
+
+                    MessageBox.Show($"Меню '{selectedMenu.Name}' выбрано!", "Успех");
+                    await RefreshCurrentMenu();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка выбора меню: {ex.Message}", "Ошибка");
+                }
+            }
+        }
+
+        private async Task RefreshCurrentMenu()
+        {
+            try
+            {
+                await AppData.LoadCurrentMenu();
+                _weeklyMenu.Clear();
+                foreach (var item in AppData.WeeklyMenu)
+                {
+                    _weeklyMenu.Add(item);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка обновления меню: {ex.Message}", "Ошибка");
+            }
+        }
+
+        private async void GenerateShoppingList_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // TODO: Генерировать список покупок через API
+                // var shoppingList = await AppData.ApiService.GenerateShoppingListAsync(_selectedMenu.Id);
+
+                MessageBox.Show("Список покупок создан", "Успех");
+                await RefreshShoppingList();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка создания списка покупок: {ex.Message}", "Ошибка");
+            }
+        }
+
+        private async Task RefreshShoppingList()
+        {
+            try
+            {
+                await AppData.LoadShoppingList();
+                _shoppingList.Clear();
+
+                // TODO: Преобразовать данные из AppData.ShoppingList в ShoppingListItemDto
+                ShoppingListInfo.Text = "Список покупок загружен";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки списка покупок: {ex.Message}", "Ошибка");
+            }
+        }
+
         private void OpenFavorites_Click(object sender, RoutedEventArgs e)
         {
             MainWindow.mainWindow.OpenPages(new FavoritesPage());
         }
 
-        private void StartTimer_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button button && button.DataContext is DailyMenu menu)
-            {
-                var timerWindow = new TimerWindow(menu.Meal);
-                if (timerWindow.ShowDialog() == true)
-                {
-                    var timerItem = new TimerItem
-                    {
-                        Name = menu.Meal,
-                        EndTime = DateTime.Now.AddMinutes(timerWindow.SelectedMinutes),
-                        Timer = new System.Windows.Threading.DispatcherTimer()
-                    };
-
-                    timerItem.Timer.Interval = TimeSpan.FromSeconds(1);
-                    timerItem.Timer.Tick += (s, args) => UpdateTimer(timerItem);
-                    timerItem.Timer.Start();
-
-                    _activeTimers.Add(timerItem);
-                    UpdateNoTimersVisibility();
-                    UpdateTimer(timerItem);
-                }
-            }
-        }
-
-        private void UpdateTimer(TimerItem timerItem)
-        {
-            var timeLeft = timerItem.EndTime - DateTime.Now;
-
-            if (timeLeft.TotalSeconds <= 0)
-            {
-                timerItem.Timer.Stop();
-                timerItem.TimeLeft = "Время вышло!";
-                MessageBox.Show($"Таймер '{timerItem.Name}' завершил работу!", "Таймер",
-                              MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            else
-            {
-                timerItem.TimeLeft = $"{timeLeft:mm\\:ss}";
-            }
-
-            var index = _activeTimers.IndexOf(timerItem);
-            if (index >= 0)
-            {
-                _activeTimers[index] = timerItem;
-            }
-        }
-
-        private void StopTimer_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button button && button.DataContext is TimerItem timerItem)
-            {
-                timerItem.Timer.Stop();
-                _activeTimers.Remove(timerItem);
-                UpdateNoTimersVisibility();
-            }
-        }
-
-        private void UpdateNoTimersVisibility()
-        {
-            NoTimersText.Visibility = _activeTimers.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        }
-
         private void ShoppingItem_Checked(object sender, RoutedEventArgs e)
         {
+            // TODO: Отметить товар как купленный в API
+        }
+
+        private void ShoppingItem_Unchecked(object sender, RoutedEventArgs e)
+        {
+            // TODO: Снять отметку о покупке в API
         }
 
         private async void ExportShoppingList_Click(object sender, RoutedEventArgs e)
@@ -302,43 +324,53 @@ namespace UP.Pages
             {
                 var saveDialog = new Microsoft.Win32.SaveFileDialog
                 {
-                    Filter = "Текстовые файлы (*.txt)|*.txt",
+                    Filter = "Текстовые файлы (*.txt)|*.txt|Файлы CSV (*.csv)|*.csv",
                     FileName = "Список_покупок.txt"
                 };
 
                 if (saveDialog.ShowDialog() == true)
                 {
-                    var lines = new List<string> { "Список покупок:", "==================" };
+                    var lines = new List<string> { "Список покупок", "==================" };
                     foreach (var item in _shoppingList)
                     {
-                        lines.Add($"- {item}");
+                        lines.Add($"{item.Name} - {item.Quantity} {item.Unit}");
                     }
                     System.IO.File.WriteAllLines(saveDialog.FileName, lines);
 
-                    MessageBox.Show("Список покупок экспортирован!", "Успех",
-                                  MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show("Список покупок экспортирован!", "Успех");
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при экспорте: {ex.Message}", "Ошибка",
-                              MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Ошибка при экспорте: {ex.Message}", "Ошибка");
+            }
+        }
+
+        private void ClearShoppingList_Click(object sender, RoutedEventArgs e)
+        {
+            if (MessageBox.Show("Очистить весь список покупок?", "Подтверждение",
+                              MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            {
+                _shoppingList.Clear();
+                ShoppingListInfo.Text = "Список покупок очищен";
             }
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
-            foreach (var timer in _activeTimers)
-            {
-                timer.Timer.Stop();
-            }
-
             AppData.Logout();
             MainWindow.mainWindow.OpenPages(new LogInPage());
         }
 
         private void OtherAllergiesTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
+            // TODO: Сохранить аллергии в профиль пользователя
+        }
+
+        private async void RefreshMenus_Click(object sender, RoutedEventArgs e)
+        {
+            await LoadAvailableMenus();
+            MessageBox.Show("Список меню обновлен", "Успех");
         }
 
         private async void RefreshData_Click(object sender, RoutedEventArgs e)
@@ -346,91 +378,14 @@ namespace UP.Pages
             try
             {
                 await AppData.LoadInitialData();
+                await RefreshCurrentMenu();
+                await RefreshShoppingList();
                 MessageBox.Show("Данные обновлены", "Успех");
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка обновления: {ex.Message}", "Ошибка");
             }
-        }
-    }
-
-    public class TimerWindow : Window
-    {
-        public int SelectedMinutes { get; private set; } = 10;
-
-        public TimerWindow(string mealName)
-        {
-            InitializeComponent();
-            Title = $"Таймер для: {mealName}";
-        }
-
-        private void InitializeComponent()
-        {
-            Width = 300;
-            Height = 200;
-            WindowStartupLocation = WindowStartupLocation.CenterOwner;
-            ResizeMode = ResizeMode.NoResize;
-
-            var stackPanel = new StackPanel { Margin = new Thickness(20) };
-
-            stackPanel.Children.Add(new TextBlock
-            {
-                Text = "Установите время таймера (минуты):",
-                Foreground = Brushes.White,
-                Margin = new Thickness(0, 0, 0, 10)
-            });
-
-            var slider = new Slider
-            {
-                Minimum = 1,
-                Maximum = 120,
-                Value = SelectedMinutes,
-                Margin = new Thickness(0, 0, 0, 10)
-            };
-            slider.ValueChanged += (s, e) => SelectedMinutes = (int)e.NewValue;
-            stackPanel.Children.Add(slider);
-
-            var valueText = new TextBlock
-            {
-                Text = $"{SelectedMinutes} мин.",
-                Foreground = Brushes.White,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Margin = new Thickness(0, 0, 0, 20)
-            };
-            stackPanel.Children.Add(valueText);
-
-            slider.ValueChanged += (s, e) =>
-            {
-                SelectedMinutes = (int)e.NewValue;
-                valueText.Text = $"{SelectedMinutes} мин.";
-            };
-
-            var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
-
-            var okButton = new Button
-            {
-                Content = "Запустить",
-                Background = new SolidColorBrush(Color.FromRgb(76, 175, 80)),
-                Foreground = Brushes.White,
-                Margin = new Thickness(0, 0, 10, 0)
-            };
-            okButton.Click += (s, e) => { DialogResult = true; Close(); };
-            buttonPanel.Children.Add(okButton);
-
-            var cancelButton = new Button
-            {
-                Content = "Отмена",
-                Background = new SolidColorBrush(Color.FromRgb(244, 67, 54)),
-                Foreground = Brushes.White,
-            };
-            cancelButton.Click += (s, e) => { DialogResult = false; Close(); };
-            buttonPanel.Children.Add(cancelButton);
-
-            stackPanel.Children.Add(buttonPanel);
-
-            Content = stackPanel;
-            Background = new SolidColorBrush(Color.FromRgb(30, 30, 30));
         }
     }
 }

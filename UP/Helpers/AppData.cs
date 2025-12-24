@@ -1,5 +1,4 @@
-﻿// Исправление в AppData.cs - добавление недостающих моделей
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -13,22 +12,22 @@ namespace UP
 {
     public static class AppData
     {
-        public static ApiService ApiService { get; set; } = new ApiService();
+        public static ApiService ApiService { get; set; }
         public static UserData CurrentUser { get; set; }
 
-        public static ObservableCollection<string> Products { get; set; } = new ObservableCollection<string>();
-        public static ObservableCollection<Receipts.DailyMenu> WeeklyMenu { get; set; } = new ObservableCollection<Receipts.DailyMenu>();
-        public static ObservableCollection<string> ShoppingList { get; set; } = new ObservableCollection<string>();
-        public static ObservableCollection<RecipeDetailsPage.RecipeData> Favorites { get; set; } = new ObservableCollection<RecipeDetailsPage.RecipeData>();
-        public static ObservableCollection<RecipeDto> AllRecipes { get; set; } = new ObservableCollection<RecipeDto>();
+        public static ObservableCollection<string> Products { get; } = new ObservableCollection<string>();
+        public static ObservableCollection<Receipts.DailyMenu> WeeklyMenu { get; } = new ObservableCollection<Receipts.DailyMenu>();
+        public static ObservableCollection<string> ShoppingList { get; } = new ObservableCollection<string>();
+        public static ObservableCollection<RecipeDetailsPage.RecipeData> Favorites { get; } = new ObservableCollection<RecipeDetailsPage.RecipeData>();
+        public static ObservableCollection<RecipeDto> AllRecipes { get; } = new ObservableCollection<RecipeDto>();
 
-        public static async void InitializeAfterLogin(UserData user)
+        public static async Task<bool> InitializeAfterLogin(UserData user)
         {
             CurrentUser = user;
-            await LoadInitialData();
+            return await LoadInitialData();
         }
 
-        public static async Task LoadInitialData()
+        public static async Task<bool> LoadInitialData()
         {
             try
             {
@@ -36,10 +35,12 @@ namespace UP
                 await LoadFavorites();
                 await LoadCurrentMenu();
                 await LoadShoppingList();
+                return true;
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка загрузки данных: {ex.Message}", "Ошибка");
+                return false;
             }
         }
 
@@ -122,7 +123,7 @@ namespace UP
                     {
                         if (!item.IsPurchased)
                         {
-                            ShoppingList.Add($"{item.IngredientName} - {item.Quantity} {item.Unit}");
+                            ShoppingList.Add($"{item.Name} - {item.Quantity} {item.Unit}");
                         }
                     }
                 }
@@ -165,48 +166,6 @@ namespace UP
             catch (Exception ex)
             {
                 Console.WriteLine($"Error removing from favorites: {ex.Message}");
-                return false;
-            }
-        }
-
-        public static async Task<bool> GenerateNewMenu(GenerateMenuRequest request)
-        {
-            try
-            {
-                Console.WriteLine($"Generating menu with request: Days={request.Days}, Calories={request.TargetCaloriesPerDay}, Tags={string.Join(", ", request.CuisineTags)}");
-
-                var menu = await ApiService.GenerateMenuAsync(request);
-
-                Console.WriteLine($"Menu generation response: {(menu != null ? "Success" : "Null response")}");
-
-                if (menu != null)
-                {
-                    Console.WriteLine($"Menu ID: {menu.Id}, Days count: {menu.Days?.Count}");
-
-                    if (menu.Days != null && menu.Days.Count > 0)
-                    {
-                        await LoadCurrentMenu();
-
-                        if (menu.Id > 0)
-                        {
-                            Console.WriteLine($"Generating shopping list for menu ID: {menu.Id}");
-                            await ApiService.GenerateShoppingListAsync(menu.Id);
-                            await LoadShoppingList();
-                        }
-                        return true;
-                    }
-                    else
-                    {
-                        Console.WriteLine("Menu generated but has no days");
-                        return false;
-                    }
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error generating menu: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 return false;
             }
         }

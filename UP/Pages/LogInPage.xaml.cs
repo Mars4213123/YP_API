@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
@@ -60,10 +59,13 @@ namespace UP.Pages
             try
             {
                 var user = await AppData.ApiService.LoginAsync(username, password);
-                AppData.InitializeAfterLogin(user);
 
-                ShowMessage($"Успешный вход! Добро пожаловать, {user.Username}");
-                MainWindow.mainWindow.OpenPages(new Receipts());
+                var success = await AppData.InitializeAfterLogin(user);
+                if (success)
+                {
+                    ShowMessage($"Успешный вход! Добро пожаловать, {user.Username}");
+                    MainWindow.mainWindow.OpenPages(new Receipts());
+                }
             }
             catch (HttpRequestException httpEx)
             {
@@ -79,6 +81,7 @@ namespace UP.Pages
                 LoginButton.Content = "Войти";
             }
         }
+
         private void ShowMessage(string message)
         {
             MessageBox.Show(message, "Вход в систему",
@@ -87,7 +90,7 @@ namespace UP.Pages
 
         private void RegisterText_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            NavigationService?.Navigate(new RegIn());
+            MainWindow.mainWindow.OpenPages(new RegIn());
         }
 
         private void SecretCodeBox_KeyDown(object sender, KeyEventArgs e)

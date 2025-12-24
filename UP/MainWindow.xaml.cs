@@ -1,7 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
 using UP.Pages;
-using UP.Services;
 
 namespace UP
 {
@@ -13,9 +12,6 @@ namespace UP
         {
             InitializeComponent();
             mainWindow = this;
-
-            // Настройка API
-            AppData.ApiService = new ApiService("https://localhost:7197/api/");
 
             OpenPages(new LogInPage());
         }

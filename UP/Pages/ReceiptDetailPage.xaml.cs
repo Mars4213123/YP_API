@@ -4,7 +4,6 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using UP.Models;
-using UP.Services;
 
 namespace UP.Pages
 {
@@ -34,19 +33,48 @@ namespace UP.Pages
                 Steps = steps
             };
 
-            RecipeTitleText.Text = title;
-            RecipeDescriptionText.Text = description;
+            LoadRecipeData();
+        }
 
-            if (!string.IsNullOrEmpty(imageUrl))
+        public RecipeDetailsPage(RecipeDto recipe)
+        {
+            InitializeComponent();
+
+            _currentRecipe = new RecipeData
             {
-                RecipeImage.Source = new System.Windows.Media.Imaging.BitmapImage(new Uri(imageUrl));
+                Title = recipe.Title,
+                Description = recipe.Description,
+                ImageUrl = recipe.ImageUrl,
+                Ingredients = recipe.Ingredients?.ConvertAll(i => $"{i.Name} - {i.Quantity} {i.Unit}") ?? new List<string>(),
+                Steps = recipe.Instructions ?? new List<string>()
+            };
+
+            LoadRecipeData();
+        }
+
+        private void LoadRecipeData()
+        {
+            RecipeTitleText.Text = _currentRecipe.Title;
+            RecipeDescriptionText.Text = _currentRecipe.Description;
+
+            if (!string.IsNullOrEmpty(_currentRecipe.ImageUrl))
+            {
+                try
+                {
+                    RecipeImage.Source = new System.Windows.Media.Imaging.BitmapImage(
+                        new Uri(_currentRecipe.ImageUrl));
+                }
+                catch
+                {
+                    // Используем изображение по умолчанию
+                }
             }
 
-            IngredientsList.ItemsSource = ingredients;
+            IngredientsList.ItemsSource = _currentRecipe.Ingredients;
 
             var stepObjects = new List<object>();
             int i = 1;
-            foreach (var step in steps)
+            foreach (var step in _currentRecipe.Steps)
                 stepObjects.Add(new { StepNumber = i++, StepText = step });
             StepsList.ItemsSource = stepObjects;
         }
@@ -58,13 +86,12 @@ namespace UP.Pages
 
         private void StartTimer_Click(object sender, RoutedEventArgs e)
         {
-            var timerWindow = new TimerWindow(RecipeTitleText.Text);
+            var timerWindow = new Receipts.TimerWindow(RecipeTitleText.Text);
             timerWindow.ShowDialog();
         }
 
         private void AddToShoppingList_Click(object sender, RoutedEventArgs e)
         {
-            // Добавляем ингредиенты в локальный список
             foreach (var ingredient in _currentRecipe.Ingredients)
             {
                 AppData.ShoppingList.Add(ingredient);
@@ -81,7 +108,6 @@ namespace UP.Pages
                 var success = await AppData.AddToFavorites(_currentRecipe);
                 if (success)
                 {
-                    // Проверяем, нет ли уже в избранном
                     if (!AppData.Favorites.Any(f => f.Title == _currentRecipe.Title))
                     {
                         AppData.Favorites.Add(_currentRecipe);

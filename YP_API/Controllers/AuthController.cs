@@ -1,6 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
-using YP_API.Models;
+п»їusing Microsoft.AspNetCore.Mvc;
 using YP_API.Services;
 
 namespace YP_API.Controllers
@@ -16,66 +14,10 @@ namespace YP_API.Controllers
             _authService = authService;
         }
 
-        [HttpPost("register")]
-        public async Task<ActionResult> Register(
-            [FromForm]
-            [Required(ErrorMessage = "Имя пользователя обязательно")]
-            [StringLength(50, MinimumLength = 3, ErrorMessage = "Имя пользователя должно быть от 3 до 50 символов")]
-            [Display(Name = "Имя пользователя")]
-            string username,
-
-            [FromForm]
-            [Required(ErrorMessage = "Email обязателен")]
-            [EmailAddress(ErrorMessage = "Неверный формат email")]
-            [Display(Name = "Email адрес")]
-            string email,
-
-            [FromForm]
-            [Required(ErrorMessage = "Полное имя обязательно")]
-            [StringLength(100, ErrorMessage = "Полное имя не должно превышать 100 символов")]
-            [Display(Name = "Полное имя")]
-            string fullName,
-
-            [FromForm]
-            [Required(ErrorMessage = "Пароль обязателен")]
-            [StringLength(100, MinimumLength = 6, ErrorMessage = "Пароль должен быть не менее 6 символов")]
-            [Display(Name = "Пароль")]
-            string password,
-
-            [FromForm]
-            [Display(Name = "Аллергии")]
-            List<string> allergies = null)
-        {
-            try
-            {
-                var user = await _authService.Register(username, email, fullName, password, allergies ?? new List<string>());
-
-                return Ok(new
-                {
-                    Id = user.Id,
-                    Username = user.Username,
-                    Email = user.Email,
-                    FullName = user.FullName,
-                    Message = "Пользователь успешно создан"
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
-        }
-
         [HttpPost("login")]
         public async Task<ActionResult> Login(
-            [FromForm]
-            [Required(ErrorMessage = "Имя пользователя обязательно")]
-            [Display(Name = "Имя пользователя")]
-            string username,
-
-            [FromForm]
-            [Required(ErrorMessage = "Пароль обязателен")]
-            [Display(Name = "Пароль")]
-            string password)
+            [FromForm] string username,
+            [FromForm] string password)
         {
             try
             {
@@ -83,16 +25,41 @@ namespace YP_API.Controllers
 
                 return Ok(new
                 {
-                    Id = user.Id,
-                    Username = user.Username,
-                    Email = user.Email,
-                    FullName = user.FullName,
-                    Message = "Пользователь успешно найден"
+                    success = true,
+                    id = user.Id,
+                    username = user.Username,
+                    email = user.Email,
+                    message = "РЈСЃРїРµС€РЅС‹Р№ РІС…РѕРґ"
                 });
             }
             catch (Exception ex)
             {
                 return Unauthorized(new { error = ex.Message });
+            }
+        }
+
+        [HttpPost("register")]
+        public async Task<ActionResult> Register(
+            [FromForm] string username,
+            [FromForm] string password,
+            [FromForm] string email)
+        {
+            try
+            {
+                var user = await _authService.Register(username, email, password);
+
+                return Ok(new
+                {
+                    success = true,
+                    id = user.Id,
+                    username = user.Username,
+                    email = user.Email,
+                    message = "РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СЃРѕР·РґР°РЅ"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
             }
         }
     }

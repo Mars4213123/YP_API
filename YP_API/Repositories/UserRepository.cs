@@ -1,13 +1,18 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using YP_API.Data;
 using YP_API.Interfaces;
 using YP_API.Models;
 
 namespace YP_API.Repositories
 {
-    public class UserRepository : Repository<User>, IUserRepository
+    public class UserRepository : IUserRepository
     {
-        public UserRepository(RecipePlannerContext context) : base(context) { }
+        private readonly RecipePlannerContext _context;
+
+        public UserRepository(RecipePlannerContext context)
+        {
+            _context = context;
+        }
 
         public async Task<User> GetUserByUsernameAsync(string username)
         {
@@ -15,17 +20,14 @@ namespace YP_API.Repositories
                 .FirstOrDefaultAsync(u => u.Username == username);
         }
 
-        public async Task<User> GetUserByEmailAsync(string email)
+        public async Task AddAsync(User entity)
         {
-            return await _context.Users
-                .FirstOrDefaultAsync(u => u.Email == email);
+            await _context.Users.AddAsync(entity);
         }
 
-        public async Task<bool> UserExistsAsync(string username, string email)
+        public async Task<bool> SaveAllAsync()
         {
-            return await _context.Users
-                .AnyAsync(u => u.Username == username || u.Email == email);
+            return await _context.SaveChangesAsync() > 0;
         }
     }
 }
-

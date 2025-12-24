@@ -1,8 +1,7 @@
-using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
-using YP_API.Interfaces;
+п»їusing Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using YP_API.Data;
 using YP_API.Models;
-using YP_API.Services;
 
 namespace YP_API.Controllers
 {
@@ -10,77 +9,149 @@ namespace YP_API.Controllers
     [Route("api/[controller]")]
     public class ShoppingListController : ControllerBase
     {
-        private readonly IShoppingListService _shoppingListService;
+        private readonly RecipePlannerContext _context;
 
-        public ShoppingListController(IShoppingListService shoppingListService)
+        public ShoppingListController(RecipePlannerContext context)
         {
-            _shoppingListService = shoppingListService;
+            _context = context;
         }
 
-        [HttpGet("current/{userId}")]
-        public async Task<ActionResult> GetCurrentShoppingList(int userId)
-        {
-            var shoppingList = await _shoppingListService.GetCurrentShoppingListAsync(userId);
-
-            if (shoppingList == null)
-                return NotFound(new { error = "Текущий список покупок не найден" });
-
-            return Ok(new
-            {
-                Id = shoppingList.Id,
-                Name = shoppingList.Name,
-                IsCompleted = shoppingList.IsCompleted,
-                Items = shoppingList.Items?.Select(i => new {
-                    Id = i.Id,
-                    IngredientName = i.Ingredient?.Name,
-                    Quantity = i.Quantity,
-                    Unit = i.Unit,
-                    Category = i.Category,
-                    IsPurchased = i.IsPurchased
-                })
-            });
-        }
-
-        [HttpPost("{listId}/items/{itemId}/toggle")]
-        public async Task<ActionResult> ToggleItemPurchased(
-            int listId,
-            int itemId,
-            [FromForm]
-            [Required(ErrorMessage = "Статус покупки обязателен")]
-            [Display(Name = "Статус покупки (куплено/не куплено)")]
-            bool isPurchased)
-        {
-            var success = await _shoppingListService.ToggleItemPurchasedAsync(itemId, isPurchased);
-
-            if (success)
-                return Ok(new { message = "Статус покупки успешно изменен" });
-
-            return BadRequest(new { error = "Не удалось изменить статус покупки" });
-        }
-
+        // РЎРћР—Р”РђРўР¬ СЃРїРёСЃРѕРє РїРѕРєСѓРїРѕРє РёР· РјРµРЅСЋ
         [HttpPost("generate-from-menu/{menuId}/{userId}")]
         public async Task<ActionResult> GenerateFromMenu(int menuId, int userId)
         {
             try
             {
-                var shoppingList = await _shoppingListService.GenerateShoppingListFromMenuAsync(menuId, userId);
+                // РќР°С…РѕРґРёРј РјРµРЅСЋ СЃ СЂРµС†РµРїС‚Р°РјРё Рё РёС… РёРЅРіСЂРµРґРёРµРЅС‚Р°РјРё
+                var menu = await _context.Menus
+                    .Include(m => m.Items)
+                        .ThenInclude(i => i.Recipe)
+                    .FirstOrDefaultAsync(m => m.Id == menuId && m.UserId == userId);
+
+                if (menu == null)
+                    return NotFound(new { error = "РњРµРЅСЋ РЅРµ РЅР°Р№РґРµРЅРѕ" });
+
+                // РџРѕР»СѓС‡Р°РµРј РІСЃРµ RecipeId РёР· РјРµРЅСЋ
+                var recipeIds = menu.Items.Select(i => i.RecipeId).ToList();
+
+                // РџРѕР»СѓС‡Р°РµРј РІСЃРµ РёРЅРіСЂРµРґРёРµРЅС‚С‹ РґР»СЏ СЌС‚РёС… СЂРµС†РµРїС‚РѕРІ
+                var recipeIngredients = await _context.RecipeIngredients
+                    .Include(ri => ri.Ingredient)
+                    .Where(ri => recipeIds.Contains(ri.RecipeId))
+                    .ToListAsync();
+
+                // РЎРѕР·РґР°РµРј СЃРїРёСЃРѕРє РїРѕРєСѓРїРѕРє
+                var shoppingList = new ShoppingList
+                {
+                    UserId = userId,
+                    Name = $"РЎРїРёСЃРѕРє РґР»СЏ {menu.Name}",
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                // Р“СЂСѓРїРїРёСЂСѓРµРј РёРЅРіСЂРµРґРёРµРЅС‚С‹
+                var ingredientGroups = recipeIngredients
+                    .GroupBy(ri => ri.IngredientId)
+                    .Select(g => new
+                    {
+                        Ingredient = g.First().Ingredient,
+                        TotalQuantity = g.Sum(ri => ri.Quantity)
+                    });
+
+                foreach (var group in ingredientGroups)
+                {
+                    shoppingList.Items.Add(new ShoppingListItem
+                    {
+                        Name = group.Ingredient.Name,
+                        Quantity = group.TotalQuantity,
+                        Unit = group.Ingredient.Unit,
+                        IsPurchased = false
+                    });
+                }
+
+                await _context.ShoppingLists.AddAsync(shoppingList);
+                await _context.SaveChangesAsync();
 
                 return Ok(new
                 {
-                    Id = shoppingList.Id,
-                    Name = shoppingList.Name,
-                    Message = "Список покупок успешно сгенерирован",
-                    ItemsCount = shoppingList.Items?.Count ?? 0
+                    success = true,
+                    message = "РЎРїРёСЃРѕРє РїРѕРєСѓРїРѕРє СЃРѕР·РґР°РЅ",
+                    listId = shoppingList.Id,
+                    itemCount = shoppingList.Items.Count
                 });
             }
             catch (Exception ex)
             {
-                return BadRequest(new
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        // РџРћР›РЈР§РРўР¬ С‚РµРєСѓС‰РёР№ СЃРїРёСЃРѕРє РїРѕРєСѓРїРѕРє РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
+        [HttpGet("user/{userId}/current")]
+        public async Task<ActionResult> GetCurrentShoppingList(int userId)
+        {
+            try
+            {
+                var list = await _context.ShoppingLists
+                    .Include(sl => sl.Items)
+                    .Where(sl => sl.UserId == userId && !sl.IsCompleted)
+                    .OrderByDescending(sl => sl.CreatedAt)
+                    .FirstOrDefaultAsync();
+
+                if (list == null)
+                    return Ok(new
+                    {
+                        success = true,
+                        data = (object)null,
+                        message = "РќРµС‚ Р°РєС‚РёРІРЅС‹С… СЃРїРёСЃРєРѕРІ РїРѕРєСѓРїРѕРє"
+                    });
+
+                return Ok(new
                 {
-                    success = false,
-                    error = "Ошибка генерации списка покупок",
-                    message = ex.Message
+                    success = true,
+                    data = new
+                    {
+                        Id = list.Id,
+                        Name = list.Name,
+                        IsCompleted = list.IsCompleted,
+                        Items = list.Items.Select(i => new
+                        {
+                            Id = i.Id,
+                            Name = i.Name,
+                            Quantity = i.Quantity,
+                            Unit = i.Unit,
+                            IsPurchased = i.IsPurchased
+                        })
+                    }
                 });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // РћРўРњР•РўРРўР¬ С‚РѕРІР°СЂ РєР°Рє РєСѓРїР»РµРЅРЅС‹Р№
+        [HttpPut("items/{itemId}/toggle")]
+        public async Task<ActionResult> ToggleItemPurchased(int itemId)
+        {
+            try
+            {
+                var item = await _context.ShoppingListItems.FindAsync(itemId);
+                if (item == null)
+                    return NotFound(new { error = "РўРѕРІР°СЂ РЅРµ РЅР°Р№РґРµРЅ" });
+
+                item.IsPurchased = !item.IsPurchased;
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    message = item.IsPurchased ? "РўРѕРІР°СЂ РѕС‚РјРµС‡РµРЅ РєР°Рє РєСѓРїР»РµРЅРЅС‹Р№" : "РўРѕРІР°СЂ РѕС‚РјРµС‡РµРЅ РєР°Рє РЅРµРєСѓРїР»РµРЅРЅС‹Р№"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
             }
         }
     }

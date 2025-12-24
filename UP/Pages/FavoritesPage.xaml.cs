@@ -1,7 +1,6 @@
 ﻿using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using UP.Services;
 
 namespace UP.Pages
 {
@@ -27,15 +26,24 @@ namespace UP.Pages
         {
             if (sender is Button button && button.DataContext is RecipeDetailsPage.RecipeData recipe)
             {
-                var detailsPage = new RecipeDetailsPage(
-                    recipe.Title,
-                    recipe.Description,
-                    recipe.ImageUrl,
-                    recipe.Ingredients,
-                    recipe.Steps
-                );
+                var apiRecipe = AppData.AllRecipes.FirstOrDefault(r => r.Title == recipe.Title);
 
-                MainWindow.mainWindow.OpenPages(detailsPage);
+                if (apiRecipe != null)
+                {
+                    var detailsPage = new RecipeDetailsPage(apiRecipe);
+                    MainWindow.mainWindow.OpenPages(detailsPage);
+                }
+                else
+                {
+                    var detailsPage = new RecipeDetailsPage(
+                        recipe.Title,
+                        recipe.Description,
+                        recipe.ImageUrl,
+                        recipe.Ingredients,
+                        recipe.Steps
+                    );
+                    MainWindow.mainWindow.OpenPages(detailsPage);
+                }
             }
         }
 

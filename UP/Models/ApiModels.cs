@@ -1,35 +1,26 @@
-﻿using System.Collections.Generic;
-using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.Generic;
 
 namespace UP.Models
 {
-    public class LoginRequest
-    {
-        public string Username { get; set; }
-        public string Password { get; set; }
-    }
-
-    public class RegisterRequest
-    {
-        public string Username { get; set; }
-        public string Email { get; set; }
-        public string Password { get; set; }
-        public List<string> Allergies { get; set; } = new List<string>();
-    }
-
-    public class AuthResponse
+    public class ApiResponse<T>
     {
         public bool Success { get; set; }
         public string Message { get; set; }
-        public UserData Data { get; set; }
+        public T Data { get; set; }
     }
 
-    public class UserData
+    public class ApiResponse
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+    }
+
+    public class UserDto
     {
         public int Id { get; set; }
         public string Username { get; set; }
         public string Email { get; set; }
-        public string FullName { get; set; }
         public string Token { get; set; }
     }
 
@@ -44,8 +35,6 @@ namespace UP.Models
         public decimal Calories { get; set; }
         public List<IngredientDto> Ingredients { get; set; } = new List<IngredientDto>();
         public List<string> Instructions { get; set; } = new List<string>();
-        public string CuisineType { get; set; }
-        public string Difficulty { get; set; }
     }
 
     public class IngredientDto
@@ -55,15 +44,6 @@ namespace UP.Models
         public decimal Quantity { get; set; }
         public string Unit { get; set; }
         public string Category { get; set; }
-    }
-
-    public class GenerateMenuRequest
-    {
-        public int Days { get; set; } = 7;
-        public decimal? TargetCaloriesPerDay { get; set; }
-        public List<string> CuisineTags { get; set; } = new List<string>();
-        public List<string> MealTypes { get; set; } = new List<string> { "breakfast", "lunch", "dinner" };
-        public bool UseInventory { get; set; } = false;
     }
 
     public class MenuDto
@@ -102,7 +82,7 @@ namespace UP.Models
     public class ShoppingListItemDto
     {
         public int Id { get; set; }
-        public string IngredientName { get; set; }
+        public string Name { get; set; }
         public decimal Quantity { get; set; }
         public string Unit { get; set; }
         public string Category { get; set; }
