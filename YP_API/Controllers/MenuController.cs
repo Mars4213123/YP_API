@@ -36,14 +36,14 @@ namespace YP_API.Controllers
                     return Ok(new
                     {
                         success = false,
-                        message = "Текущее меню не найдено",
+                        message = "Текущее меню не существует",
                         data = (object)null
                     });
 
                 return Ok(new
                 {
                     success = true,
-                    message = "Меню найдено",
+                    message = "Меню получено",
                     data = new
                     {
                         Id = menu.Id,
@@ -88,15 +88,15 @@ namespace YP_API.Controllers
 
             [FromForm]
             [Range(0, 10000, ErrorMessage = "Калории должны быть от 0 до 10000")]
-            [Display(Name = "Желаемые калории в день")]
+            [Display(Name = "Максимальные калории в день")]
             decimal? targetCaloriesPerDay = null,
 
             [FromForm]
-            [Display(Name = "Тип кухни")]
+            [Display(Name = "Теги кухни")]
             List<string> cuisineTags = null,
 
             [FromForm]
-            [Display(Name = "Типы приемов пищи")]
+            [Display(Name = "Типы приёмов пищи")]
             List<string> mealTypes = null,
 
             [FromForm]
@@ -107,14 +107,21 @@ namespace YP_API.Controllers
             {
                 _logger.LogInformation($"Generating menu for user {userId}, days: {days}, calories: {targetCaloriesPerDay}");
 
+                var currentMenu = await _menuService.GetCurrentMenuAsync(userId);
+                if (currentMenu != null)
+                {
+                    _logger.LogInformation($"Deleting old menu ID: {currentMenu.Id} before generating new one");
+                    await _menuService.DeleteMenuAsync(currentMenu.Id);
+                }
+
                 var user = await _userRepository.GetByIdAsync(userId);
                 if (user == null)
                 {
                     return BadRequest(new
                     {
                         success = false,
-                        error = "Пользователь не найден",
-                        message = "Не удалось найти данного пользователя"
+                        error = "Пользователь не существует",
+                        message = "Не удалось найти указанного пользователя"
                     });
                 }
 
@@ -123,22 +130,28 @@ namespace YP_API.Controllers
                     cuisineTags ?? new List<string>(),
                     targetCaloriesPerDay);
 
+                _logger.LogInformation($"Found {availableRecipes.Count()} available recipes for user {userId}");
+
                 if (!availableRecipes.Any())
                 {
-                    _logger.LogWarning($"No recipes available for user {userId} with filters: allergies={user.Allergies?.Count}, cuisineTags={cuisineTags?.Count}, maxCalories={targetCaloriesPerDay}");
+                    _logger.LogInformation($"No recipes found with filters. Trying without filters...");
 
-                    return BadRequest(new
+                    availableRecipes = await _recipeRepository.GetRecipesForMenuAsync(
+                        new List<string>(),
+                        new List<string>(),
+                        null);
+
+                    _logger.LogInformation($"Now found {availableRecipes.Count()} recipes without filters");
+
+                    if (!availableRecipes.Any())
                     {
-                        success = false,
-                        error = "Нет доступных рецептов",
-                        message = "Не найдено рецептов по заданным фильтрам. Попробуйте изменить фильтры.",
-                        suggestions = new
+                        return BadRequest(new
                         {
-                            tryWithoutAllergies = user.Allergies?.Any() == true,
-                            tryWithoutCuisineTags = cuisineTags?.Any() == true,
-                            tryHigherCalories = targetCaloriesPerDay.HasValue
-                        }
-                    });
+                            success = false,
+                            error = "В базе данных нет рецептов",
+                            message = "В системе не найдено ни одного рецепта. Добавьте рецепты в базу данных."
+                        });
+                    }
                 }
 
                 var request = new GenerateMenuRequest
@@ -181,80 +194,59 @@ namespace YP_API.Controllers
             }
         }
 
-        [HttpGet("history/{userId}")]
-        public async Task<ActionResult> GetMenuHistory(int userId)
+        [HttpDelete("clear/{userId}")]
+        public async Task<ActionResult> ClearCurrentMenu(int userId)
         {
             try
             {
-                var menus = await _menuService.GetUserMenuHistoryAsync(userId);
+                _logger.LogInformation($"Clearing current menu for user ID: {userId}");
 
-                if (!menus.Any())
+                var currentMenu = await _menuService.GetCurrentMenuAsync(userId);
+
+                if (currentMenu == null)
+                {
+                    return Ok(new
+                    {
+                        success = false,
+                        message = "Текущее меню не найдено",
+                        data = (object)null
+                    });
+                }
+
+                // Удаляем меню через сервис
+                var result = await _menuService.DeleteMenuAsync(currentMenu.Id);
+
+                if (result)
                 {
                     return Ok(new
                     {
                         success = true,
-                        message = "История меню пуста",
-                        data = new List<object>()
+                        message = "Текущее меню успешно удалено",
+                        data = new
+                        {
+                            DeletedMenuId = currentMenu.Id,
+                            DeletedMenuName = currentMenu.Name
+                        }
                     });
                 }
-
-                return Ok(new
+                else
                 {
-                    success = true,
-                    message = "История меню получена",
-                    data = menus.Select(m => new {
-                        Id = m.Id,
-                        Name = m.Name,
-                        StartDate = m.StartDate,
-                        EndDate = m.EndDate,
-                        TotalCalories = m.TotalCalories,
-                        CreatedAt = m.CreatedAt
-                    })
-                });
+                    return BadRequest(new
+                    {
+                        success = false,
+                        error = "Ошибка удаления меню",
+                        message = "Не удалось удалить текущее меню"
+                    });
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error in GetMenuHistory: {ex.Message}");
+                _logger.LogError($"Error in ClearCurrentMenu: {ex.Message}");
                 return StatusCode(500, new
                 {
                     success = false,
                     error = "Внутренняя ошибка сервера",
-                    message = "Произошла ошибка при получении истории"
-                });
-            }
-        }
-
-        [HttpPost("{menuId}/regenerate-day")]
-        public async Task<ActionResult> RegenerateDay(
-            int menuId,
-            [FromForm]
-            [Required(ErrorMessage = "Дата обязательна")]
-            [Display(Name = "Дата для перегенерации")]
-            DateTime date)
-        {
-            try
-            {
-                var menu = await _menuService.RegenerateDayAsync(menuId, date, null);
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "День успешно перегенерирован",
-                    data = new
-                    {
-                        MenuId = menu.Id,
-                        Date = date
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error in RegenerateDay: {ex.Message}");
-                return BadRequest(new
-                {
-                    success = false,
-                    error = "Ошибка перегенерации",
-                    message = ex.Message
+                    message = "Произошла ошибка при удалении меню"
                 });
             }
         }

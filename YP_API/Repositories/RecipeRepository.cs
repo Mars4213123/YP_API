@@ -200,28 +200,33 @@ namespace YP_API.Repositories
 
         public async Task<IEnumerable<Recipe>> GetRecipesForMenuAsync(List<string> excludedAllergens, List<string> cuisineTags, decimal? maxCalories)
         {
-            var recipes = await _context.Recipes
+            var allRecipes = await _context.Recipes
                 .Include(r => r.RecipeIngredients)
                     .ThenInclude(ri => ri.Ingredient)
                 .Where(r => r.IsPublic)
                 .ToListAsync();
 
+            var filteredRecipes = allRecipes.AsEnumerable();
+
             if (excludedAllergens != null && excludedAllergens.Any())
             {
-                recipes = recipes.Where(r => !r.Allergens.Any(a => excludedAllergens.Contains(a))).ToList();
+                filteredRecipes = filteredRecipes
+                    .Where(r => !r.Allergens.Any(a => excludedAllergens.Contains(a)));
             }
 
             if (cuisineTags != null && cuisineTags.Any())
             {
-                recipes = recipes.Where(r => cuisineTags.Contains(r.CuisineType)).ToList();
+                filteredRecipes = filteredRecipes
+                    .Where(r => cuisineTags.Contains(r.CuisineType));
             }
 
             if (maxCalories.HasValue)
             {
-                recipes = recipes.Where(r => r.Calories <= maxCalories.Value).ToList();
+                filteredRecipes = filteredRecipes
+                    .Where(r => r.Calories <= maxCalories.Value);
             }
 
-            return recipes;
+            return filteredRecipes.ToList();
         }
 
         public async Task<IEnumerable<Recipe>> GetUserFavoritesAsync(int userId)

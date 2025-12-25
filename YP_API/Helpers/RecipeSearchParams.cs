@@ -2,7 +2,7 @@ namespace YP_API.Helpers
 {
     public class RecipeSearchParams : PaginationParams
     {
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public List<string> Tags { get; set; } = new List<string>();
         public List<string> ExcludedAllergens { get; set; } = new List<string>();
         public List<string> CuisineTypes { get; set; } = new List<string>();

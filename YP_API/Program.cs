@@ -8,6 +8,7 @@ using YP_API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// CORS настройки
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -26,6 +27,7 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Логгирование
 builder.Services.AddLogging(logging =>
 {
     logging.AddConsole();
@@ -40,6 +42,7 @@ builder.Logging.AddDebug();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
+// Swagger
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
@@ -52,15 +55,15 @@ builder.Services.AddSwaggerGen(c =>
     c.CustomSchemaIds(x => x.FullName);
 });
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Server=localhost;Port=3306;Database=recipe_planner;Uid=root;Pwd=;";
+var connectionString = "Server=MySQL-8.2;Port=3306;Database=recipe_planner;Uid=root;Pwd=;";
 
 builder.Services.AddDbContext<RecipePlannerContext>(options =>
 {
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
-    options.EnableSensitiveDataLogging();
-    options.EnableDetailedErrors();
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
+           .EnableSensitiveDataLogging()
+           .EnableDetailedErrors();
 });
+
 builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
 builder.Services.AddScoped<IIngredientRepository, IngredientRepository>();
 builder.Services.AddScoped<IMenuRepository, MenuRepository>();
@@ -135,22 +138,23 @@ try
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<RecipePlannerContext>();
 
-    Console.WriteLine("Testing database connection...");
     var canConnect = await context.Database.CanConnectAsync();
-    Console.WriteLine($"Database connected: {canConnect}");
 
     if (canConnect)
     {
         var userCount = await context.Users.CountAsync();
-        Console.WriteLine($"Users in database: {userCount}");
 
         var recipeCount = await context.Recipes.CountAsync();
-        Console.WriteLine($"Recipes in database: {recipeCount}");
     }
 }
 catch (Exception ex)
 {
     Console.WriteLine($"Database check failed: {ex.Message}");
+    Console.WriteLine($"Please check:");
+    Console.WriteLine($"1. MySQL server is running (net start mysql)");
+    Console.WriteLine($"2. Database 'recipe_planner' exists");
+    Console.WriteLine($"3. User 'root' has no password (or change connection string)");
+    Console.WriteLine($"4. Port 3306 is not blocked by firewall");
 }
 
 Console.WriteLine("Application started successfully");

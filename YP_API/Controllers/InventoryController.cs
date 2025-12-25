@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using YP_API.Data;
 using YP_API.Interfaces;
 using YP_API.Models;
 
@@ -13,17 +15,20 @@ namespace YP_API.Controllers
         private readonly IIngredientRepository _ingredientRepository;
         private readonly IRepository<UserInventory> _inventoryRepository;
         private readonly ILogger<InventoryController> _logger;
+        private readonly RecipePlannerContext _context;
 
         public InventoryController(
             IUserRepository userRepository,
             IIngredientRepository ingredientRepository,
             IRepository<UserInventory> inventoryRepository,
-            ILogger<InventoryController> logger)
+            ILogger<InventoryController> logger,
+            RecipePlannerContext context)
         {
             _userRepository = userRepository;
             _ingredientRepository = ingredientRepository;
             _inventoryRepository = inventoryRepository;
             _logger = logger;
+            _context = context;
         }
 
         [HttpGet("{userId}")]
@@ -42,10 +47,10 @@ namespace YP_API.Controllers
                     });
                 }
 
-                var inventory = await _inventoryRepository.GetAllAsync();
-                var userInventory = inventory.OfType<UserInventory>()
+                var userInventory = await _context.UserInventories
+                    .Include(ui => ui.Ingredient)
                     .Where(ui => ui.UserId == userId)
-                    .ToList();
+                    .ToListAsync();
 
                 return Ok(new
                 {
@@ -54,7 +59,7 @@ namespace YP_API.Controllers
                     data = userInventory.Select(ui => new
                     {
                         Id = ui.Id,
-                        ProductName = ui.Ingredient?.Name,
+                        ProductName = ui.Ingredient?.Name, // Теперь будет не null
                         IngredientId = ui.IngredientId,
                         Quantity = ui.Quantity,
                         Unit = ui.Unit,
@@ -74,6 +79,7 @@ namespace YP_API.Controllers
                 });
             }
         }
+
 
         [HttpPost("add/{userId}")]
         public async Task<ActionResult> AddToInventory(

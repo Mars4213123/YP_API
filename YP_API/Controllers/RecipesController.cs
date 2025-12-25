@@ -98,8 +98,8 @@ namespace YP_API.Controllers
                     return NotFound(new
                     {
                         success = false,
-                        error = "Рецепт не найден",
-                        message = $"Рецепт с ID {id} не существует"
+                        error = "Рецепт не существует",
+                        message = $"Рецепт с ID {id} не найден"
                     });
 
                 return Ok(new
@@ -158,12 +158,12 @@ namespace YP_API.Controllers
 
             [FromForm]
             [Range(0, 1000, ErrorMessage = "Время подготовки должно быть от 0 до 1000 минут")]
-            [Display(Name = "Время подготовки (минуты)")]
+            [Display(Name = "Время подготовки (минут)")]
             int prepTime,
 
             [FromForm]
             [Range(0, 1000, ErrorMessage = "Время готовки должно быть от 0 до 1000 минут")]
-            [Display(Name = "Время готовки (минуты)")]
+            [Display(Name = "Время готовки (минут)")]
             int cookTime,
 
             [FromForm]
@@ -177,7 +177,7 @@ namespace YP_API.Controllers
             decimal calories,
 
             [FromForm]
-            [Url(ErrorMessage = "Неверный URL изображения")]
+            [Url(ErrorMessage = "Некорректный URL изображения")]
             [Display(Name = "URL изображения")]
             string imageUrl = "",
 
@@ -242,26 +242,40 @@ namespace YP_API.Controllers
         }
 
         [HttpPost("{id}/favorite/{userId}")]
-        public async Task<ActionResult> ToggleFavorite(int id, int userId)
+        public async Task<ActionResult> AddToFavorites(int id, int userId)
         {
             try
             {
-                _logger.LogInformation($"Toggling favorite for user {userId}, recipe {id}");
+                _logger.LogInformation($"Adding recipe {id} to favorites for user {userId}");
+
+                var isFavorite = await _recipeRepository.IsRecipeFavoriteAsync(userId, id);
+
+                if (isFavorite)
+                {
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Рецепт уже в избранном",
+                        data = new
+                        {
+                            RecipeId = id,
+                            IsFavorite = true
+                        }
+                    });
+                }
 
                 var success = await _recipeRepository.ToggleFavoriteAsync(userId, id);
 
                 if (success)
                 {
-                    var isFavorite = await _recipeRepository.IsRecipeFavoriteAsync(userId, id);
-
                     return Ok(new
                     {
                         success = true,
-                        message = isFavorite ? "Рецепт добавлен в избранное" : "Рецепт удален из избранного",
+                        message = "Рецепт успешно добавлен в избранное",
                         data = new
                         {
                             RecipeId = id,
-                            IsFavorite = isFavorite
+                            IsFavorite = true
                         }
                     });
                 }
@@ -269,19 +283,75 @@ namespace YP_API.Controllers
                 return BadRequest(new
                 {
                     success = false,
-                    error = "Ошибка изменения избранного",
-                    message = "Не удалось изменить статус избранного"
+                    error = "Ошибка добавления в избранное",
+                    message = "Не удалось добавить рецепт в избранное"
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error in ToggleFavorite: {ex.Message}");
-                _logger.LogError($"Stack trace: {ex.StackTrace}");
+                _logger.LogError($"Error in AddToFavorites: {ex.Message}");
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "Ошибка добавления в избранного",
+                    message = ex.Message
+                });
+            }
+        }
+
+        [HttpDelete("{id}/favorite/{userId}")]
+        public async Task<ActionResult> RemoveFromFavorites(int id, int userId)
+        {
+            try
+            {
+                _logger.LogInformation($"Removing recipe {id} from favorites for user {userId}");
+
+                var isFavorite = await _recipeRepository.IsRecipeFavoriteAsync(userId, id);
+
+                if (!isFavorite)
+                {
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Рецепт не был в избранном",
+                        data = new
+                        {
+                            RecipeId = id,
+                            IsFavorite = false
+                        }
+                    });
+                }
+
+                var success = await _recipeRepository.ToggleFavoriteAsync(userId, id);
+
+                if (success)
+                {
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Рецепт успешно удален из избранного",
+                        data = new
+                        {
+                            RecipeId = id,
+                            IsFavorite = false
+                        }
+                    });
+                }
 
                 return BadRequest(new
                 {
                     success = false,
-                    error = "Ошибка изменения избранного",
+                    error = "Ошибка удаления из избранного",
+                    message = "Не удалось удалить рецепт из избранного"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error in RemoveFromFavorites: {ex.Message}");
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "Ошибка удаления из избранного",
                     message = ex.Message
                 });
             }
