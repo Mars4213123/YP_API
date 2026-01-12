@@ -30,7 +30,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-var connectionString = "Server=MySQL-8.2;Port=3306;Database=recipe_planner;Uid=root;Pwd=;ConnectionTimeout=60;";
+var connectionString = "Server=localhost;Port=3306;Database=recipe_planner;Uid=root;Pwd=;";
 
 builder.Services.AddDbContext<RecipePlannerContext>(options =>
 {

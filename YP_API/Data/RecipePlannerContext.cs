@@ -16,6 +16,8 @@ namespace YP_API.Data
         public DbSet<ShoppingList> ShoppingLists { get; set; }
         public DbSet<ShoppingListItem> ShoppingListItems { get; set; }
         public DbSet<UserFavorite> UserFavorites { get; set; }
+        public DbSet<UserAllergy> UserAllergies { get; set; }
+        public DbSet<FridgeItem> FridgeItems { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

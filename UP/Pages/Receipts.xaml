@@ -169,7 +169,7 @@
                     </Border>
 
                     <!-- Продукты в холодильнике -->
-                    <Border Style="{StaticResource CardStyle}" Grid.Row="1">
+                    <Border Style="{StaticResource CardStyle}" Grid.Row="1" Margin="0,0,0,-80">
                         <ScrollViewer Style="{StaticResource ScrollViewerStyle}" MaxHeight="280">
                             <StackPanel>
                                 <TextBlock Text="📦 Продукты в холодильнике" 
@@ -192,6 +192,8 @@
                                             Style="{StaticResource PrimaryButton}"
                                             Click="AddProduct_Click"
                                             Padding="10,8"/>
+                                    
+                                    
                                 </StackPanel>
 
                                 <ListView x:Name="ProductsListView" 
@@ -199,6 +201,7 @@
                                           BorderThickness="0"
                                           Margin="0,8,0,0"
                                           Height="180">
+                                    
                                     <ListView.ItemTemplate>
                                         <DataTemplate>
                                             <Grid Margin="0,2">
@@ -222,6 +225,10 @@
                                         </DataTemplate>
                                     </ListView.ItemTemplate>
                                 </ListView>
+                                <Button Content="Обновить" 
+        Style="{StaticResource PrimaryButton}"
+        Click="UpdateFridgeButton_Click"
+        Padding="10,8"/>
                             </StackPanel>
                         </ScrollViewer>
                     </Border>

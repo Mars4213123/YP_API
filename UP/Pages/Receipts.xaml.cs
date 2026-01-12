@@ -386,5 +386,64 @@ namespace UP.Pages
                 MessageBox.Show($"Ошибка обновления: {ex.Message}", "Ошибка");
             }
         }
+
+        private async void UpdateFridgeButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var userId = AppData.CurrentUser?.Id ?? 0;
+                if (userId == 0)
+                {
+                    MessageBox.Show("Сначала войдите в систему", "Ошибка");
+                    return;
+                }
+
+                // productsTextBox — TextBox, куда вводятся названия продуктов,
+                // каждый с новой строки (например: "молоко", "яйцо", "хлеб").
+                var lines = NewProductTextBox.Text
+                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(l => l.Trim())
+                    .Where(l => !string.IsNullOrWhiteSpace(l))
+                    .ToList();
+
+                if (!lines.Any())
+                {
+                    MessageBox.Show("Введите хотя бы один продукт (по названию)", "Внимание");
+                    return;
+                }
+
+                try
+                {
+                    await AppData.ApiService.SetFridgeByNamesAsync(userId, lines);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Не удалось сохранить продукты: {ex.Message}", "Ошибка");
+                    return;
+                }
+
+                await AppData.LoadFridgeRecipes();
+
+                // fridgeRecipesList — ListBox/ListView для отображения рецептов
+                ProductsListView.ItemsSource = null;
+                ProductsListView.ItemsSource = AppData.FridgeRecipes;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка обновления холодильника: {ex.Message}", "Ошибка");
+            }
+        }
+
+
+        private void FridgeRecipesList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (ProductsListView.SelectedItem is RecipeDto recipe)
+            {
+                var page = new RecipeDetailsPage(recipe);
+                MainWindow.mainWindow.OpenPages(page);
+            }
+        }
+
+
     }
 }

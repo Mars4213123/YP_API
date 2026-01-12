@@ -106,6 +106,65 @@ namespace YP_API.Controllers
                 return BadRequest(new { error = ex.Message });
             }
         }
+        // POST api/menu/generate-week/{userId}
+        [HttpPost("generate-week/{userId}")]
+        public async Task<ActionResult> GenerateWeekMenu(int userId)
+        {
+            try
+            {
+                var allergyIngredientIds = await _context.UserAllergies
+                    .Where(a => a.UserId == userId)
+                    .Select(a => a.IngredientId)
+                    .ToListAsync();
+
+                var safeRecipes = await _context.Recipes
+                    .Include(r => r.RecipeIngredients)
+                    .Where(r => !r.RecipeIngredients
+                        .Any(ri => allergyIngredientIds.Contains(ri.IngredientId)))
+                    .ToListAsync();
+
+                if (!safeRecipes.Any())
+                    return BadRequest(new { error = "Нет рецептов, подходящих с учетом аллергий" });
+
+                var userMenu = new Menu
+                {
+                    UserId = userId,
+                    Name = "Автоматическое меню на неделю",
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                var today = DateTime.Today;
+                var mealTypes = new[] { "Завтрак", "Обед", "Ужин" };
+                var rnd = new Random();
+                for (int day = 0; day < 7; day++)
+                {
+                    var date = today.AddDays(day);
+                    foreach (var mealType in mealTypes)
+                    {
+                        var recipe = safeRecipes[rnd.Next(safeRecipes.Count)];
+                        userMenu.Items.Add(new MenuItem
+                        {
+                            RecipeId = recipe.Id,
+                            Date = date,
+                            MealType = mealType
+                        });
+                    }
+                }
+
+                await _context.Menus.AddAsync(userMenu);
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    menuId = userMenu.Id
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
 
         [HttpGet("user/{userId}/current")]
         public async Task<ActionResult> GetCurrentMenu(int userId)

@@ -19,13 +19,18 @@ namespace UP
         public static ObservableCollection<Receipts.DailyMenu> WeeklyMenu { get; } = new ObservableCollection<Receipts.DailyMenu>();
         public static ObservableCollection<string> ShoppingList { get; } = new ObservableCollection<string>();
         public static ObservableCollection<RecipeDetailsPage.RecipeData> Favorites { get; } = new ObservableCollection<RecipeDetailsPage.RecipeData>();
-        public static ObservableCollection<RecipeDto> AllRecipes { get; } = new ObservableCollection<RecipeDto>();
+        public static ObservableCollection<Models.RecipeDto> AllRecipes { get; } = new ObservableCollection<Models.RecipeDto>();
+        public static List<RecipeDto> FridgeRecipes { get; set; }
+
 
         public static async Task<bool> InitializeAfterLogin(UserData user)
         {
             CurrentUser = user;
             return await LoadInitialData();
         }
+
+
+       
 
         public static async Task<bool> LoadInitialData()
         {
@@ -158,6 +163,17 @@ namespace UP
                 return false;
             }
         }
+        public static async Task LoadFridgeRecipes()
+        {
+            var userId = CurrentUser?.Id ?? 0;
+            if (userId == 0)
+            {
+                FridgeRecipes = new List<RecipeDto>();
+                return;
+            }
+
+            FridgeRecipes = await ApiService.GetRecipesByFridgeAsync(userId);
+        }
 
         public static async Task<bool> RemoveFromFavorites(RecipeDetailsPage.RecipeData recipe)
         {
@@ -177,7 +193,7 @@ namespace UP
             }
         }
 
-        private static RecipeDetailsPage.RecipeData ConvertToRecipeData(RecipeDto recipe)
+        private static RecipeDetailsPage.RecipeData ConvertToRecipeData(Models.RecipeDto recipe)
         {
             return new RecipeDetailsPage.RecipeData
             {

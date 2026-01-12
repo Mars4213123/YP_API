@@ -7,7 +7,39 @@
         public string Password { get; set; }
         public string Email { get; set; }
     }
+    public class UserAllergy
+    {
+        public int Id { get; set; }
 
+        public int UserId { get; set; }
+        public int IngredientId { get; set; }
+
+        public User User { get; set; } = null!;
+        public Ingredient Ingredient { get; set; } = null!;
+    }
+    
+    public class FridgeItem
+    {
+            public int Id { get; set; }
+
+            public int UserId { get; set; }
+            public int IngredientId { get; set; }
+            public double Quantity { get; set; }
+
+            public User User { get; set; } = null!;
+            public Ingredient Ingredient { get; set; } = null!;
+        }
+
+
+    public class RecipeDto
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = "";
+        public string? Description { get; set; }
+        public string? Instructions { get; set; }
+        public int? Calories { get; set; }
+        public string? ImageUrl { get; set; }
+    }
     public class Recipe
     {
         public int Id { get; set; }
@@ -18,6 +50,8 @@
         public string ImageUrl { get; set; } = "";
         public int PrepTime { get; set; }
         public int CookTime { get; set; }
+
+        public ICollection<RecipeIngredient> RecipeIngredients { get; set; } = new List<RecipeIngredient>();
     }
 
     public class Ingredient

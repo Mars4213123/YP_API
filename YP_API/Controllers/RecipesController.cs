@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using YP_API.Interfaces;
 using YP_API.Models;
+using Microsoft.EntityFrameworkCore;
+using YP_API.Data;
+
 
 namespace YP_API.Controllers
 {
@@ -9,6 +12,7 @@ namespace YP_API.Controllers
     public class RecipesController : ControllerBase
     {
         private readonly IRecipeRepository _recipeRepository;
+        private readonly RecipePlannerContext _context;
 
         public RecipesController(IRecipeRepository recipeRepository)
         {
@@ -39,6 +43,9 @@ namespace YP_API.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
         }
+
+
+
 
         [HttpGet("{id}")]
         public async Task<ActionResult> GetRecipe(int id)
@@ -113,5 +120,89 @@ namespace YP_API.Controllers
                 return BadRequest(new { error = ex.Message });
             }
         }
+
+
+        // GET api/recipes/safe-for-user/{userId}
+        [HttpGet("safe-for-user/{userId}")]
+        public async Task<ActionResult> GetSafeRecipes(int userId)
+        {
+            try
+            {
+                var allergyIngredientIds = await _context.UserAllergies
+                    .Where(a => a.UserId == userId)
+                    .Select(a => a.IngredientId)
+                    .ToListAsync();
+
+                var safeRecipes = await _context.Recipes
+                    .Include(r => r.RecipeIngredients)
+                    .Where(r => !r.RecipeIngredients
+                        .Any(ri => allergyIngredientIds.Contains(ri.IngredientId)))
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    data = safeRecipes.Select(r => new
+                    {
+                        Id = r.Id,
+                        Title = r.Title,
+                        Description = r.Description,
+                        Calories = r.Calories,
+                        ImageUrl = r.ImageUrl
+                    })
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // GET api/recipes/by-fridge/{userId}
+        [HttpGet("by-fridge/{userId}")]
+        public async Task<ActionResult> GetRecipesByFridge(int userId)
+        {
+            try
+            {
+                var fridgeIngredients = await _context.FridgeItems
+                    .Where(f => f.UserId == userId)
+                    .Select(f => f.IngredientId)
+                    .ToListAsync();
+
+                var allergyIngredientIds = await _context.UserAllergies
+                    .Where(a => a.UserId == userId)
+                    .Select(a => a.IngredientId)
+                    .ToListAsync();
+
+                var recipes = await _context.Recipes
+                    .Include(r => r.RecipeIngredients)
+                    .Where(r =>
+                        // нет аллергенов
+                        !r.RecipeIngredients.Any(ri => allergyIngredientIds.Contains(ri.IngredientId)) &&
+                        // все ингредиенты есть в холодильнике (или хотя бы один – реши сам)
+                        r.RecipeIngredients.All(ri => fridgeIngredients.Contains(ri.IngredientId)))
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    data = recipes.Select(r => new
+                    {
+                        Id = r.Id,
+                        Title = r.Title,
+                        Description = r.Description,
+                        Calories = r.Calories,
+                        ImageUrl = r.ImageUrl
+                    })
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+
+
     }
 }
