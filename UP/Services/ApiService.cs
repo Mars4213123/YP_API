@@ -35,6 +35,43 @@ namespace UP.Services
                 new MediaTypeWithQualityHeaderValue("application/json"));
         }
 
+
+        public async Task<bool> SetInventoryByNamesAsync(int userId, List<string> productNames)
+        {
+            try
+            {
+                var items = new List<object>();
+
+                foreach (var name in productNames)
+                {
+                    var trimmed = name.Trim();
+                    if (string.IsNullOrWhiteSpace(trimmed))
+                        continue;
+
+                    var id = await FindIngredientIdByNameAsync(trimmed);
+                    if (id == null)
+                        throw new Exception($"Не удалось найти ингредиент '{trimmed}'");
+
+                    items.Add(new { IngredientId = id.Value, Quantity = 1.0, Unit = "" });
+                }
+
+                if (items.Count == 0)
+                    throw new Exception("Не удалось распознать ни одного продукта");
+
+                var json = System.Text.Json.JsonSerializer.Serialize(items);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var resp = await _httpClient.PostAsync($"{_baseUrl}api/Inventory/set/{userId}", content);
+                resp.EnsureSuccessStatusCode();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"SetInventoryByNamesAsync error: {ex.Message}");
+                throw;
+            }
+        }
+
         public void SetToken(string token)
         {
             _token = token;
@@ -163,8 +200,8 @@ namespace UP.Services
         {
             try
             {
-                // GET api/Ingredients/search?name=...
-                var response = await _httpClient.GetAsync($"{_baseUrl}Ingredients/search?name={Uri.EscapeDataString(name)}");
+                var url = $"{_baseUrl}Ingredients/search?name={Uri.EscapeDataString(name)}";
+                var response = await _httpClient.GetAsync(url);
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
@@ -174,7 +211,6 @@ namespace UP.Services
                 if (responseObj == null || responseObj.data == null)
                     return null;
 
-                // data — массив ингредиентов; берём первый
                 var first = responseObj.data[0];
                 if (first == null)
                     return null;
@@ -188,6 +224,7 @@ namespace UP.Services
                 return null;
             }
         }
+
 
         public async Task<List<RecipeDto>> GetRecipesByFridgeAsync(int userId)
         {

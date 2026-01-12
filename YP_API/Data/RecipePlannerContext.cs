@@ -13,11 +13,14 @@ namespace YP_API.Data
         public DbSet<RecipeIngredient> RecipeIngredients { get; set; }
         public DbSet<Menu> Menus { get; set; }
         public DbSet<MenuItem> MenuItems { get; set; }
+
         public DbSet<ShoppingList> ShoppingLists { get; set; }
         public DbSet<ShoppingListItem> ShoppingListItems { get; set; }
         public DbSet<UserFavorite> UserFavorites { get; set; }
         public DbSet<UserAllergy> UserAllergies { get; set; }
         public DbSet<FridgeItem> FridgeItems { get; set; }
+        public DbSet<UserInventory> UserInventories { get; set; } = null!;
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

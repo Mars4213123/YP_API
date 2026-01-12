@@ -14,9 +14,10 @@ namespace YP_API.Controllers
         private readonly IRecipeRepository _recipeRepository;
         private readonly RecipePlannerContext _context;
 
-        public RecipesController(IRecipeRepository recipeRepository)
+        public RecipesController(IRecipeRepository recipeRepository, RecipePlannerContext context)
         {
             _recipeRepository = recipeRepository;
+            _context = context;
         }
 
         [HttpGet]
@@ -122,7 +123,6 @@ namespace YP_API.Controllers
         }
 
 
-        // GET api/recipes/safe-for-user/{userId}
         [HttpGet("safe-for-user/{userId}")]
         public async Task<ActionResult> GetSafeRecipes(int userId)
         {
@@ -158,29 +158,35 @@ namespace YP_API.Controllers
             }
         }
 
+
         // GET api/recipes/by-fridge/{userId}
         [HttpGet("by-fridge/{userId}")]
         public async Task<ActionResult> GetRecipesByFridge(int userId)
         {
             try
             {
-                var fridgeIngredients = await _context.FridgeItems
-                    .Where(f => f.UserId == userId)
-                    .Select(f => f.IngredientId)
+                var fridgeIngredientIds = await _context.UserInventories
+                    .Where(ui => ui.UserId == userId)
+                    .Select(ui => ui.IngredientId)
+                    .Distinct()
                     .ToListAsync();
 
-                var allergyIngredientIds = await _context.UserAllergies
-                    .Where(a => a.UserId == userId)
-                    .Select(a => a.IngredientId)
-                    .ToListAsync();
+                if (!fridgeIngredientIds.Any())
+                {
+                    return Ok(new { success = true, data = Array.Empty<object>(), message = "В холодильнике нет продуктов" });
+                }
+
+                var recipeIdsQuery =
+                    from r in _context.Recipes
+                    where !_context.RecipeIngredients
+                        .Where(ri => ri.RecipeId == r.Id)
+                        .Any(ri => !fridgeIngredientIds.Contains(ri.IngredientId))
+                    select r.Id;
+
+                var recipeIds = await recipeIdsQuery.ToListAsync();
 
                 var recipes = await _context.Recipes
-                    .Include(r => r.RecipeIngredients)
-                    .Where(r =>
-                        // нет аллергенов
-                        !r.RecipeIngredients.Any(ri => allergyIngredientIds.Contains(ri.IngredientId)) &&
-                        // все ингредиенты есть в холодильнике (или хотя бы один – реши сам)
-                        r.RecipeIngredients.All(ri => fridgeIngredients.Contains(ri.IngredientId)))
+                    .Where(r => recipeIds.Contains(r.Id))
                     .ToListAsync();
 
                 return Ok(new
@@ -202,7 +208,8 @@ namespace YP_API.Controllers
             }
         }
 
-
-
     }
+
+
+
 }

@@ -131,17 +131,26 @@ namespace UP.Pages
             };
         }
 
-        private async void AddProduct_Click(object sender, RoutedEventArgs e)
+        private void AddProduct_Click(object sender, RoutedEventArgs e)
         {
-            if (!string.IsNullOrWhiteSpace(NewProductTextBox.Text))
-            {
-                var product = NewProductTextBox.Text.Trim();
-                _products.Add(product);
-                NewProductTextBox.Clear();
+            var name = NewProductTextBox.Text.Trim();
+            if (string.IsNullOrWhiteSpace(name))
+                return;
 
-                await SaveProductToInventory(product);
+            // Инициализация источника, если он ещё null
+            if (ProductsListView.ItemsSource is null)
+            {
+                ProductsListView.ItemsSource = new List<string>();
             }
+
+            var list = ProductsListView.ItemsSource.Cast<string>().ToList();
+            list.Add(name);
+            ProductsListView.ItemsSource = null;
+            ProductsListView.ItemsSource = list;
+
+            NewProductTextBox.Clear();
         }
+
 
         private async Task SaveProductToInventory(string productName)
         {
@@ -398,15 +407,19 @@ namespace UP.Pages
                     return;
                 }
 
-                // productsTextBox — TextBox, куда вводятся названия продуктов,
-                // каждый с новой строки (например: "молоко", "яйцо", "хлеб").
-                var lines = NewProductTextBox.Text
-                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(l => l.Trim())
-                    .Where(l => !string.IsNullOrWhiteSpace(l))
+                IEnumerable<string> src = ProductsListView.ItemsSource as IEnumerable<string>;
+                if (src == null)
+                {
+                    MessageBox.Show("Введите хотя бы один продукт (по названию)", "Внимание");
+                    return;
+                }
+
+                var productNames = src
+                    .Select(x => x.Trim())
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
                     .ToList();
 
-                if (!lines.Any())
+                if (!productNames.Any())
                 {
                     MessageBox.Show("Введите хотя бы один продукт (по названию)", "Внимание");
                     return;
@@ -414,7 +427,7 @@ namespace UP.Pages
 
                 try
                 {
-                    await AppData.ApiService.SetFridgeByNamesAsync(userId, lines);
+                    await AppData.ApiService.SetInventoryByNamesAsync(userId, productNames);
                 }
                 catch (Exception ex)
                 {
@@ -422,9 +435,8 @@ namespace UP.Pages
                     return;
                 }
 
-                await AppData.LoadFridgeRecipes();
+                await AppData.LoadFridgeRecipes(); // внутри вызывает GetRecipesByFridgeAsync(userId)
 
-                // fridgeRecipesList — ListBox/ListView для отображения рецептов
                 ProductsListView.ItemsSource = null;
                 ProductsListView.ItemsSource = AppData.FridgeRecipes;
             }
@@ -433,6 +445,9 @@ namespace UP.Pages
                 MessageBox.Show($"Ошибка обновления холодильника: {ex.Message}", "Ошибка");
             }
         }
+
+
+
 
 
         private void FridgeRecipesList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
