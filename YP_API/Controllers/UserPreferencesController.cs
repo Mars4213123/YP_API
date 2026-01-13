@@ -11,42 +11,59 @@ public class UserPreferencesController : ControllerBase
 
     // POST api/userpreferences/{userId}/allergies
     [HttpPost("{userId}/allergies")]
-    public async Task<ActionResult> SetAllergies(int userId, [FromBody] int[] ingredientIds)
-    {
-        var user = await _context.Users.FindAsync(userId);
-        if (user == null) return NotFound(new { error = "Пользователь не найден" });
+    [HttpPost("user/{userId}/allergies")]
+public async Task<IActionResult> SetAllergies(int userId, [FromBody] int[] ingredientIds)
+{
+    var user = await _context.Users.FindAsync(userId);
+    if (user == null)
+        return NotFound(new { error = "User not found" });
 
-        var old = _context.UserAllergies.Where(a => a.UserId == userId);
-        _context.UserAllergies.RemoveRange(old);
+    var existing = _context.UserAllergies.Where(a => a.UserId == userId);
+    _context.UserAllergies.RemoveRange(existing);
 
-        foreach (var id in ingredientIds.Distinct())
-            _context.UserAllergies.Add(new UserAllergy { UserId = userId, IngredientId = id });
+    var validIds = ingredientIds
+        .Where(id => id > 0)              // убираем 0
+        .Distinct()
+        .ToList();
 
-        await _context.SaveChangesAsync();
-        return Ok(new { success = true });
-    }
+    foreach (var id in validIds)
+        _context.UserAllergies.Add(new UserAllergy { UserId = userId, IngredientId = id });
+
+    await _context.SaveChangesAsync();
+    return Ok(new { success = true });
+}
+
+
 
     // POST api/userpreferences/{userId}/fridge
-    [HttpPost("{userId}/fridge")]
-    public async Task<ActionResult> SetFridge(int userId, [FromBody] List<FridgeItemDto> items)
+    [HttpPost("user/{userId}/fridge")]
+    public async Task<IActionResult> SetFridge(int userId, [FromBody] List<FridgeItemDto> items)
     {
+        Console.WriteLine("Fridge items: " +
+            string.Join(", ", items.Select(i => $"{i.IngredientId}:{i.Quantity}")));
+
         var user = await _context.Users.FindAsync(userId);
-        if (user == null) return NotFound(new { error = "Пользователь не найден" });
+        if (user == null) return NotFound(new { error = "User not found" });
 
-        var old = _context.FridgeItems.Where(f => f.UserId == userId);
-        _context.FridgeItems.RemoveRange(old);
+        var existing = _context.FridgeItems.Where(f => f.UserId == userId);
+        _context.FridgeItems.RemoveRange(existing);
 
-        foreach (var it in items)
+        var validItems = items
+            .Where(i => i.IngredientId > 0) // отсекаем 0 и мусор
+            .ToList();
+
+        foreach (var item in validItems)
             _context.FridgeItems.Add(new FridgeItem
             {
                 UserId = userId,
-                IngredientId = it.IngredientId,
-                Quantity = it.Quantity
+                IngredientId = item.IngredientId,
+                Quantity = item.Quantity
             });
 
         await _context.SaveChangesAsync();
         return Ok(new { success = true });
     }
+
 
     public class FridgeItemDto
     {
