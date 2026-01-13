@@ -6,8 +6,11 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Net.Http.Json;
 using Newtonsoft.Json;
 using UP.Models;
+
+using static UP.Pages.Receipts;
 
 namespace UP.Services
 {
@@ -34,7 +37,90 @@ namespace UP.Services
             _httpClient.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/json"));
         }
+        public async Task<List<IngredientDto>> SearchIngredientsAsync(string term)
+        {
+            // Предполагаем, что у тебя есть DTO для ингредиента
+            try
+            {
+                // Запрос к API поиска ингредиентов (замени путь на свой реальный, если он другой)
+                var response = await _httpClient.GetAsync($"api/recipes/ingredients/search?query={term}");
 
+                if (response.IsSuccessStatusCode)
+                {
+                    return await response.Content.ReadFromJsonAsync<List<IngredientDto>>();
+                }
+            }
+            catch
+            {
+                // Игнорируем ошибки поиска пока
+            }
+            return new List<IngredientDto>();
+        }
+
+
+        // Добавь эти методы в класс ApiService
+
+        // 1. Отправка продуктов в холодильник (превращаем строки в список для API)
+        public async Task<bool> UpdateFridgeAsync(int userId, List<string> productNames)
+        {
+            // Сначала нам нужно найти ID ингредиентов по их названиям
+            // Предполагаем, что есть метод поиска или кеш ингредиентов.
+            // Для примера: ищем через API поиска ингредиентов, чтобы получить ID.
+
+            var fridgeItems = new List<object>();
+
+            foreach (var name in productNames)
+            {
+                // Ищем ингредиент в базе, чтобы узнать его ID
+                var foundIngredients = await SearchIngredientsAsync(name); // Используем твой существующий поиск
+                var bestMatch = foundIngredients.FirstOrDefault();
+
+                if (bestMatch != null)
+                {
+                    fridgeItems.Add(new
+                    {
+                        IngredientId = bestMatch.Id,
+                        Quantity = 1 // По умолчанию 1, если в UI нет выбора кол-ва
+                    });
+                }
+            }
+
+            // Отправляем список ID в контроллер UserPreferences
+            var response = await _httpClient.PostAsJsonAsync($"api/userpreferences/user/{userId}/fridge", fridgeItems);
+            return response.IsSuccessStatusCode;
+        }
+
+        // 2. Генерация меню на основе холодильника и аллергий
+        public async Task<bool> GenerateMenuAsync(int userId)
+        {
+            // Этот запрос должен инициировать логику подбора рецептов на бэкенде
+            // Предположим, у тебя есть метод POST api/menu/generate
+            var response = await _httpClient.PostAsync($"api/menu/generate?userId={userId}", null);
+            return response.IsSuccessStatusCode;
+        }
+
+        // 3. Получение списка всех доступных меню
+        public async Task<List<AvailableMenu>> GetUserMenusAsync(int userId)
+        {
+            // GET api/menu/user/{userId}
+            var response = await _httpClient.GetAsync($"api/menu/user/{userId}/all");
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<List<AvailableMenu>>();
+            }
+            return new List<AvailableMenu>();
+        }
+
+        // 4. Получение деталей конкретного меню (список рецептов внутри)
+        public async Task<MenuDto> GetMenuDetailsAsync(int menuId)
+        {
+            var response = await _httpClient.GetAsync($"api/menu/{menuId}");
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<MenuDto>();
+            }
+            return null;
+        }
 
         public async Task<bool> SetInventoryByNamesAsync(int userId, List<string> productNames)
         {
@@ -173,8 +259,17 @@ namespace UP.Services
                         continue;
 
                     var id = await FindIngredientIdByNameAsync(trimmed);
+
+                    // Если не нашли — пробуем создать!
                     if (id == null)
-                        throw new Exception($"Не удалось найти ингредиент '{trimmed}'");
+                    {
+                        id = await CreateIngredientByNameAsync(trimmed);
+                    }
+
+                    // Если даже создать не удалось — тогда ошибка
+                    if (id == null)
+                        throw new Exception($"Не удалось создать или найти ингредиент '{trimmed}'");
+
 
                     items.Add(new { IngredientId = id.Value, Quantity = 1.0 });
                 }
@@ -195,7 +290,6 @@ namespace UP.Services
                 throw; // пробрасываем, чтобы показать сообщение пользователю
             }
         }
-
         public async Task<int?> FindIngredientIdByNameAsync(string name)
         {
             try
@@ -204,18 +298,22 @@ namespace UP.Services
                 var response = await _httpClient.GetAsync(url);
                 var responseString = await response.Content.ReadAsStringAsync();
 
-                if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException($"Ошибка поиска ингредиента: {response.StatusCode}");
+                if (!response.IsSuccessStatusCode) return null;
 
+                // Десериализуем как динамический объект
                 var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
-                if (responseObj == null || responseObj.data == null)
-                    return null;
+
+                // Проверяем, что ответ не пустой
+                if (responseObj == null || responseObj.data == null) return null;
+
+                // Проверяем, что в массиве data есть хотя бы один элемент
+                if (responseObj.data.Count == 0) return null;
 
                 var first = responseObj.data[0];
-                if (first == null)
-                    return null;
 
-                int id = first.Id;
+                // ВАЖНО: Используем маленькую букву 'id', как в ответе сервера
+                int id = first.id;
+
                 return id;
             }
             catch (Exception ex)
@@ -224,6 +322,7 @@ namespace UP.Services
                 return null;
             }
         }
+
 
 
         public async Task<List<RecipeDto>> GetRecipesByFridgeAsync(int userId)
@@ -521,6 +620,33 @@ namespace UP.Services
                 return false;
             }
         }
+        // В файле Services/ApiService.cs добавь этот метод:
+
+        public async Task<int?> CreateIngredientByNameAsync(string name)
+        {
+            try
+            {
+                var newIng = new { Name = name };
+                var response = await PostJsonAsync("api/Ingredients/create", newIng, ensureSuccess: false);
+
+                var responseString = await response.Content.ReadAsStringAsync();
+                var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
+
+                if (responseObj != null && responseObj.success == true && responseObj.data != null)
+                {
+                    // ИСПРАВЛЕНИЕ: .id вместо .Id
+                    return (int)responseObj.data.id;
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка: {ex.Message}");
+                return null;
+            }
+        }
+
 
         public async Task<List<IngredientDto>> GetIngredientsAsync()
         {
@@ -599,19 +725,33 @@ namespace UP.Services
         public T Data { get; set; }
     }
 
+    public class MenuDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public DateTime CreatedAt { get; set; } // Исправляет ошибку CreatedAt
+        public List<MenuItemDto> Items { get; set; } // Исправляет ошибку Items
+    }
+
     public class MenuItemDto
     {
         public int RecipeId { get; set; }
-        public string RecipeTitle { get; set; } = "";
-        public string Date { get; set; } = "";
-        public string MealType { get; set; } = "";
+        public string RecipeTitle { get; set; }
+        public DateTime Date { get; set; }
+        public string MealType { get; set; }
     }
+
 
     public class CurrentMenuDto
     {
         public int Id { get; set; }
         public string Name { get; set; } = "";
         public List<MenuItemDto> Items { get; set; } 
+    }
+    public class IngredientDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
     }
 
     public class RecipeDetailDto

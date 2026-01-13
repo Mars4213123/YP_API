@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using UP.Models;
 using UP.Services;
+using static UP.Pages.Receipts;
 
 namespace UP.Pages
 {
@@ -20,6 +21,46 @@ namespace UP.Pages
             public string Description { get; set; }
             public int RecipeId { get; set; }
         }
+        public ObservableCollection<string> products { get; set; } = new ObservableCollection<string>();
+        public ObservableCollection<AvailableMenu> availableMenus { get; set; } = new ObservableCollection<AvailableMenu>();
+        public ObservableCollection<DailyMenu> weeklyMenu { get; set; } = new ObservableCollection<DailyMenu>();
+        private async void RefreshDataClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (AppData.CurrentUser == null) return;
+
+                // 1. Собираем продукты из UI (ObservableCollection -> List)
+                var productsList = products.ToList();
+
+                // 2. Отправляем холодильник в базу
+                bool fridgeUpdated = await AppData.ApiService.UpdateFridgeAsync(AppData.CurrentUser.Id, productsList);
+
+                if (fridgeUpdated)
+                {
+                    MessageBox.Show("Холодильник обновлен! Генерируем меню...");
+
+                    // 3. Генерируем меню (Бэкенд сам проверит аллергии и продукты)
+                    bool menuGenerated = await AppData.ApiService.GenerateMenuAsync(AppData.CurrentUser.Id);
+
+                    if (menuGenerated)
+                    {
+                        // 4. Обновляем список меню слева
+                        await LoadAvailableMenus();
+                        MessageBox.Show("Новое меню создано и добавлено в список!");
+                    }
+                    else
+                    {
+                        MessageBox.Show("Не удалось создать меню. Возможно, мало подходящих рецептов.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка: {ex.Message}");
+            }
+        }
+
 
         public class AvailableMenu
         {
@@ -34,7 +75,7 @@ namespace UP.Pages
         private ObservableCollection<DailyMenu> _weeklyMenu;
         private ObservableCollection<AvailableMenu> _availableMenus;
         private ObservableCollection<ShoppingListItemDto> _shoppingList;
-        private MenuDto _selectedMenu;
+        private Services.MenuDto _selectedMenu;
 
         public Receipts()
         {
@@ -66,34 +107,95 @@ namespace UP.Pages
                 UserInfoText.Text = $"Пользователь: {AppData.CurrentUser.Username}";
             }
         }
+        private async void AvailableMenuSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // Проверяем, что реально что-то выбрано
+            if (AvailableMenusListView.SelectedItem is AvailableMenu selectedMenu)
+            {
+                try
+                {
+                    // 1. Получаем полные данные меню (с рецептами)
+                    var fullMenuDto = await AppData.ApiService.GetMenuDetailsAsync(selectedMenu.Id);
+
+                    if (fullMenuDto != null)
+                    {
+                        // 2. Обновляем заголовки
+                        CurrentMenuTitle.Text = fullMenuDto.Name;
+                        CurrentMenuDescription.Text = $"Создано: {fullMenuDto.CreatedAt:dd.MM.yyyy}";
+
+                        // 3. Чистим центральный список
+                        weeklyMenu.Clear();
+
+                        // 4. Заполняем рецептами
+                        // (Предполагаем, что fullMenuDto.Items содержит список блюд)
+                        foreach (var item in fullMenuDto.Items)
+                        {
+                            weeklyMenu.Add(new DailyMenu
+                            {
+                                Day = item.Date.ToString("dddd"), // День недели (Пн, Вт...)
+                                Meal = item.MealType,             // Тип (Завтрак/Обед)
+                                Description = item.RecipeTitle,   // Название блюда
+                                RecipeId = item.RecipeId          // ID для клика
+                            });
+                        }
+
+                        // Разблокируем кнопку "Выбрать это меню" (если нужна логика "Текущее меню")
+                        SelectMenuButton.IsEnabled = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Не удалось загрузить меню: " + ex.Message);
+                }
+            }
+        }
+        private async void OpenRecipeClick(object sender, RoutedEventArgs e)
+        {
+            // Получаем объект данных из кнопки
+            if (sender is Button button && button.DataContext is DailyMenu dailyMenu)
+            {
+                try
+                {
+                    // Запрашиваем полные данные рецепта по ID
+                    var recipe = await AppData.ApiService.GetRecipeAsync(dailyMenu.RecipeId);
+
+                    if (recipe != null)
+                    {
+                        // Открываем страницу деталей (RecipeDetailsPage)
+                        // Убедись, что у RecipeDetailsPage есть конструктор, принимающий RecipeDto или похожий объект
+                        var detailsPage = new RecipeDetailsPage(recipe);
+                        MainWindow.mainWindow.OpenPages(detailsPage);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Ошибка открытия рецепта: " + ex.Message);
+                }
+            }
+        }
 
         private async Task LoadAvailableMenus()
         {
             try
             {
-                _availableMenus.Clear();
+                // Очищаем текущий список в UI
+                availableMenus.Clear();
 
-                // Загружаем доступные меню из API
-                var menus = await LoadMenusFromApi();
+                // Запрашиваем с сервера
+                var menusFromApi = await AppData.ApiService.GetUserMenusAsync(AppData.CurrentUser.Id);
 
-                foreach (var menu in menus)
+                foreach (var m in menusFromApi)
                 {
-                    _availableMenus.Add(menu);
-                }
-
-                // Если есть текущее меню, показываем его
-                if (_weeklyMenu.Any())
-                {
-                    CurrentMenuTitle.Text = "Текущее меню";
-                    CurrentMenuDescription.Text = "Ваше текущее меню на неделю";
-                    SelectMenuButton.IsEnabled = false; // Меню уже выбрано
+                    // Добавляем в коллекцию, привязанную к ListView
+                    availableMenus.Add(m);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка загрузки меню: {ex.Message}", "Ошибка");
+                Console.WriteLine("Ошибка загрузки меню: " + ex.Message);
             }
         }
+
 
         private async Task<List<AvailableMenu>> LoadMenusFromApi()
         {
