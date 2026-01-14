@@ -338,12 +338,21 @@ namespace UP.Services
                 if (!resp.IsSuccessStatusCode)
                     throw new HttpRequestException($"Ошибка получения рецептов по холодильнику: {resp.StatusCode}");
 
+                // 1. Сначала читаем ответ как динамический объект, чтобы добраться до поля "data"
+                // (Newtonsoft.Json.JsonConvert уже умеет игнорировать регистр по умолчанию)
                 var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
-                if (responseObj == null || responseObj.data == null)
-                    return new List<RecipeDto>();
 
-                return JsonConvert.DeserializeObject<List<RecipeDto>>(responseObj.data.ToString())
-                       ?? new List<RecipeDto>();
+                // 2. Проверяем, есть ли поле data
+                if (responseObj == null || responseObj.data == null)
+                {
+                    return new List<RecipeDto>();
+                }
+
+                // 3. Превращаем содержимое data в список рецептов
+                string dataJson = responseObj.data.ToString();
+                var recipes = JsonConvert.DeserializeObject<List<RecipeDto>>(dataJson);
+
+                return recipes ?? new List<RecipeDto>();
             }
             catch (Exception ex)
             {
@@ -351,6 +360,7 @@ namespace UP.Services
                 return new List<RecipeDto>();
             }
         }
+
 
 
 

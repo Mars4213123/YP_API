@@ -17,47 +17,45 @@ namespace YP_API.Controllers
         }
 
         // ДОБАВИТЬ/ОБНОВИТЬ продукт по IngredientId
-        [HttpPost("set/{userId}")]
-        public async Task<ActionResult> SetInventory(int userId, [FromBody] List<InventoryItemDto> items)
+        [HttpPost("add/{userId}")]
+        public async Task<IActionResult> AddProduct(int userId, [FromForm] string productName, [FromForm] decimal quantity = 1, [FromForm] string unit = "шт")
         {
             try
             {
-                var user = await _context.Users.FindAsync(userId);
-                if (user == null)
-                    return NotFound(new { error = "Пользователь не найден" });
+                var ingredient = await _context.Ingredients
+                    .FirstOrDefaultAsync(i => i.Name.ToLower() == productName.ToLower());
 
-                // Удаляем старый инвентарь пользователя
-                var existing = await _context.UserInventories
-                    .Where(ui => ui.UserId == userId)
-                    .ToListAsync();
-
-                _context.UserInventories.RemoveRange(existing);
-
-                // Добавляем новые записи (по одной на IngredientId)
-                foreach (var it in items)
+                if (ingredient == null)
                 {
-                    // на всякий случай избегаем дублей в самом списке
-                    if (!await _context.Ingredients.AnyAsync(i => i.Id == it.IngredientId))
-                        throw new Exception($"Ингредиент {it.IngredientId} не найден в базе");
+                    ingredient = new Ingredient { Name = productName };
+                    _context.Ingredients.Add(ingredient);
+                    await _context.SaveChangesAsync();
+                }
 
+                var existing = await _context.UserInventories
+                    .FirstOrDefaultAsync(ui => ui.UserId == userId && ui.IngredientId == ingredient.Id);
+
+                if (existing != null)
+                {
+                    existing.Quantity += quantity;
+                }
+                else
+                {
                     _context.UserInventories.Add(new UserInventory
                     {
                         UserId = userId,
-                        IngredientId = it.IngredientId,
-                        Quantity = (decimal)it.Quantity,
-                        Unit = it.Unit ?? "",
-                        ExpiryDate = null,
-                        AddedAt = DateTime.UtcNow
+                        IngredientId = ingredient.Id,
+                        Quantity = quantity,
+                        Unit = unit
                     });
                 }
 
                 await _context.SaveChangesAsync();
-
                 return Ok(new { success = true });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return StatusCode(500, new { error = ex.Message });
             }
         }
 

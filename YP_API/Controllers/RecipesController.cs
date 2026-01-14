@@ -165,23 +165,33 @@ namespace YP_API.Controllers
         {
             try
             {
-                var fridgeIngredientIds = await _context.UserInventories
-                    .Where(ui => ui.UserId == userId)
+                var fridgeItems = await _context.UserInventories
+            .Where(ui => ui.UserId == userId)
+            .ToListAsync();
+                Console.WriteLine($"DEBUG: User {userId} has {fridgeItems.Count} items in fridge.");
+                foreach (var item in fridgeItems)
+                {
+                    Console.WriteLine($"DEBUG: Item IngId={item.IngredientId}, Qty={item.Quantity}");
+                }
+
+                var fridgeIngredientIds = fridgeItems
                     .Select(ui => ui.IngredientId)
                     .Distinct()
-                    .ToListAsync();
+                    .ToList();
 
                 if (!fridgeIngredientIds.Any())
                 {
+                    Console.WriteLine("DEBUG: Fridge is empty!");
                     return Ok(new { success = true, data = Array.Empty<object>(), message = "¬ холодильнике нет продуктов" });
                 }
 
                 var recipeIdsQuery =
-                    from r in _context.Recipes
-                    where !_context.RecipeIngredients
-                        .Where(ri => ri.RecipeId == r.Id)
-                        .Any(ri => !fridgeIngredientIds.Contains(ri.IngredientId))
-                    select r.Id;
+    from r in _context.Recipes
+    where _context.RecipeIngredients
+        .Where(ri => ri.RecipeId == r.Id)
+        .Any(ri => fridgeIngredientIds.Contains(ri.IngredientId)) // <--- ћ€гкий поиск (хот€ бы один)
+    select r.Id;
+
 
                 var recipeIds = await recipeIdsQuery.ToListAsync();
 
