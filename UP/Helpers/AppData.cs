@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using UP.Models;
+using UP.Models;
 using UP.Pages;
 using UP.Services;
 
@@ -92,17 +93,23 @@ namespace UP
                 var menu = await ApiService.GetCurrentMenuAsync();
                 WeeklyMenu.Clear();
 
-                if (menu != null && menu.Days != null)
+                if (menu != null && menu.Items != null)
                 {
-                    foreach (var day in menu.Days)
+                    // Группируем элементы меню по дате
+                    var groupedItems = menu.Items
+                        .GroupBy(i => i.Date) // Группируем по строке даты "yyyy-MM-dd"
+                        .OrderBy(g => g.Key); // Сортируем по дате
+
+                    foreach (var dayGroup in groupedItems)
                     {
-                        foreach (var meal in day.Meals)
+                        foreach (var meal in dayGroup)
                         {
                             WeeklyMenu.Add(new Receipts.DailyMenu
                             {
-                                Day = day.Date,
+                                Day = dayGroup.Key.ToString("dd.MM.yyyy"), // Преобразуем дату в строку
+                                                                           // Дата (строка)
                                 Meal = meal.RecipeTitle,
-                                Description = $"Калории: {meal.Calories} | Время: {meal.PrepTime} мин",
+                                Description = $"{meal.MealType}", // Или другое описание
                                 RecipeId = meal.RecipeId
                             });
                         }
@@ -114,6 +121,7 @@ namespace UP
                 Console.WriteLine($"Error loading menu: {ex.Message}");
             }
         }
+
 
         public static async Task LoadShoppingList()
         {

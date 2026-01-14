@@ -479,7 +479,7 @@ namespace UP.Pages
 
         private async void RefreshMenus_Click(object sender, RoutedEventArgs e)
         {
-            await LoadAvailableMenus();
+            await LoadMenusFromApi();
             MessageBox.Show("Список меню обновлен", "Успех");
         }
 
@@ -509,27 +509,44 @@ namespace UP.Pages
                     return;
                 }
 
-                IEnumerable<string> src = ProductsListView.ItemsSource as IEnumerable<string>;
-                if (src == null)
+                // Получаем список строк из UI
+                IEnumerable<string> src = null;
+
+                // ВАЖНО: Проверяем, что сейчас в ItemsSource - строки или рецепты
+                if (ProductsListView.ItemsSource is ObservableCollection<string> collection)
                 {
-                    MessageBox.Show("Введите хотя бы один продукт (по названию)", "Внимание");
-                    return;
+                    src = collection;
+                }
+                else if (ProductsListView.ItemsSource is List<string> list)
+                {
+                    src = list;
+                }
+                else
+                {
+                    // Если там уже рецепты или null, берем из AppData.Products
+                    src = AppData.Products;
                 }
 
-                var productNames = src
+                var productNames = src?
                     .Select(x => x.Trim())
                     .Where(x => !string.IsNullOrWhiteSpace(x))
                     .ToList();
 
-                if (!productNames.Any())
+                if (productNames == null || !productNames.Any())
                 {
-                    MessageBox.Show("Введите хотя бы один продукт (по названию)", "Внимание");
+                    MessageBox.Show("Список продуктов пуст. Добавьте продукты.", "Внимание");
                     return;
                 }
 
+                // Отправляем на сервер (используем правильный метод!)
                 try
                 {
-                    await AppData.ApiService.SetInventoryByNamesAsync(userId, productNames);
+                    // Используем метод, который вызывает 'api/Inventory/set/{userId}'
+                    // или 'api/UserPreferences/{userId}/fridge', смотря что на сервере.
+                    // Мы ранее договорились использовать SetInventoryByNamesAsync
+                    await AppData.ApiService.AddProductsToFridgeAsync(userId, productNames);
+
+                    MessageBox.Show("Продукты сохранены!", "Успех");
                 }
                 catch (Exception ex)
                 {
@@ -537,16 +554,34 @@ namespace UP.Pages
                     return;
                 }
 
-                await AppData.LoadFridgeRecipes(); // внутри вызывает GetRecipesByFridgeAsync(userId)
+                // Загружаем рецепты, подходящие под продукты
+                await AppData.LoadFridgeRecipes();
 
-                ProductsListView.ItemsSource = null;
-                ProductsListView.ItemsSource = AppData.FridgeRecipes;
+                // ВАЖНО: Не заменяй список продуктов на список рецептов в том же ListView!
+                // Лучше покажи рецепты в центральном списке (WeeklyMenuItemsControl) или отдельном окне.
+                // ProductsListView.ItemsSource = AppData.FridgeRecipes; <--- ЭТО ПЛОХО, если это тот же список
+
+                // Вместо этого обновим центральное меню рецептами из холодильника:
+                weeklyMenu.Clear();
+                foreach (var r in AppData.FridgeRecipes)
+                {
+                    weeklyMenu.Add(new DailyMenu
+                    {
+                        Day = "Холодильник",
+                        Meal = "Рецепт",
+                        Description = r.Title,
+                        RecipeId = r.Id
+                    });
+                }
+
+                MessageBox.Show($"Найдено {AppData.FridgeRecipes.Count} рецептов из ваших продуктов.", "Результат");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка обновления холодильника: {ex.Message}", "Ошибка");
+                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка");
             }
         }
+
 
 
 

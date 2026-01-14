@@ -224,12 +224,15 @@ namespace UP.Services
         }
 
         // Если хочешь использовать универсальный POST JSON из WPF
-        public async Task PostJsonAsync<T>(string relativeUrl, T body, bool ensureSuccess = true)
+        // Измени этот метод, чтобы он возвращал HttpResponseMessage
+        public async Task<HttpResponseMessage> PostJsonAsync<T>(string relativeUrl, T body, bool ensureSuccess = true)
         {
-            var resp = await PostJsonAsync(_baseUrl + relativeUrl, body);
+            var resp = await PostJsonAsync(_baseUrl + relativeUrl, body); // вызывает приватный метод
             if (ensureSuccess)
                 resp.EnsureSuccessStatusCode();
+            return resp;
         }
+
 
         // Универсальный GET с System.Text.Json
         public async Task<T> GetAsync<T>(string relativeUrl)
@@ -678,6 +681,42 @@ namespace UP.Services
             {
                 Console.WriteLine($"GetIngredientsAsync error: {ex.Message}");
                 return new List<IngredientDto>();
+            }
+        }
+        // Метод для массового добавления продуктов (отправляет по одному)
+        public async Task<bool> AddProductsToFridgeAsync(int userId, List<string> productNames)
+        {
+            try
+            {
+                bool allSuccess = true;
+
+                foreach (var name in productNames)
+                {
+                    var trimmedName = name.Trim();
+                    if (string.IsNullOrWhiteSpace(trimmedName)) continue;
+
+                    // Формируем данные формы (MultipartFormData)
+                    var formData = new MultipartFormDataContent();
+                    formData.Add(new StringContent(trimmedName), "productName");
+                    formData.Add(new StringContent("1"), "quantity"); // Значение по умолчанию
+                    formData.Add(new StringContent("шт"), "unit");    // Значение по умолчанию
+
+                    // Отправляем запрос на добавление одного продукта
+                    var response = await _httpClient.PostAsync($"{_baseUrl}api/Inventory/add/{userId}", formData);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Console.WriteLine($"Ошибка добавления '{trimmedName}': {response.StatusCode}");
+                        allSuccess = false;
+                    }
+                }
+
+                return allSuccess;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка в AddProductsToFridgeAsync: {ex.Message}");
+                return false; // Возвращаем false, если что-то пошло не так
             }
         }
 
