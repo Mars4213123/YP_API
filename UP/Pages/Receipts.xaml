@@ -58,7 +58,7 @@
     </Page.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <Grid Margin="15" Width="970">
+        <Grid Margin="15" Width="1000">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -99,11 +99,11 @@
             </Grid>
 
             <!-- Основной контент -->
-            <Grid Grid.Row="1" Height="500">
+            <Grid Grid.Row="1" Height="600">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="280"/>
-                    <ColumnDefinition Width="*" MaxWidth="400"/>
-                    <ColumnDefinition Width="280"/>
+                    <ColumnDefinition Width="320"/>
+                    <ColumnDefinition Width="*" MaxWidth="450"/>
+                    <ColumnDefinition Width="320"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- Левая панель - Доступные меню -->
@@ -130,32 +130,51 @@
                             <ListView x:Name="AvailableMenusListView" 
                                       Background="Transparent"
                                       BorderThickness="0"
-                                      Height="120"
+                                      Height="150"
                                       SelectionChanged="AvailableMenu_SelectionChanged">
                                 <ListView.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Style="{StaticResource MenuCardStyle}"
-                                                MouseLeftButtonDown="MenuCard_MouseLeftButtonDown">
-                                            <StackPanel>
-                                                <TextBlock Text="{Binding Name}" 
-                                                           FontSize="13" 
-                                                           FontWeight="SemiBold" 
-                                                           Foreground="White"
-                                                           Margin="0,0,0,2"/>
-                                                <TextBlock Text="{Binding Description}" 
-                                                           FontSize="10" 
-                                                           Foreground="#CCCCCC"
-                                                           TextWrapping="Wrap"/>
-                                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                                    <TextBlock Text="Рецептов: " 
+                                        <Border Style="{StaticResource MenuCardStyle}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                
+                                                <StackPanel Grid.Column="0"
+                                                            MouseLeftButtonDown="MenuCard_MouseLeftButtonDown">
+                                                    <TextBlock Text="{Binding Name}" 
+                                                               FontSize="13" 
+                                                               FontWeight="SemiBold" 
+                                                               Foreground="White"
+                                                               Margin="0,0,0,2"/>
+                                                    <TextBlock Text="{Binding Description}" 
                                                                FontSize="10" 
-                                                               Foreground="#888"/>
-                                                    <TextBlock Text="{Binding RecipeCount}" 
-                                                               FontSize="10" 
-                                                               Foreground="#4CAF50"
-                                                               Margin="3,0,0,0"/>
+                                                               Foreground="#CCCCCC"
+                                                               TextWrapping="Wrap"/>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                        <TextBlock Text="Рецептов: " 
+                                                                   FontSize="10" 
+                                                                   Foreground="#888"/>
+                                                        <TextBlock Text="{Binding RecipeCount}" 
+                                                                   FontSize="10" 
+                                                                   Foreground="#4CAF50"
+                                                                   Margin="3,0,0,0"/>
+                                                    </StackPanel>
                                                 </StackPanel>
-                                            </StackPanel>
+                                                
+                                                <Button Grid.Column="1"
+                                                        Content="🗑️"
+                                                        Foreground="#FF4444"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Padding="6,0"
+                                                        FontSize="12"
+                                                        Click="DeleteMenu_Click"
+                                                        Tag="{Binding Id}"
+                                                        VerticalAlignment="Center"
+                                                        ToolTip="Удалить меню"/>
+                                            </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ListView.ItemTemplate>
@@ -169,8 +188,8 @@
                     </Border>
 
                     <!-- Продукты в холодильнике -->
-                    <Border Style="{StaticResource CardStyle}" Grid.Row="1" Margin="0,0,0,-80" Height="326" VerticalAlignment="Bottom">
-                        <ScrollViewer Style="{StaticResource ScrollViewerStyle}" MaxHeight="280">
+                    <Border Style="{StaticResource CardStyle}" Grid.Row="1" Margin="0,0,0,-80" Height="400" VerticalAlignment="Bottom">
+                        <ScrollViewer Style="{StaticResource ScrollViewerStyle}" MaxHeight="350">
                             <StackPanel>
                                 <TextBlock Text="📦 Продукты в холодильнике" 
                                            FontSize="15" 
@@ -185,7 +204,7 @@
                                              BorderBrush="#404040"
                                              Padding="8"
                                              Height="32"
-                                             Width="150"
+                                             Width="180"
                                              Margin="0,0,5,0"/>
 
                                     <Button Content="Добавить" 
@@ -200,7 +219,7 @@
                                           Background="Transparent"
                                           BorderThickness="0"
                                           Margin="0,8,0,0"
-                                          Height="180">
+                                          Height="220">
                                     
                                     <ListView.ItemTemplate>
                                         <DataTemplate>
@@ -228,7 +247,8 @@
                                 <Button Content="Обновить" 
         Style="{StaticResource PrimaryButton}"
         Click="UpdateFridgeButton_Click"
-        Padding="10,8"/>
+        Padding="10,8"
+        Margin="0,8,0,0"/>
                             </StackPanel>
                         </ScrollViewer>
                     </Border>
@@ -303,6 +323,7 @@
                                                         FontSize="11"
                                                         Cursor="Hand"
                                                         Click="OpenRecipe_Click"
+                                                        Tag="{Binding RecipeId}"
                                                         HorizontalAlignment="Left"/>
                                             </StackPanel>
                                         </Border>
@@ -322,7 +343,7 @@
 
                     <!-- Список покупок -->
                     <Border Style="{StaticResource CardStyle}" Grid.Row="0" Margin="0,0,0,10">
-                        <ScrollViewer Style="{StaticResource ScrollViewerStyle}" MaxHeight="300">
+                        <ScrollViewer Style="{StaticResource ScrollViewerStyle}" MaxHeight="350">
                             <StackPanel>
                                 <TextBlock Text="🛒 Список покупок" 
                                            FontSize="15" 
@@ -340,7 +361,7 @@
                                 <ListView x:Name="ShoppingListListView" 
                                           Background="Transparent"
                                           BorderThickness="0"
-                                          Height="200">
+                                          Height="250">
                                     <ListView.ItemTemplate>
                                         <DataTemplate>
                                             <Grid Margin="0,2">

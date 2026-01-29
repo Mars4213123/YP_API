@@ -53,10 +53,15 @@ namespace YP_API.Controllers
         {
             try
             {
-                var recipe = await _recipeRepository.GetByIdAsync(id);
+                var recipe = await _context.Recipes
+                    .Include(r => r.RecipeIngredients)
+                    .ThenInclude(ri => ri.Ingredient)
+                    .FirstOrDefaultAsync(r => r.Id == id);
 
                 if (recipe == null)
                     return NotFound(new { error = "Рецепт не найден" });
+
+                Console.WriteLine($"[GetRecipe] Загружаем рецепт {id}: {recipe.Title}");
 
                 return Ok(new
                 {
@@ -67,13 +72,25 @@ namespace YP_API.Controllers
                         Title = recipe.Title,
                         Description = recipe.Description,
                         Instructions = recipe.Instructions,
-                        Calories = recipe.Calories,
-                        ImageUrl = recipe.ImageUrl
+                        PrepTime = recipe.PrepTime ?? 0,
+                        CookTime = recipe.CookTime ?? 0,
+                        Calories = recipe.Calories ?? 0,
+                        ImageUrl = recipe.ImageUrl,
+                        Ingredients = recipe.RecipeIngredients != null && recipe.RecipeIngredients.Count > 0
+                            ? recipe.RecipeIngredients.Select(ri => new
+                            {
+                                Id = ri.IngredientId,
+                                Name = ri.Ingredient?.Name ?? "Неизвестный ингредиент",
+                                Quantity = ri.Quantity,
+                                Unit = ri.Ingredient?.Unit ?? "шт"
+                            }).Cast<object>().ToList()
+                            : new List<object>()
                     }
                 });
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[GetRecipe] Error: {ex.Message}");
                 return StatusCode(500, new { error = ex.Message });
             }
         }
@@ -166,8 +183,9 @@ namespace YP_API.Controllers
             try
             {
                 var fridgeItems = await _context.UserInventories
-            .Where(ui => ui.UserId == userId)
-            .ToListAsync();
+                    .Where(ui => ui.UserId == userId)
+                    .ToListAsync();
+                
                 Console.WriteLine($"DEBUG: User {userId} has {fridgeItems.Count} items in fridge.");
                 foreach (var item in fridgeItems)
                 {
@@ -182,38 +200,73 @@ namespace YP_API.Controllers
                 if (!fridgeIngredientIds.Any())
                 {
                     Console.WriteLine("DEBUG: Fridge is empty!");
-                    return Ok(new { success = true, data = Array.Empty<object>(), message = "В холодильнике нет продуктов" });
+                    return Ok(new { success = true, data = Array.Empty<object>(), message = "В холодильнике нет ингредиентов" });
                 }
 
-                var recipeIdsQuery =
-    from r in _context.Recipes
-    where _context.RecipeIngredients
-        .Where(ri => ri.RecipeId == r.Id)
-        .Any(ri => fridgeIngredientIds.Contains(ri.IngredientId)) // <--- Мягкий поиск (хотя бы один)
-    select r.Id;
-
-
-                var recipeIds = await recipeIdsQuery.ToListAsync();
-
-                var recipes = await _context.Recipes
-                    .Where(r => recipeIds.Contains(r.Id))
+                // СТРОГИЙ ПОИСК: Все ингредиенты рецепта должны быть в холодильнике
+                var recipesWithAllIngredients = new List<Recipe>();
+                
+                var allRecipes = await _context.Recipes
+                    .Include(r => r.RecipeIngredients)
                     .ToListAsync();
 
-                return Ok(new
+                foreach (var recipe in allRecipes)
                 {
-                    success = true,
-                    data = recipes.Select(r => new
+                    if (recipe.RecipeIngredients == null || recipe.RecipeIngredients.Count == 0)
+                        continue;
+
+                    // Проверяем ВСЕ ингредиенты рецепта
+                    bool allIngredientsPresent = recipe.RecipeIngredients
+                        .All(ri => fridgeIngredientIds.Contains(ri.IngredientId));
+
+                    if (allIngredientsPresent)
                     {
-                        Id = r.Id,
-                        Title = r.Title,
-                        Description = r.Description,
-                        Calories = r.Calories,
-                        ImageUrl = r.ImageUrl
+                        Console.WriteLine($"? Рецепт '{recipe.Title}' - ВСЕ ингредиенты в наличии");
+                        recipesWithAllIngredients.Add(recipe);
+                    }
+                    else
+                    {
+                        var missingIngredients = recipe.RecipeIngredients
+                            .Where(ri => !fridgeIngredientIds.Contains(ri.IngredientId))
+                            .Select(ri => ri.IngredientId)
+                            .ToList();
+                        Console.WriteLine($"? Рецепт '{recipe.Title}' - отсутствуют ингредиенты: {string.Join(", ", missingIngredients)}");
+                    }
+                }
+
+                if (!recipesWithAllIngredients.Any())
+                {
+                    Console.WriteLine("DEBUG: No recipes with ALL ingredients found!");
+                    return Ok(new 
+                    { 
+                        success = true, 
+                        data = Array.Empty<object>(), 
+                        message = "Нет рецептов со ВСЕМИ необходимыми ингредиентами" 
+                    });
+                }
+
+                var result = recipesWithAllIngredients.Select(r => new
+                {
+                    Id = r.Id,
+                    Title = r.Title,
+                    Description = r.Description,
+                    PrepTime = r.PrepTime,
+                    CookTime = r.CookTime,
+                    Calories = r.Calories,
+                    ImageUrl = r.ImageUrl,
+                    Ingredients = r.RecipeIngredients?.Select(ri => new
+                    {
+                        IngredientId = ri.IngredientId,
+                        IngredientName = ri.Ingredient?.Name ?? "Unknown"
                     })
                 });
+
+                Console.WriteLine($"DEBUG: Found {recipesWithAllIngredients.Count} recipes with all ingredients");
+                return Ok(new { success = true, data = result });
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"ERROR: {ex.Message}\n{ex.StackTrace}");
                 return StatusCode(500, new { error = ex.Message });
             }
         }

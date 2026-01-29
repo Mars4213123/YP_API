@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using Newtonsoft.Json;
 
 namespace UP.Models
 {
@@ -34,7 +36,30 @@ namespace UP.Models
         public int CookTime { get; set; }
         public decimal Calories { get; set; }
         public List<IngredientDto> Ingredients { get; set; } = new List<IngredientDto>();
-        public List<string> Instructions { get; set; } = new List<string>();
+        
+        [JsonProperty("instructions")]
+        public string InstructionsRaw { get; set; }
+        
+        // Вспомогательное свойство для удобства
+        public List<string> Instructions
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(InstructionsRaw))
+                    return new List<string>();
+                
+                // Если это одна строка, разбиваем по точкам или просто возвращаем как есть
+                if (InstructionsRaw.Contains("."))
+                {
+                    return InstructionsRaw.Split(new[] { '.', '\n' }, System.StringSplitOptions.RemoveEmptyEntries)
+                        .Select(s => s.Trim())
+                        .Where(s => !string.IsNullOrWhiteSpace(s))
+                        .ToList();
+                }
+                
+                return new List<string> { InstructionsRaw };
+            }
+        }
     }
 
     public class IngredientDto

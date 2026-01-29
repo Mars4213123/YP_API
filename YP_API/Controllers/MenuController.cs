@@ -118,6 +118,8 @@ namespace YP_API.Controllers
                     .Select(ui => ui.IngredientId)
                     .ToListAsync();
 
+                Console.WriteLine($"[GenerateWeekMenu] User {userId} inventory ingredients: {string.Join(", ", inventoryIngredientIds)}");
+
                 // Get user's allergy ingredient ids
                 var allergyIngredientIds = await _context.UserAllergies
                     .Where(a => a.UserId == userId)
@@ -125,18 +127,50 @@ namespace YP_API.Controllers
                     .ToListAsync();
 
                 // Find recipes that:
-                // 1. Use at least one ingredient from inventory
+                // 1. ALL ingredients are in the inventory (STRICT search)
                 // 2. Don't contain any allergy ingredients
                 var candidateRecipes = await _context.Recipes
                     .Include(r => r.RecipeIngredients)
-                    .Where(r => inventoryIngredientIds.Any()
-                                ? r.RecipeIngredients.Any(ri => inventoryIngredientIds.Contains(ri.IngredientId))
-                                  && !r.RecipeIngredients.Any(ri => allergyIngredientIds.Contains(ri.IngredientId))
-                                : !r.RecipeIngredients.Any(ri => allergyIngredientIds.Contains(ri.IngredientId)))
+                    .Where(r => 
+                        // STRICT: Все ингредиенты рецепта должны быть в холодильнике
+                        r.RecipeIngredients.All(ri => inventoryIngredientIds.Contains(ri.IngredientId))
+                        // И рецепт должен содержать хотя бы один ингредиент
+                        && r.RecipeIngredients.Count > 0
+                        // И не содержать запрещённых ингредиентов
+                        && !r.RecipeIngredients.Any(ri => allergyIngredientIds.Contains(ri.IngredientId)))
                     .ToListAsync();
 
+                Console.WriteLine($"[GenerateWeekMenu] Found {candidateRecipes.Count} candidate recipes with STRICT ingredient matching");
+                foreach (var recipe in candidateRecipes)
+                {
+                    var recipeIngredients = recipe.RecipeIngredients.Select(ri => $"({ri.IngredientId})").ToList();
+                    Console.WriteLine($"  - Recipe {recipe.Id}: {recipe.Title} - ВСЕ ингредиенты в наличии: {string.Join(", ", recipeIngredients)}");
+                }
+
                 if (!candidateRecipes.Any())
-                    return BadRequest(new { error = "Нет рецептов, подходящих по ингредиентам и аллергиям" });
+                {
+                    Console.WriteLine($"[GenerateWeekMenu] Нет рецептов с ВСЕ необходимыми ингредиентами. Детали:");
+                    
+                    // Логируем какие рецепты не подошли и почему
+                    var allRecipes = await _context.Recipes
+                        .Include(r => r.RecipeIngredients)
+                        .ToListAsync();
+                    
+                    foreach (var recipe in allRecipes.Take(5))
+                    {
+                        var missingIngredients = recipe.RecipeIngredients
+                            .Where(ri => !inventoryIngredientIds.Contains(ri.IngredientId))
+                            .Select(ri => ri.IngredientId)
+                            .ToList();
+                        
+                        if (missingIngredients.Any())
+                        {
+                            Console.WriteLine($"  - {recipe.Title}: не хватает ингредиентов {string.Join(", ", missingIngredients)}");
+                        }
+                    }
+                    
+                    return BadRequest(new { error = "Нет рецептов со ВСЕМИ необходимыми ингредиентами в холодильнике" });
+                }
 
                 var userMenu = new Menu
                 {
@@ -166,6 +200,8 @@ namespace YP_API.Controllers
                 await _context.Menus.AddAsync(userMenu);
                 await _context.SaveChangesAsync();
 
+                Console.WriteLine($"[GenerateWeekMenu] Меню успешно создано с ID {userMenu.Id}");
+
                 return Ok(new
                 {
                     success = true,
@@ -174,6 +210,7 @@ namespace YP_API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[GenerateWeekMenu] Error: {ex.Message}");
                 return BadRequest(new { error = ex.Message });
             }
         }
@@ -217,6 +254,113 @@ namespace YP_API.Controllers
             }
             catch (Exception ex)
             {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // ПОЛУЧИТЬ все меню пользователя
+        [HttpGet("user/{userId}/all")]
+        public async Task<ActionResult> GetUserMenus(int userId)
+        {
+            try
+            {
+                var menus = await _context.Menus
+                    .Include(m => m.Items)
+                        .ThenInclude(i => i.Recipe)
+                    .Where(m => m.UserId == userId)
+                    .OrderByDescending(m => m.CreatedAt)
+                    .Select(m => new
+                    {
+                        Id = m.Id,
+                        Name = m.Name,
+                        Description = $"Создано: {m.CreatedAt:dd.MM.yyyy}",
+                        RecipeCount = m.Items.Count,
+                        TotalDays = m.Items.Select(i => i.Date.Date).Distinct().Count()
+                    })
+                    .ToListAsync();
+
+                return Ok(menus);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[GetUserMenus] Error: {ex.Message}");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // ПОЛУЧИТЬ детали конкретного меню
+        [HttpGet("{menuId}")]
+        public async Task<ActionResult> GetMenuDetails(int menuId)
+        {
+            try
+            {
+                var menu = await _context.Menus
+                    .Include(m => m.Items)
+                        .ThenInclude(i => i.Recipe)
+                    .FirstOrDefaultAsync(m => m.Id == menuId);
+
+                if (menu == null)
+                    return NotFound(new { error = "Меню не найдено" });
+
+                return Ok(new
+                {
+                    success = true,
+                    data = new
+                    {
+                        Id = menu.Id,
+                        Name = menu.Name,
+                        CreatedAt = menu.CreatedAt,
+                        Items = menu.Items.Select(i => new
+                        {
+                            RecipeId = i.RecipeId,
+                            RecipeTitle = i.Recipe.Title,
+                            Date = i.Date,
+                            MealType = i.MealType
+                        }).ToList()
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[GetMenuDetails] Error: {ex.Message}");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // УДАЛИТЬ меню
+        [HttpDelete("{menuId}")]
+        public async Task<ActionResult> DeleteMenu(int menuId)
+        {
+            try
+            {
+                Console.WriteLine($"[DeleteMenu] Удаляем меню {menuId}");
+                
+                var menu = await _context.Menus
+                    .Include(m => m.Items)
+                    .FirstOrDefaultAsync(m => m.Id == menuId);
+
+                if (menu == null)
+                    return NotFound(new { error = "Меню не найдено" });
+
+                // Удаляем все элементы меню
+                _context.MenuItems.RemoveRange(menu.Items);
+                
+                // Удаляем само меню
+                _context.Menus.Remove(menu);
+                
+                await _context.SaveChangesAsync();
+                
+                Console.WriteLine($"[DeleteMenu] Меню {menuId} успешно удалено");
+                
+                return Ok(new
+                {
+                    success = true,
+                    message = "Меню успешно удалено"
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DeleteMenu] Error: {ex.Message}");
                 return StatusCode(500, new { error = ex.Message });
             }
         }

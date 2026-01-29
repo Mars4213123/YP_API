@@ -134,18 +134,88 @@ namespace UP.Services
 
         public async Task<List<AvailableMenu>> GetUserMenusAsync(int userId)
         {
-            var response = await _httpClient.GetAsync($"api/menu/user/{userId}/all");
-            if (response.IsSuccessStatusCode)
-                return await response.Content.ReadFromJsonAsync<List<AvailableMenu>>();
-            return new List<AvailableMenu>();
+            try
+            {
+                Console.WriteLine($"[GetUserMenusAsync] Загружаем меню для пользователя {userId}");
+                
+                var response = await _httpClient.GetAsync($"api/menu/user/{userId}/all");
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"[GetUserMenusAsync] Error: {response.StatusCode}");
+                    return new List<AvailableMenu>();
+                }
+
+                var responseString = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[GetUserMenusAsync] Response: {responseString}");
+                
+                var menus = JsonConvert.DeserializeObject<List<AvailableMenu>>(responseString);
+                Console.WriteLine($"[GetUserMenusAsync] Десериализовано {menus?.Count ?? 0} меню");
+                
+                return menus ?? new List<AvailableMenu>();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[GetUserMenusAsync] Exception: {ex.Message}\n{ex.StackTrace}");
+                return new List<AvailableMenu>();
+            }
         }
 
         public async Task<MenuDto> GetMenuDetailsAsync(int menuId)
         {
-            var response = await _httpClient.GetAsync($"api/menu/{menuId}");
-            if (response.IsSuccessStatusCode)
-                return await response.Content.ReadFromJsonAsync<MenuDto>();
-            return null;
+            try
+            {
+                var response = await _httpClient.GetAsync($"api/menu/{menuId}");
+                if (!response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"[GetMenuDetailsAsync] Error: {response.StatusCode}");
+                    return null;
+                }
+
+                var responseString = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[GetMenuDetailsAsync] Response: {responseString}");
+
+                // Используем JsonConvert для более надежного парсинга
+                var responseObj = JsonConvert.DeserializeObject<ApiResponse<MenuDataDto>>(responseString);
+                
+                if (responseObj?.Data != null)
+                {
+                    var menuData = responseObj.Data;
+                    
+                    var menuDto = new MenuDto
+                    {
+                        Id = menuData.Id,
+                        Name = menuData.Name,
+                        CreatedAt = menuData.CreatedAt,
+                        Items = new List<MenuItemDto>()
+                    };
+
+                    if (menuData.Items != null && menuData.Items.Count > 0)
+                    {
+                        foreach (var item in menuData.Items)
+                        {
+                            menuDto.Items.Add(new MenuItemDto
+                            {
+                                RecipeId = item.RecipeId,
+                                RecipeTitle = item.RecipeTitle,
+                                Date = item.Date,
+                                MealType = item.MealType
+                            });
+                        }
+                    }
+
+                    Console.WriteLine($"[GetMenuDetailsAsync] Успешно загружено {menuDto.Items.Count} блюд");
+                    return menuDto;
+                }
+
+                Console.WriteLine($"[GetMenuDetailsAsync] responseObj.Data == null");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[GetMenuDetailsAsync] Exception: {ex.Message}\n{ex.StackTrace}");
+                return null;
+            }
         }
 
         public async Task<bool> SetInventoryByNamesAsync(int userId, List<string> productNames)
@@ -157,10 +227,15 @@ namespace UP.Services
                 {
                     var trimmed = name.Trim();
                     if (string.IsNullOrWhiteSpace(trimmed)) continue;
+                    
                     var id = await FindIngredientIdByNameAsync(trimmed);
                     if (id == null)
-                        throw new Exception($"Не удалось найти ингредиент '{trimmed}'");
-                    items.Add(new { IngredientId = id.Value, Quantity = 1.0, Unit = "" });
+                        id = await CreateIngredientByNameAsync(trimmed);
+                    
+                    if (id == null)
+                        throw new Exception($"Не удалось создать или найти ингредиент '{trimmed}'");
+                    
+                    items.Add(new { IngredientId = id.Value, Quantity = 1.0, Unit = "шт" });
                 }
                 if (items.Count == 0)
                     throw new Exception("Не удалось распознать ни одного продукта");
@@ -168,13 +243,19 @@ namespace UP.Services
                 var json = System.Text.Json.JsonSerializer.Serialize(items);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
                 var resp = await _httpClient.PostAsync($"api/inventory/set/{userId}", content);
-                resp.EnsureSuccessStatusCode();
+                
+                if (!resp.IsSuccessStatusCode)
+                {
+                    var body = await resp.Content.ReadAsStringAsync();
+                    Console.WriteLine($"SetInventoryByNamesAsync: HTTP {(int)resp.StatusCode} {resp.StatusCode}. Response body: {body}");
+                    return false;
+                }
                 return true;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"SetInventoryByNamesAsync error: {ex.Message}");
-                throw;
+                return false;
             }
         }
 
@@ -721,12 +802,48 @@ namespace UP.Services
                 return false;
             }
         }
+
+        public async Task<bool> DeleteMenuAsync(int menuId)
+        {
+            try
+            {
+                Console.WriteLine($"[DeleteMenuAsync] Удаляем меню {menuId}");
+                
+                var response = await _httpClient.DeleteAsync($"api/menu/{menuId}");
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"[DeleteMenuAsync] Меню {menuId} успешно удалено");
+                    return true;
+                }
+                else
+                {
+                    Console.WriteLine($"[DeleteMenuAsync] Error: {response.StatusCode}");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DeleteMenuAsync] Exception: {ex.Message}");
+                return false;
+            }
+        }
+
     }
 
     public class ApiResponse<T>
     {
         public bool Success { get; set; }
         public T Data { get; set; }
+    }
+
+    public class AvailableMenu
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public int RecipeCount { get; set; }
+        public int TotalDays { get; set; }
     }
 
     public class MenuDto
@@ -764,5 +881,21 @@ namespace UP.Services
         public string Title { get; set; } = "";
         public string Description { get; set; }
         public string Instructions { get; set; }
+    }
+
+    public class MenuDataDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public List<MenuItemDataDto> Items { get; set; }
+    }
+
+    public class MenuItemDataDto
+    {
+        public int RecipeId { get; set; }
+        public string RecipeTitle { get; set; }
+        public DateTime Date { get; set; }
+        public string MealType { get; set; }
     }
 }
