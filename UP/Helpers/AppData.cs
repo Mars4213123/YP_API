@@ -158,16 +158,38 @@ namespace UP
         {
             try
             {
+                Console.WriteLine($"[AddToFavorites] Добавляем в избранное: {recipe.Title}");
+                
                 var apiRecipe = AllRecipes.FirstOrDefault(r => r.Title == recipe.Title);
                 if (apiRecipe != null)
                 {
-                    return await ApiService.ToggleFavoriteAsync(apiRecipe.Id);
+                    var success = await ApiService.ToggleFavoriteAsync(apiRecipe.Id);
+                    
+                    if (success)
+                    {
+                        Console.WriteLine($"[AddToFavorites] Успешно добавлено на сервер, добавляем в локальный список");
+                        
+                        // Добавляем в локальный список если его там еще нет
+                        if (!Favorites.Any(f => f.Title == recipe.Title))
+                        {
+                            Favorites.Add(recipe);
+                            Console.WriteLine($"[AddToFavorites] Рецепт добавлен в локальный список. Всего: {Favorites.Count}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[AddToFavorites] Рецепт уже в списке");
+                        }
+                    }
+                    
+                    return success;
                 }
+                
+                Console.WriteLine($"[AddToFavorites] Рецепт не найден в AllRecipes");
                 return false;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error adding to favorites: {ex.Message}");
+                Console.WriteLine($"[AddToFavorites] Exception: {ex.Message}");
                 return false;
             }
         }
@@ -187,16 +209,28 @@ namespace UP
         {
             try
             {
+                Console.WriteLine($"[RemoveFromFavorites] Удаляем из избранного: {recipe.Title}");
+                
                 var apiRecipe = AllRecipes.FirstOrDefault(r => r.Title == recipe.Title);
                 if (apiRecipe != null)
                 {
-                    return await ApiService.ToggleFavoriteAsync(apiRecipe.Id);
+                    var success = await ApiService.ToggleFavoriteAsync(apiRecipe.Id);
+                    
+                    if (success)
+                    {
+                        Console.WriteLine($"[RemoveFromFavorites] Успешно удалено на сервере");
+                        return true;
+                    }
+                    
+                    return false;
                 }
+                
+                Console.WriteLine($"[RemoveFromFavorites] Рецепт не найден в AllRecipes");
                 return false;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error removing from favorites: {ex.Message}");
+                Console.WriteLine($"[RemoveFromFavorites] Exception: {ex.Message}");
                 return false;
             }
         }
