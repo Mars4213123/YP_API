@@ -10,10 +10,12 @@ namespace YP_API.Controllers
     public class InventoryController : ControllerBase
     {
         private readonly RecipePlannerContext _context;
+        private readonly YP_API.Interfaces.IMenuService _menuService;
 
-        public InventoryController(RecipePlannerContext context)
+        public InventoryController(RecipePlannerContext context, YP_API.Interfaces.IMenuService menuService)
         {
             _context = context;
+            _menuService = menuService;
         }
 
         // ДОБАВИТЬ/ОБНОВИТЬ продукт по IngredientId
@@ -51,7 +53,19 @@ namespace YP_API.Controllers
                 }
 
                 await _context.SaveChangesAsync();
-                return Ok(new { success = true });
+
+                // Try to generate a weekly menu based on updated inventory
+                try
+                {
+                    var menuId = await _menuService.GenerateMenuFromInventoryAsync(userId);
+                    if (menuId.HasValue)
+                    {
+                        return Ok(new { success = true, menuGenerated = true, menuId = menuId.Value });
+                    }
+                }
+                catch { /* ignore menu generation errors */ }
+
+                return Ok(new { success = true, menuGenerated = false });
             }
             catch (Exception ex)
             {

@@ -169,7 +169,7 @@
                     </Border>
 
                     <!-- Продукты в холодильнике -->
-                    <Border Style="{StaticResource CardStyle}" Grid.Row="1" Margin="0,0,0,-80">
+                    <Border Style="{StaticResource CardStyle}" Grid.Row="1" Margin="0,0,0,-80" Height="326" VerticalAlignment="Bottom">
                         <ScrollViewer Style="{StaticResource ScrollViewerStyle}" MaxHeight="280">
                             <StackPanel>
                                 <TextBlock Text="📦 Продукты в холодильнике" 

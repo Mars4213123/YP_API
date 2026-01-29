@@ -218,6 +218,50 @@ namespace YP_API.Controllers
             }
         }
 
+        // DEBUG: информация по холодильнику и совпадениям рецептов
+        // GET api/recipes/debug/fridge-info/{userId}
+        [HttpGet("debug/fridge-info/{userId}")]
+        public async Task<ActionResult> GetFridgeDebugInfo(int userId)
+        {
+            try
+            {
+                var fridgeItems = await _context.UserInventories
+                    .Where(ui => ui.UserId == userId)
+                    .Include(ui => ui.Ingredient)
+                    .ToListAsync();
+
+                var fridgeIds = fridgeItems.Select(fi => fi.IngredientId).Distinct().ToList();
+                var fridgeNames = fridgeItems.Select(fi => fi.Ingredient?.Name?.ToLower()).Where(n => !string.IsNullOrEmpty(n)).Distinct().ToList();
+
+                var matched = await (from r in _context.Recipes
+                                     join ri in _context.RecipeIngredients on r.Id equals ri.RecipeId
+                                     join ing in _context.Ingredients on ri.IngredientId equals ing.Id
+                                     where fridgeIds.Contains(ri.IngredientId) || fridgeNames.Contains(ing.Name.ToLower())
+                                     select new
+                                     {
+                                         RecipeId = r.Id,
+                                         RecipeTitle = r.Title,
+                                         IngredientId = ri.IngredientId,
+                                         IngredientName = ing.Name
+                                     })
+                                    .ToListAsync();
+
+                var recipes = matched.Select(m => new { m.RecipeId, m.RecipeTitle }).Distinct().ToList();
+
+                return Ok(new
+                {
+                    success = true,
+                    fridge = fridgeItems.Select(fi => new { fi.IngredientId, Name = fi.Ingredient?.Name, fi.Quantity }),
+                    matchedRecipes = recipes,
+                    matchedDetails = matched
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
     }
 
 

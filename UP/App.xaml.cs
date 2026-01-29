@@ -9,7 +9,7 @@ namespace UP
         {
             base.OnStartup(e);
 
-            AppData.ApiService = new ApiService("https://localhost:7197/api/");
+            AppData.ApiService = new ApiService("https://localhost:7197/");
         }
     }
 }

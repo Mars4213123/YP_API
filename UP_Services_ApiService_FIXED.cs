@@ -33,10 +33,8 @@ namespace UP.Services
                 Timeout = TimeSpan.FromSeconds(30)
             };
 
-            // BaseAddress РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РєРѕСЂРЅРµРІРѕР№ URL Р±РµР· /api/
-            _httpClient.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
-            
-            Console.WriteLine($"[ApiService] BaseAddress СѓСЃС‚Р°РЅРѕРІР»РµРЅ РЅР°: {_httpClient.BaseAddress}");
+            // ГЛАВНОЕ: BaseAddress ДОЛЖЕН заканчиваться на /api/
+            _httpClient.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "");
 
             _httpClient.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/json"));
@@ -46,105 +44,64 @@ namespace UP.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync($"api/ingredients/search?name={Uri.EscapeDataString(term)}");
+                var response = await _httpClient.GetAsync($"recipes/ingredients/search?query={term}");
                 if (response.IsSuccessStatusCode)
                 {
-                    var responseString = await response.Content.ReadAsStringAsync();
-                    var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
-                    
-                    if (responseObj?.data != null)
-                    {
-                        var ingredients = JsonConvert.DeserializeObject<List<IngredientDto>>(
-                            responseObj.data.ToString());
-                        return ingredients ?? new List<IngredientDto>();
-                    }
+                    return await response.Content.ReadFromJsonAsync<List<IngredientDto>>();
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($"[SearchIngredientsAsync] Error: {ex.Message}");
             }
             return new List<IngredientDto>();
         }
 
         public async Task<bool> UpdateFridgeAsync(int userId, List<string> productNames)
         {
-            try
+            var fridgeItems = new List<object>();
+
+            foreach (var name in productNames)
             {
-                var fridgeItems = new List<object>();
-                foreach (var name in productNames)
+                var foundIngredients = await SearchIngredientsAsync(name);
+                var bestMatch = foundIngredients.FirstOrDefault();
+
+                if (bestMatch != null)
                 {
-                    var foundIngredients = await SearchIngredientsAsync(name);
-                    var bestMatch = foundIngredients.FirstOrDefault();
-                    if (bestMatch != null)
+                    fridgeItems.Add(new
                     {
-                        fridgeItems.Add(new { IngredientId = bestMatch.Id, Quantity = 1 });
-                        Console.WriteLine($"[UpdateFridgeAsync] Р”РѕР±Р°РІР»РµРЅ РёРЅРіСЂРµРґРёРµРЅС‚: {name} (ID: {bestMatch.Id})");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"[UpdateFridgeAsync] РРЅРіСЂРµРґРёРµРЅС‚ РЅРµ РЅР°Р№РґРµРЅ: {name}");
-                    }
+                        IngredientId = bestMatch.Id,
+                        Quantity = 1
+                    });
                 }
-                
-                if (fridgeItems.Count == 0)
-                {
-                    Console.WriteLine($"[UpdateFridgeAsync] РќРµС‚ РЅР°Р№РґРµРЅРЅС‹С… РёРЅРіСЂРµРґРёРµРЅС‚РѕРІ!");
-                    return false;
-                }
-                
-                var response = await _httpClient.PostAsJsonAsync($"api/userpreferences/user/{userId}/fridge", fridgeItems);
-                var responseString = await response.Content.ReadAsStringAsync();
-                
-                Console.WriteLine($"[UpdateFridgeAsync] Status: {response.StatusCode}, Response: {responseString}");
-                
-                return response.IsSuccessStatusCode;
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[UpdateFridgeAsync] Exception: {ex.Message}");
-                return false;
-            }
+
+            var response = await _httpClient.PostAsJsonAsync($"userpreferences/user/{userId}/fridge", fridgeItems);
+            return response.IsSuccessStatusCode;
         }
 
         public async Task<bool> GenerateMenuAsync(int userId)
         {
-            try
-            {
-                var response = await _httpClient.PostAsync($"api/menu/generate-week/{userId}", null);
-                var responseString = await response.Content.ReadAsStringAsync();
-                
-                Console.WriteLine($"[GenerateMenuAsync] Status: {response.StatusCode}, Response: {responseString}");
-                
-                if (!response.IsSuccessStatusCode)
-                {
-                    Console.WriteLine($"[GenerateMenuAsync] РћС€РёР±РєР° РїСЂРё РіРµРЅРµСЂР°С†РёРё РјРµРЅСЋ: {responseString}");
-                    return false;
-                }
-                
-                var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
-                return responseObj?.success == true;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[GenerateMenuAsync] Exception: {ex.Message}");
-                return false;
-            }
+            var response = await _httpClient.PostAsync($"menu/generate-week/{userId}", null);
+            return response.IsSuccessStatusCode;
         }
 
         public async Task<List<AvailableMenu>> GetUserMenusAsync(int userId)
         {
-            var response = await _httpClient.GetAsync($"api/menu/user/{userId}/all");
+            var response = await _httpClient.GetAsync($"menu/user/{userId}/all");
             if (response.IsSuccessStatusCode)
+            {
                 return await response.Content.ReadFromJsonAsync<List<AvailableMenu>>();
+            }
             return new List<AvailableMenu>();
         }
 
         public async Task<MenuDto> GetMenuDetailsAsync(int menuId)
         {
-            var response = await _httpClient.GetAsync($"api/menu/{menuId}");
+            var response = await _httpClient.GetAsync($"menu/{menuId}");
             if (response.IsSuccessStatusCode)
+            {
                 return await response.Content.ReadFromJsonAsync<MenuDto>();
+            }
             return null;
         }
 
@@ -153,21 +110,27 @@ namespace UP.Services
             try
             {
                 var items = new List<object>();
+
                 foreach (var name in productNames)
                 {
                     var trimmed = name.Trim();
-                    if (string.IsNullOrWhiteSpace(trimmed)) continue;
+                    if (string.IsNullOrWhiteSpace(trimmed))
+                        continue;
+
                     var id = await FindIngredientIdByNameAsync(trimmed);
                     if (id == null)
-                        throw new Exception($"РќРµ СѓРґР°Р»РѕСЃСЊ РЅР°Р№С‚Рё РёРЅРіСЂРµРґРёРµРЅС‚ '{trimmed}'");
+                        throw new Exception($"Не удалось найти ингредиент '{trimmed}'");
+
                     items.Add(new { IngredientId = id.Value, Quantity = 1.0, Unit = "" });
                 }
+
                 if (items.Count == 0)
-                    throw new Exception("РќРµ СѓРґР°Р»РѕСЃСЊ СЂР°СЃРїРѕР·РЅР°С‚СЊ РЅРё РѕРґРЅРѕРіРѕ РїСЂРѕРґСѓРєС‚Р°");
+                    throw new Exception("Не удалось распознать ни одного продукта");
 
                 var json = System.Text.Json.JsonSerializer.Serialize(items);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
-                var resp = await _httpClient.PostAsync($"api/inventory/set/{userId}", content);
+
+                var resp = await _httpClient.PostAsync($"inventory/set/{userId}", content);
                 resp.EnsureSuccessStatusCode();
                 return true;
             }
@@ -182,7 +145,10 @@ namespace UP.Services
         {
             _token = token;
             if (!string.IsNullOrEmpty(_token))
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+            {
+                _httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", _token);
+            }
         }
 
         public void ClearToken()
@@ -207,19 +173,21 @@ namespace UP.Services
                     { new StringContent(username), "username" },
                     { new StringContent(password), "password" }
                 };
-                var response = await _httpClient.PostAsync($"api/auth/login", formData);
+
+                // Auth контроллер НЕ под /api/, используем полный URL
+                var response = await _httpClient.PostAsync($"{_baseUrl.TrimEnd('/')}/Auth/login", formData);
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException($"РћС€РёР±РєР° РІС…РѕРґР°: {response.StatusCode}");
+                    throw new HttpRequestException($"Ошибка входа: {response.StatusCode}");
 
                 var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
                 if (responseObj == null)
-                    throw new Exception("РџСѓСЃС‚РѕР№ РѕС‚РІРµС‚ РѕС‚ СЃРµСЂРІРµСЂР°");
+                    throw new Exception("Пустой ответ от сервера");
 
                 bool success = responseObj.success ?? false;
                 if (!success)
-                    throw new Exception(responseObj.message?.ToString() ?? "РћС€РёР±РєР° РІС…РѕРґР°");
+                    throw new Exception(responseObj.message?.ToString() ?? "Ошибка входа");
 
                 var userData = new UserData
                 {
@@ -234,7 +202,7 @@ namespace UP.Services
             }
             catch (Exception ex)
             {
-                throw new Exception($"РћС€РёР±РєР° РїСЂРё РІС…РѕРґРµ: {ex.Message}");
+                throw new Exception($"Ошибка при входе: {ex.Message}");
             }
         }
 
@@ -251,7 +219,11 @@ namespace UP.Services
             var resp = await _httpClient.GetAsync(relativeUrl);
             resp.EnsureSuccessStatusCode();
             var json = await resp.Content.ReadAsStringAsync();
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
             var result = System.Text.Json.JsonSerializer.Deserialize<T>(json, options);
             return result;
         }
@@ -261,34 +233,40 @@ namespace UP.Services
             try
             {
                 var items = new List<object>();
+
                 foreach (var name in productNames)
                 {
                     var trimmed = name.Trim();
-                    if (string.IsNullOrWhiteSpace(trimmed)) continue;
+                    if (string.IsNullOrWhiteSpace(trimmed))
+                        continue;
 
                     var id = await FindIngredientIdByNameAsync(trimmed);
-                    if (id == null)
-                        id = await CreateIngredientByNameAsync(trimmed);
 
                     if (id == null)
-                        throw new Exception($"РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ РёР»Рё РЅР°Р№С‚Рё РёРЅРіСЂРµРґРёРµРЅС‚ '{trimmed}'");
+                    {
+                        id = await CreateIngredientByNameAsync(trimmed);
+                    }
+
+                    if (id == null)
+                        throw new Exception($"Не удалось создать или найти ингредиент '{trimmed}'");
 
                     items.Add(new { IngredientId = id.Value, Quantity = 1.0 });
                 }
 
                 if (items.Count == 0)
-                    throw new Exception("РќРµ СѓРґР°Р»РѕСЃСЊ СЂР°СЃРїРѕР·РЅР°С‚СЊ РЅРё РѕРґРЅРѕРіРѕ РїСЂРѕРґСѓРєС‚Р°");
+                    throw new Exception("Не удалось распознать ни одного продукта");
 
                 var json = System.Text.Json.JsonSerializer.Serialize(items);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var resp = await _httpClient.PostAsync($"api/userpreferences/user/{userId}/fridge", content);
+                var resp = await _httpClient.PostAsync($"userpreferences/user/{userId}/fridge", content);
                 if (!resp.IsSuccessStatusCode)
                 {
                     var body = await resp.Content.ReadAsStringAsync();
                     Console.WriteLine($"SetFridgeByNamesAsync: HTTP {(int)resp.StatusCode} {resp.StatusCode}. Response body: {body}");
                     return false;
                 }
+
                 return true;
             }
             catch (Exception ex)
@@ -302,20 +280,22 @@ namespace UP.Services
         {
             try
             {
-                var url = $"api/ingredients/search?name={Uri.EscapeDataString(name)}";
-                var fullUrl = new Uri(_httpClient.BaseAddress, url);
-                Console.WriteLine($"[FindIngredientIdByNameAsync] Full URL: {fullUrl}");
+                var url = $"ingredients/search?name={Uri.EscapeDataString(name)}";
+                Console.WriteLine($"FindIngredientIdByNameAsync: Requesting URL: {_httpClient.BaseAddress}{url}");
                 var response = await _httpClient.GetAsync(url);
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode) return null;
 
                 var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
+
                 if (responseObj == null || responseObj.data == null) return null;
+
                 if (responseObj.data.Count == 0) return null;
 
                 var first = responseObj.data[0];
                 int id = first.id;
+
                 return id;
             }
             catch (Exception ex)
@@ -329,18 +309,22 @@ namespace UP.Services
         {
             try
             {
-                var resp = await _httpClient.GetAsync($"api/recipes/by-fridge/{userId}");
+                var resp = await _httpClient.GetAsync($"recipes/by-fridge/{userId}");
                 var responseString = await resp.Content.ReadAsStringAsync();
 
                 if (!resp.IsSuccessStatusCode)
-                    throw new HttpRequestException($"РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ СЂРµС†РµРїС‚РѕРІ РїРѕ С…РѕР»РѕРґРёР»СЊРЅРёРєСѓ: {resp.StatusCode}");
+                    throw new HttpRequestException($"Ошибка получения рецептов по холодильнику: {resp.StatusCode}");
 
                 var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
+
                 if (responseObj == null || responseObj.data == null)
+                {
                     return new List<RecipeDto>();
+                }
 
                 string dataJson = responseObj.data.ToString();
                 var recipes = JsonConvert.DeserializeObject<List<RecipeDto>>(dataJson);
+
                 return recipes ?? new List<RecipeDto>();
             }
             catch (Exception ex)
@@ -361,19 +345,20 @@ namespace UP.Services
                     { new StringContent(password), "password" }
                 };
 
-                var response = await _httpClient.PostAsync($"api/auth/register", formData);
+                // Auth контроллер НЕ под /api/, используем полный URL
+                var response = await _httpClient.PostAsync($"{_baseUrl.TrimEnd('/')}/Auth/register", formData);
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException($"РћС€РёР±РєР° СЂРµРіРёСЃС‚СЂР°С†РёРё: {response.StatusCode}");
+                    throw new HttpRequestException($"Ошибка регистрации: {response.StatusCode}");
 
                 var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
                 if (responseObj == null)
-                    throw new Exception("РџСѓСЃС‚РѕР№ РѕС‚РІРµС‚ РѕС‚ СЃРµСЂРІРµСЂР°");
+                    throw new Exception("Пустой ответ от сервера");
 
                 bool success = responseObj.success ?? false;
                 if (!success)
-                    throw new Exception(responseObj.message?.ToString() ?? "РћС€РёР±РєР° СЂРµРіРёСЃС‚СЂР°С†РёРё");
+                    throw new Exception(responseObj.message?.ToString() ?? "Ошибка регистрации");
 
                 var userData = new UserData
                 {
@@ -388,7 +373,7 @@ namespace UP.Services
             }
             catch (Exception ex)
             {
-                throw new Exception($"РћС€РёР±РєР° РїСЂРё СЂРµРіРёСЃС‚СЂР°С†РёРё: {ex.Message}");
+                throw new Exception($"Ошибка при регистрации: {ex.Message}");
             }
         }
 
@@ -396,11 +381,11 @@ namespace UP.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync($"api/recipes");
+                var response = await _httpClient.GetAsync($"recipes");
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException($"РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ СЂРµС†РµРїС‚РѕРІ: {response.StatusCode}");
+                    throw new HttpRequestException($"Ошибка получения рецептов: {response.StatusCode}");
 
                 var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
                 if (responseObj == null)
@@ -408,10 +393,13 @@ namespace UP.Services
 
                 bool success = responseObj.success ?? false;
                 if (!success)
-                    throw new Exception(responseObj.message?.ToString() ?? "РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ СЂРµС†РµРїС‚РѕРІ");
+                    throw new Exception(responseObj.message?.ToString() ?? "Ошибка получения рецептов");
 
                 if (responseObj.data != null)
-                    return JsonConvert.DeserializeObject<List<RecipeDto>>(responseObj.data.ToString()) ?? new List<RecipeDto>();
+                {
+                    return JsonConvert.DeserializeObject<List<RecipeDto>>(responseObj.data.ToString())
+                           ?? new List<RecipeDto>();
+                }
 
                 return new List<RecipeDto>();
             }
@@ -426,11 +414,11 @@ namespace UP.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync($"api/recipes/{id}");
+                var response = await _httpClient.GetAsync($"recipes/{id}");
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException($"РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ СЂРµС†РµРїС‚Р°: {response.StatusCode}");
+                    throw new HttpRequestException($"Ошибка получения рецепта: {response.StatusCode}");
 
                 var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
                 if (responseObj == null)
@@ -438,7 +426,7 @@ namespace UP.Services
 
                 bool success = responseObj.success ?? false;
                 if (!success)
-                    throw new Exception(responseObj.message?.ToString() ?? "РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ СЂРµС†РµРїС‚Р°");
+                    throw new Exception(responseObj.message?.ToString() ?? "Ошибка получения рецепта");
 
                 if (responseObj.data != null)
                     return JsonConvert.DeserializeObject<RecipeDto>(responseObj.data.ToString());
@@ -456,11 +444,15 @@ namespace UP.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync($"api/favorites");
+                var userId = AppData.CurrentUser?.Id ?? 0;
+                if (userId == 0)
+                    return new List<RecipeDto>();
+
+                var response = await _httpClient.GetAsync($"recipes/favorites/{userId}");
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException($"РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ РёР·Р±СЂР°РЅРЅРѕРіРѕ: {response.StatusCode}");
+                    throw new HttpRequestException($"Ошибка получения избранного: {response.StatusCode}");
 
                 var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
                 if (responseObj == null)
@@ -468,10 +460,13 @@ namespace UP.Services
 
                 bool success = responseObj.success ?? false;
                 if (!success)
-                    throw new Exception(responseObj.message?.ToString() ?? "РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ РёР·Р±СЂР°РЅРЅРѕРіРѕ");
+                    throw new Exception(responseObj.message?.ToString() ?? "Ошибка получения избранного");
 
                 if (responseObj.data != null)
-                    return JsonConvert.DeserializeObject<List<RecipeDto>>(responseObj.data.ToString()) ?? new List<RecipeDto>();
+                {
+                    return JsonConvert.DeserializeObject<List<RecipeDto>>(responseObj.data.ToString())
+                           ?? new List<RecipeDto>();
+                }
 
                 return new List<RecipeDto>();
             }
@@ -490,11 +485,14 @@ namespace UP.Services
                 if (userId == 0)
                     return false;
 
-                var response = await _httpClient.PostAsync($"api/recipes/{recipeId}/favorite/{userId}", null);
+                var response = await _httpClient.PostAsync(
+                    $"recipes/{recipeId}/favorite/{userId}",
+                    null);
+
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException($"РћС€РёР±РєР° РёР·РјРµРЅРµРЅРёСЏ РёР·Р±СЂР°РЅРЅРѕРіРѕ: {response.StatusCode}");
+                    throw new HttpRequestException($"Ошибка изменения избранного: {response.StatusCode}");
 
                 var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
                 if (responseObj == null)
@@ -517,11 +515,11 @@ namespace UP.Services
                 if (userId == 0)
                     return null;
 
-                var response = await _httpClient.GetAsync($"api/menu/user/{userId}/current");
+                var response = await _httpClient.GetAsync($"menu/user/{userId}/current");
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException($"РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ РјРµРЅСЋ: {response.StatusCode}");
+                    throw new HttpRequestException($"Ошибка получения меню: {response.StatusCode}");
 
                 var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
                 if (responseObj == null)
@@ -551,11 +549,11 @@ namespace UP.Services
                 if (userId == 0)
                     return null;
 
-                var response = await _httpClient.GetAsync($"api/shoppinglist/user/{userId}/current");
+                var response = await _httpClient.GetAsync($"shoppinglist/user/{userId}/current");
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException($"РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ СЃРїРёСЃРєР° РїРѕРєСѓРїРѕРє: {response.StatusCode}");
+                    throw new HttpRequestException($"Ошибка получения списка покупок: {response.StatusCode}");
 
                 var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
                 if (responseObj == null)
@@ -585,11 +583,14 @@ namespace UP.Services
                 if (userId == 0)
                     return false;
 
-                var response = await _httpClient.PostAsync($"api/shoppinglist/generate-from-menu/{menuId}/{userId}", null);
+                var response = await _httpClient.PostAsync(
+                    $"shoppinglist/generate-from-menu/{menuId}/{userId}",
+                    null);
+
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException($"РћС€РёР±РєР° РіРµРЅРµСЂР°С†РёРё СЃРїРёСЃРєР° РїРѕРєСѓРїРѕРє: {response.StatusCode}");
+                    throw new HttpRequestException($"Ошибка генерации списка покупок: {response.StatusCode}");
 
                 var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
                 if (responseObj == null)
@@ -609,13 +610,15 @@ namespace UP.Services
             try
             {
                 var newIng = new { Name = name };
-                var response = await PostJsonAsync("api/ingredients/create", newIng, ensureSuccess: false);
+                var response = await PostJsonAsync("ingredients/create", newIng, ensureSuccess: false);
 
                 var responseString = await response.Content.ReadAsStringAsync();
                 var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
 
                 if (responseObj != null && responseObj.success == true && responseObj.data != null)
+                {
                     return (int)responseObj.data.id;
+                }
 
                 return null;
             }
@@ -630,11 +633,11 @@ namespace UP.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync($"api/ingredients/search");
+                var response = await _httpClient.GetAsync($"ingredients/search");
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException($"РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ РёРЅРіСЂРµРґРёРµРЅС‚РѕРІ: {response.StatusCode}");
+                    throw new HttpRequestException($"Ошибка получения ингредиентов: {response.StatusCode}");
 
                 var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
                 if (responseObj == null)
@@ -642,10 +645,13 @@ namespace UP.Services
 
                 bool success = responseObj.success ?? false;
                 if (!success)
-                    throw new Exception(responseObj.message?.ToString() ?? "РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ РёРЅРіСЂРµРґРёРµРЅС‚РѕРІ");
+                    throw new Exception(responseObj.message?.ToString() ?? "Ошибка получения ингредиентов");
 
                 if (responseObj.data != null)
-                    return JsonConvert.DeserializeObject<List<IngredientDto>>(responseObj.data.ToString()) ?? new List<IngredientDto>();
+                {
+                    return JsonConvert.DeserializeObject<List<IngredientDto>>(responseObj.data.ToString())
+                           ?? new List<IngredientDto>();
+                }
 
                 return new List<IngredientDto>();
             }
@@ -661,6 +667,7 @@ namespace UP.Services
             try
             {
                 bool allSuccess = true;
+
                 foreach (var name in productNames)
                 {
                     var trimmedName = name.Trim();
@@ -669,16 +676,17 @@ namespace UP.Services
                     var formData = new MultipartFormDataContent();
                     formData.Add(new StringContent(trimmedName), "productName");
                     formData.Add(new StringContent("1"), "quantity");
-                    formData.Add(new StringContent("С€С‚"), "unit");
+                    formData.Add(new StringContent("шт"), "unit");
 
-                    var response = await _httpClient.PostAsync($"api/inventory/add/{userId}", formData);
+                    var response = await _httpClient.PostAsync($"inventory/add/{userId}", formData);
 
                     if (!response.IsSuccessStatusCode)
                     {
-                        Console.WriteLine($"РћС€РёР±РєР° РґРѕР±Р°РІР»РµРЅРёСЏ '{trimmedName}': {response.StatusCode}");
+                        Console.WriteLine($"Ошибка добавления '{trimmedName}': {response.StatusCode}");
                         allSuccess = false;
                     }
                 }
+
                 return allSuccess;
             }
             catch (Exception ex)
@@ -688,7 +696,7 @@ namespace UP.Services
             }
         }
 
-        public async Task<bool> AddToInventoryByNameAsync(string productName, decimal quantity = 1, string unit = "С€С‚")
+        public async Task<bool> AddToInventoryByNameAsync(string productName, decimal quantity = 1, string unit = "шт")
         {
             try
             {
@@ -703,11 +711,14 @@ namespace UP.Services
                     { new StringContent(unit), "unit" }
                 };
 
-                var response = await _httpClient.PostAsync($"api/inventory/add/{userId}", formData);
+                var response = await _httpClient.PostAsync(
+                    $"inventory/add/{userId}",
+                    formData);
+
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException($"РћС€РёР±РєР° РґРѕР±Р°РІР»РµРЅРёСЏ РІ РёРЅРІРµРЅС‚Р°СЂСЊ: {response.StatusCode}");
+                    throw new HttpRequestException($"Ошибка добавления в инвентарь: {response.StatusCode}");
 
                 var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
                 if (responseObj == null)

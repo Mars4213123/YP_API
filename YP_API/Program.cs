@@ -40,6 +40,7 @@ builder.Services.AddDbContext<RecipePlannerContext>(options =>
 builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<YP_API.Interfaces.IMenuService, YP_API.Services.MenuService>();
 
 var app = builder.Build();
 

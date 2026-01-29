@@ -112,19 +112,31 @@ namespace YP_API.Controllers
         {
             try
             {
+                // Get user's inventory ingredient ids
+                var inventoryIngredientIds = await _context.UserInventories
+                    .Where(ui => ui.UserId == userId)
+                    .Select(ui => ui.IngredientId)
+                    .ToListAsync();
+
+                // Get user's allergy ingredient ids
                 var allergyIngredientIds = await _context.UserAllergies
                     .Where(a => a.UserId == userId)
                     .Select(a => a.IngredientId)
                     .ToListAsync();
 
-                var safeRecipes = await _context.Recipes
+                // Find recipes that:
+                // 1. Use at least one ingredient from inventory
+                // 2. Don't contain any allergy ingredients
+                var candidateRecipes = await _context.Recipes
                     .Include(r => r.RecipeIngredients)
-                    .Where(r => !r.RecipeIngredients
-                        .Any(ri => allergyIngredientIds.Contains(ri.IngredientId)))
+                    .Where(r => inventoryIngredientIds.Any()
+                                ? r.RecipeIngredients.Any(ri => inventoryIngredientIds.Contains(ri.IngredientId))
+                                  && !r.RecipeIngredients.Any(ri => allergyIngredientIds.Contains(ri.IngredientId))
+                                : !r.RecipeIngredients.Any(ri => allergyIngredientIds.Contains(ri.IngredientId)))
                     .ToListAsync();
 
-                if (!safeRecipes.Any())
-                    return BadRequest(new { error = "Нет рецептов, подходящих с учетом аллергий" });
+                if (!candidateRecipes.Any())
+                    return BadRequest(new { error = "Нет рецептов, подходящих по ингредиентам и аллергиям" });
 
                 var userMenu = new Menu
                 {
@@ -141,7 +153,7 @@ namespace YP_API.Controllers
                     var date = today.AddDays(day);
                     foreach (var mealType in mealTypes)
                     {
-                        var recipe = safeRecipes[rnd.Next(safeRecipes.Count)];
+                        var recipe = candidateRecipes[rnd.Next(candidateRecipes.Count)];
                         userMenu.Items.Add(new MenuItem
                         {
                             RecipeId = recipe.Id,

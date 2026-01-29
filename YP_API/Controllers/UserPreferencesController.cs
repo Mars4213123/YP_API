@@ -39,25 +39,28 @@ public async Task<IActionResult> SetAllergies(int userId, [FromBody] int[] ingre
     [HttpPost("user/{userId}/fridge")]
     public async Task<IActionResult> SetFridge(int userId, [FromBody] List<FridgeItemDto> items)
     {
-        Console.WriteLine("Fridge items: " +
+        Console.WriteLine("SetFridge (to UserInventories) items: " +
             string.Join(", ", items.Select(i => $"{i.IngredientId}:{i.Quantity}")));
 
         var user = await _context.Users.FindAsync(userId);
         if (user == null) return NotFound(new { error = "User not found" });
 
-        var existing = _context.FridgeItems.Where(f => f.UserId == userId);
-        _context.FridgeItems.RemoveRange(existing);
+        // Используем UserInventories (совместимо с MenuService и InventoryController)
+        var existing = _context.UserInventories.Where(f => f.UserId == userId);
+        _context.UserInventories.RemoveRange(existing);
 
         var validItems = items
             .Where(i => i.IngredientId > 0) // отсекаем 0 и мусор
             .ToList();
 
         foreach (var item in validItems)
-            _context.FridgeItems.Add(new FridgeItem
+            _context.UserInventories.Add(new UserInventory
             {
                 UserId = userId,
                 IngredientId = item.IngredientId,
-                Quantity = item.Quantity
+                Quantity = (decimal)item.Quantity,
+                Unit = "шт",
+                AddedAt = DateTime.UtcNow
             });
 
         await _context.SaveChangesAsync();

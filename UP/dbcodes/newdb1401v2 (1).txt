@@ -1,0 +1,239 @@
+-- Удаляем базу, если она существует, и создаем заново
+DROP DATABASE IF EXISTS recipe_planner;
+CREATE DATABASE recipe_planner CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE recipe_planner;
+
+-- 1. Таблица пользователей
+CREATE TABLE users (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    Username VARCHAR(50) NOT NULL UNIQUE,
+    Email VARCHAR(100) NOT NULL,
+    Password VARCHAR(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 2. Таблица ингредиентов
+CREATE TABLE ingredients (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL UNIQUE,
+    Category VARCHAR(100) NOT NULL DEFAULT '',
+    Unit VARCHAR(50) NOT NULL DEFAULT '',
+    StandardUnit VARCHAR(50) NOT NULL DEFAULT '',
+    Allergens VARCHAR(255) NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 3. Таблица рецептов
+CREATE TABLE recipes (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    Title VARCHAR(200) NOT NULL,
+    Description TEXT,
+    Instructions TEXT,
+    Calories INT DEFAULT 0,
+    CookTime INT DEFAULT 0,
+    PrepTime INT DEFAULT 0,
+    ImageUrl VARCHAR(500)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 4. Таблица связи рецептов и ингредиентов
+CREATE TABLE recipe_ingredients (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    RecipeId INT NOT NULL,
+    IngredientId INT NOT NULL,
+    Quantity DECIMAL(10,2) DEFAULT 1.0,
+    Unit VARCHAR(20) DEFAULT 'шт',
+    FOREIGN KEY (RecipeId) REFERENCES recipes(Id) ON DELETE CASCADE,
+    FOREIGN KEY (IngredientId) REFERENCES ingredients(Id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 5. Таблица холодильника пользователя
+CREATE TABLE UserInventories (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    UserId INT NOT NULL,
+    IngredientId INT NOT NULL,
+    Quantity DECIMAL(10,2) DEFAULT 1.0,
+    Unit VARCHAR(20) DEFAULT 'шт',
+    ExpiryDate DATETIME NULL,
+    AddedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (UserId) REFERENCES users(Id) ON DELETE CASCADE,
+    FOREIGN KEY (IngredientId) REFERENCES ingredients(Id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 6. Таблица избранных рецептов
+CREATE TABLE user_favorites (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    UserId INT NOT NULL,
+    RecipeId INT NOT NULL,
+    FOREIGN KEY (UserId) REFERENCES users(Id) ON DELETE CASCADE,
+    FOREIGN KEY (RecipeId) REFERENCES recipes(Id) ON DELETE CASCADE,
+    UNIQUE KEY unique_favorite (UserId, RecipeId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 7. Таблица меню
+CREATE TABLE menus (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    UserId INT NOT NULL,
+    Name VARCHAR(200) NOT NULL,
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (UserId) REFERENCES users(Id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 8. Таблица пунктов меню
+CREATE TABLE menu_items (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    MenuId INT NOT NULL,
+    RecipeId INT NOT NULL,
+    Date DATE NOT NULL,
+    MealType VARCHAR(50) DEFAULT 'Обед',
+    FOREIGN KEY (MenuId) REFERENCES menus(Id) ON DELETE CASCADE,
+    FOREIGN KEY (RecipeId) REFERENCES recipes(Id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 9. Таблица списков покупок
+CREATE TABLE shopping_lists (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    UserId INT NOT NULL,
+    Name VARCHAR(200) NOT NULL,
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    IsCompleted TINYINT(1) DEFAULT 0,
+    FOREIGN KEY (UserId) REFERENCES users(Id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 10. Таблица элементов списка покупок
+CREATE TABLE shopping_list_items (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    ShoppingListId INT NOT NULL,
+    Name VARCHAR(200) NOT NULL,
+    Quantity DECIMAL(10,2) DEFAULT 1.0,
+    Unit VARCHAR(20) DEFAULT 'шт',
+    IsPurchased TINYINT(1) DEFAULT 0,
+    FOREIGN KEY (ShoppingListId) REFERENCES shopping_lists(Id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 11. Таблица аллергий пользователей
+CREATE TABLE UserAllergies (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    UserId INT NOT NULL,
+    IngredientId INT NOT NULL,
+    FOREIGN KEY (UserId) REFERENCES users(Id) ON DELETE CASCADE,
+    FOREIGN KEY (IngredientId) REFERENCES ingredients(Id) ON DELETE CASCADE,
+    UNIQUE KEY unique_allergy (UserId, IngredientId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ==================== ТЕСТОВЫЕ ДАННЫЕ ====================
+
+-- Вставка пользователей (пароль: 123456)
+INSERT INTO users (Username, Email, Password) VALUES
+('admin', 'admin@test.com', '123456'),
+('test', 'test@test.com', '123456');
+
+-- Вставка ингредиентов
+INSERT INTO ingredients (Name) VALUES
+('Помидор'),
+('Огурец'),
+('Картофель'),
+('Морковь'),
+('Лук'),
+('Чеснок'),
+('Соль'),
+('Перец'),
+('Масло растительное'),
+('Курица'),
+('Говядина'),
+('Рис'),
+('Макароны'),
+('Молоко'),
+('Яйцо'),
+('Мука'),
+('Сахар'),
+('Сыр'),
+('Сметана'),
+('Майонез');
+
+-- Вставка рецептов
+INSERT INTO recipes (Title, Description, Instructions, Calories, CookTime, PrepTime, ImageUrl) VALUES
+('Салат Цезарь', 'Классический салат с курицей', 'Нарезать курицу, добавить салат, заправить соусом', 350, 15, 10, 'https://avatars.mds.yandex.net/i?id=ca1ef467cf9539eb93f87a3064aa5975_l-5235884-images-thumbs&n=13'),
+('Борщ', 'Традиционный украинский борщ', 'Сварить бульон, добавить овощи, варить 40 минут', 250, 60, 20, NULL),
+('Картофельное пюре', 'Простой гарнир из картофеля', 'Отварить картофель, размять с молоком и маслом', 180, 30, 10, NULL),
+('Омлет', 'Быстрый завтрак из яиц', 'Взбить яйца с молоком, пожарить на сковороде', 200, 10, 5, NULL),
+('Куриный суп', 'Легкий суп с курицей и овощами', 'Сварить курицу, добавить овощи и варить 30 минут', 150, 45, 15, NULL);
+
+-- Связь рецептов с ингредиентами
+-- Салат Цезарь (ID=1)
+INSERT INTO recipe_ingredients (RecipeId, IngredientId, Quantity, Unit) VALUES
+(1, 10, 200, 'г'),    -- Курица
+(1, 18, 50, 'г'),     -- Сыр
+(1, 7, 1, 'щепотка'), -- Соль
+(1, 8, 1, 'щепотка'); -- Перец
+
+-- Борщ (ID=2)
+INSERT INTO recipe_ingredients (RecipeId, IngredientId, Quantity, Unit) VALUES
+(2, 1, 2, 'шт'),      -- Помидор
+(2, 3, 3, 'шт'),      -- Картофель
+(2, 4, 1, 'шт'),      -- Морковь
+(2, 5, 1, 'шт'),      -- Лук
+(2, 7, 1, 'ч.л.'),    -- Соль
+(2, 19, 2, 'ст.л.');  -- Сметана
+
+-- Картофельное пюре (ID=3)
+INSERT INTO recipe_ingredients (RecipeId, IngredientId, Quantity, Unit) VALUES
+(3, 3, 5, 'шт'),      -- Картофель
+(3, 14, 100, 'мл'),   -- Молоко
+(3, 7, 1, 'ч.л.');    -- Соль
+
+-- Омлет (ID=4)
+INSERT INTO recipe_ingredients (RecipeId, IngredientId, Quantity, Unit) VALUES
+(4, 15, 3, 'шт'),     -- Яйцо
+(4, 14, 50, 'мл'),    -- Молоко
+(4, 7, 1, 'щепотка'); -- Соль
+
+-- Куриный суп (ID=5)
+INSERT INTO recipe_ingredients (RecipeId, IngredientId, Quantity, Unit) VALUES
+(5, 10, 300, 'г'),    -- Курица
+(5, 3, 2, 'шт'),      -- Картофель
+(5, 4, 1, 'шт'),      -- Морковь
+(5, 5, 1, 'шт'),      -- Лук
+(5, 7, 1, 'ч.л.');    -- Соль
+
+-- Добавляем продукты в холодильник для пользователя 1
+INSERT INTO UserInventories (UserId, IngredientId, Quantity, Unit) VALUES
+(1, 3, 5, 'шт'),      -- Картофель
+(1, 14, 500, 'мл'),   -- Молоко
+(1, 7, 100, 'г'),     -- Соль
+(1, 15, 10, 'шт'),    -- Яйцо
+(1, 10, 500, 'г');    -- Курица
+
+-- Добавляем избранные рецепты для пользователя 1
+INSERT INTO user_favorites (UserId, RecipeId) VALUES
+(1, 1),
+(1, 4);
+
+-- Создаем меню для пользователя 1
+INSERT INTO menus (UserId, Name, CreatedAt) VALUES
+(1, 'Меню на неделю', NOW());
+
+-- Добавляем рецепты в меню
+INSERT INTO menu_items (MenuId, RecipeId, Date, MealType) VALUES
+(1, 4, CURDATE(), 'Завтрак'),
+(1, 5, CURDATE(), 'Обед'),
+(1, 3, CURDATE(), 'Ужин');
+
+-- Создаем список покупок для пользователя 1
+INSERT INTO shopping_lists (UserId, Name, CreatedAt, IsCompleted) VALUES
+(1, 'Список на неделю', NOW());
+
+-- Добавляем позиции в список покупок
+INSERT INTO shopping_list_items (ShoppingListId, Name, Quantity, Unit, IsPurchased) VALUES
+(1, 'Помидор', 2, 'кг', 0),
+(1, 'Огурец', 1, 'кг', 0),
+(1, 'Сыр', 300, 'г', 0);
+
+-- ==================== ПРОВЕРОЧНЫЕ ЗАПРОСЫ ====================
+-- Раскомментируйте, если хотите сразу проверить данные
+
+-- SELECT * FROM users;
+-- SELECT * FROM ingredients;
+-- SELECT * FROM recipes;
+-- SELECT * FROM recipe_ingredients;
+-- SELECT * FROM UserInventories WHERE UserId = 1;
+-- SELECT r.* FROM recipes r 
+-- INNER JOIN recipe_ingredients ri ON r.Id = ri.RecipeId
+-- WHERE ri.IngredientId IN (SELECT IngredientId FROM UserInventories WHERE UserId = 1);

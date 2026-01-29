@@ -47,6 +47,15 @@ namespace UP.Pages
                     {
                         // 4. Обновляем список меню слева
                         await LoadAvailableMenus();
+                        
+                        // 5. Автоматически выбираем и загружаем последнее сгенерированное меню
+                        if (availableMenus.Count > 0)
+                        {
+                            var lastMenu = availableMenus.Last();
+                            AvailableMenusListView.SelectedItem = lastMenu;
+                            await DisplayMenuDetails(lastMenu);
+                        }
+                        
                         MessageBox.Show("Новое меню создано и добавлено в список!");
                     }
                     else
@@ -112,22 +121,30 @@ namespace UP.Pages
             // Проверяем, что реально что-то выбрано
             if (AvailableMenusListView.SelectedItem is AvailableMenu selectedMenu)
             {
-                try
+                await DisplayMenuDetails(selectedMenu);
+            }
+        }
+
+        private async Task DisplayMenuDetails(AvailableMenu selectedMenu)
+        {
+            try
+            {
+                // 1. Получаем полные данные меню (с рецептами)
+                var fullMenuDto = await AppData.ApiService.GetMenuDetailsAsync(selectedMenu.Id);
+
+                if (fullMenuDto != null)
                 {
-                    // 1. Получаем полные данные меню (с рецептами)
-                    var fullMenuDto = await AppData.ApiService.GetMenuDetailsAsync(selectedMenu.Id);
+                    // 2. Обновляем заголовки
+                    CurrentMenuTitle.Text = fullMenuDto.Name;
+                    CurrentMenuDescription.Text = $"Создано: {fullMenuDto.CreatedAt:dd.MM.yyyy}";
 
-                    if (fullMenuDto != null)
+                    // 3. Чистим центральный список
+                    weeklyMenu.Clear();
+
+                    // 4. Заполняем рецептами
+                    // (Предполагаем, что fullMenuDto.Items содержит список блюд)
+                    if (fullMenuDto.Items != null)
                     {
-                        // 2. Обновляем заголовки
-                        CurrentMenuTitle.Text = fullMenuDto.Name;
-                        CurrentMenuDescription.Text = $"Создано: {fullMenuDto.CreatedAt:dd.MM.yyyy}";
-
-                        // 3. Чистим центральный список
-                        weeklyMenu.Clear();
-
-                        // 4. Заполняем рецептами
-                        // (Предполагаем, что fullMenuDto.Items содержит список блюд)
                         foreach (var item in fullMenuDto.Items)
                         {
                             weeklyMenu.Add(new DailyMenu
@@ -138,15 +155,15 @@ namespace UP.Pages
                                 RecipeId = item.RecipeId          // ID для клика
                             });
                         }
-
-                        // Разблокируем кнопку "Выбрать это меню" (если нужна логика "Текущее меню")
-                        SelectMenuButton.IsEnabled = true;
                     }
+
+                    // Разблокируем кнопку "Выбрать это меню" (если нужна логика "Текущее меню")
+                    SelectMenuButton.IsEnabled = true;
                 }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Не удалось загрузить меню: " + ex.Message);
-                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось загрузить меню: " + ex.Message);
             }
         }
         private async void OpenRecipeClick(object sender, RoutedEventArgs e)
@@ -239,18 +256,79 @@ namespace UP.Pages
             if (string.IsNullOrWhiteSpace(name))
                 return;
 
-            // Инициализация источника, если он ещё null
-            if (ProductsListView.ItemsSource is null)
+            // Добавляем продукт в общую коллекцию AppData.Products
+            if (!_products.Contains(name))
             {
-                ProductsListView.ItemsSource = new List<string>();
+                _products.Add(name);
             }
 
-            var list = ProductsListView.ItemsSource.Cast<string>().ToList();
-            list.Add(name);
-            ProductsListView.ItemsSource = null;
-            ProductsListView.ItemsSource = list;
-
             NewProductTextBox.Clear();
+        }
+
+        // Обработчик кнопки "Обновить" в секции холодильника
+        private async void UpdateFridgeButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (AppData.CurrentUser == null)
+                {
+                    MessageBox.Show("Пользователь не авторизован", "Ошибка");
+                    return;
+                }
+
+                var productsList = _products.ToList();
+                if (!productsList.Any())
+                {
+                    MessageBox.Show("В холодильнике нет продуктов", "Информация");
+                    return;
+                }
+
+                MessageBox.Show($"Сохраняем {productsList.Count} продуктов...", "Информация");
+
+                // Отправляем продукты в бэкенд (создаст ингредиенты, если нужно)
+                var setOk = await AppData.ApiService.SetFridgeByNamesAsync(AppData.CurrentUser.Id, productsList);
+                if (!setOk)
+                {
+                    MessageBox.Show("Не удалось сохранить продукты в холодильник. Проверьте консоль для деталей.", "Ошибка");
+                    return;
+                }
+
+                MessageBox.Show("Продукты сохранены! Генерируем меню...", "Информация");
+
+                // Триггерим генерацию меню
+                var genOk = await AppData.ApiService.GenerateMenuAsync(AppData.CurrentUser.Id);
+                if (!genOk)
+                {
+                    // Попробуем загрузить рецепты по холодильнику, чтобы понять причину
+                    var fridgeRecipes = await AppData.ApiService.GetRecipesByFridgeAsync(AppData.CurrentUser.Id);
+                    if (fridgeRecipes == null || fridgeRecipes.Count == 0)
+                    {
+                        MessageBox.Show("Найдено 0 рецептов из ваших продуктов", "Информация");
+                        return;
+                    }
+                    else
+                    {
+                        MessageBox.Show("Меню не сгенерировано, но найдены рецепты в холодильнике", "Информация");
+                    }
+                }
+
+                // Обновляем список меню и загружаем последнее сгенерированное меню
+                await LoadAvailableMenus();
+                
+                if (availableMenus.Count > 0)
+                {
+                    var lastMenu = availableMenus.Last();
+                    AvailableMenusListView.SelectedItem = lastMenu;
+                    await DisplayMenuDetails(lastMenu);
+                }
+                
+                MessageBox.Show("Холодильник обновлен и меню сгенерировано!", "Успех");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка");
+                Console.WriteLine($"UpdateFridgeButton_Click Exception: {ex}");
+            }
         }
 
 
@@ -352,11 +430,9 @@ namespace UP.Pages
             {
                 try
                 {
-                    // TODO: Выбрать меню через API
-                    // var success = await AppData.ApiService.SelectMenuAsync(selectedMenu.Id);
-
+                    // Загружаем и отображаем выбранное меню
+                    await DisplayMenuDetails(selectedMenu);
                     MessageBox.Show($"Меню '{selectedMenu.Name}' выбрано!", "Успех");
-                    await RefreshCurrentMenu();
                 }
                 catch (Exception ex)
                 {
@@ -498,7 +574,7 @@ namespace UP.Pages
             }
         }
 
-        private async void UpdateFridgeButton_Click(object sender, RoutedEventArgs e)
+        private async void UpdateFridgeButton_Click_Alt(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -541,9 +617,6 @@ namespace UP.Pages
                 // Отправляем на сервер (используем правильный метод!)
                 try
                 {
-                    // Используем метод, который вызывает 'api/Inventory/set/{userId}'
-                    // или 'api/UserPreferences/{userId}/fridge', смотря что на сервере.
-                    // Мы ранее договорились использовать SetInventoryByNamesAsync
                     await AppData.ApiService.AddProductsToFridgeAsync(userId, productNames);
 
                     MessageBox.Show("Продукты сохранены!", "Успех");
@@ -554,14 +627,8 @@ namespace UP.Pages
                     return;
                 }
 
-                // Загружаем рецепты, подходящие под продукты
                 await AppData.LoadFridgeRecipes();
 
-                // ВАЖНО: Не заменяй список продуктов на список рецептов в том же ListView!
-                // Лучше покажи рецепты в центральном списке (WeeklyMenuItemsControl) или отдельном окне.
-                // ProductsListView.ItemsSource = AppData.FridgeRecipes; <--- ЭТО ПЛОХО, если это тот же список
-
-                // Вместо этого обновим центральное меню рецептами из холодильника:
                 weeklyMenu.Clear();
                 foreach (var r in AppData.FridgeRecipes)
                 {
@@ -581,7 +648,6 @@ namespace UP.Pages
                 MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка");
             }
         }
-
 
 
 
