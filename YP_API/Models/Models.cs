@@ -39,8 +39,9 @@
 
             public int UserId { get; set; }
             public int IngredientId { get; set; }
-            public double Quantity { get; set; }
-
+            public string ProductName { get; set; } = null!;
+            public decimal Quantity { get; set; }
+            public string Unit { get; set; } = null!;
             public User User { get; set; } = null!;
             public Ingredient Ingredient { get; set; } = null!;
         }

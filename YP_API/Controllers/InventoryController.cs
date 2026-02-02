@@ -18,7 +18,6 @@ namespace YP_API.Controllers
             _menuService = menuService;
         }
 
-        // ДОБАВИТЬ/ОБНОВИТЬ продукт по IngredientId
         [HttpPost("add/{userId}")]
         public async Task<IActionResult> AddProduct(int userId, [FromForm] string productName, [FromForm] decimal quantity = 1, [FromForm] string unit = "шт")
         {
@@ -31,9 +30,12 @@ namespace YP_API.Controllers
                 {
                     ingredient = new Ingredient { Name = productName };
                     _context.Ingredients.Add(ingredient);
-                    await _context.SaveChangesAsync();
                 }
 
+                var fridgeIngredient = new FridgeItem { IngredientId = ingredient.Id, UserId = userId, ProductName = productName, Quantity = quantity, Unit = unit };
+                _context.FridgeItems.Add(fridgeIngredient);
+                
+                await _context.SaveChangesAsync();
                 var existing = await _context.UserInventories
                     .FirstOrDefaultAsync(ui => ui.UserId == userId && ui.IngredientId == ingredient.Id);
 

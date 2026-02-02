@@ -5,24 +5,25 @@
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
       xmlns:local="clr-namespace:UP.Pages"
       mc:Ignorable="d" 
-      d:DesignHeight="700" d:DesignWidth="1000" Background="#1E1E1E"
+      d:DesignHeight="700" d:DesignWidth="1200" Background="#1E1E1E"
       Title="Receipts">
 
     <Page.Resources>
+        <!-- Компактные стили -->
         <Style x:Key="CardStyle" TargetType="Border">
             <Setter Property="Background" Value="#2D2D30"/>
             <Setter Property="BorderBrush" Value="#404040"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="15"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="12"/>
         </Style>
 
         <Style x:Key="PrimaryButton" TargetType="Button">
             <Setter Property="Background" Value="#4CAF50"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="10,8"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Style.Triggers>
@@ -36,422 +37,349 @@
             <Setter Property="Background" Value="#2196F3"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="8,5"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="FontSize" Value="11"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
 
-        <Style x:Key="MenuCardStyle" TargetType="Border">
-            <Setter Property="Background" Value="#2D2D30"/>
-            <Setter Property="BorderBrush" Value="#404040"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="10"/>
-            <Setter Property="Margin" Value="0,0,0,5"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-
-        <Style x:Key="ScrollViewerStyle" TargetType="ScrollViewer">
-            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
-            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+        <Style x:Key="CompactListStyle" TargetType="ListView">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
         </Style>
     </Page.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <Grid Margin="15" Width="1000">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+    <!-- Компактная сетка -->
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-            <!-- Заголовок -->
-            <Grid Grid.Row="0" Margin="0,0,0,15">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+        <!-- Компактный заголовок -->
+        <Grid Grid.Row="0" Margin="0,0,0,15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
 
-                <StackPanel Orientation="Vertical" Grid.Column="0">
-                    <TextBlock Text="🍽️ Планировщик меню" 
-                               FontSize="24" 
-                               FontWeight="Bold" 
-                               Foreground="White"/>
-                    <TextBlock Text="Выберите или создайте меню на неделю" 
-                               FontSize="13" 
-                               Foreground="#CCCCCC"
-                               Margin="0,3,0,0"/>
-                </StackPanel>
+            <StackPanel Orientation="Vertical" Grid.Column="0">
+                <TextBlock Text="🍽️ Меню на неделю" 
+                           FontSize="22" 
+                           FontWeight="Bold" 
+                           Foreground="White"/>
+                <TextBlock Text="Выберите или создайте меню" 
+                           FontSize="12" 
+                           Foreground="#CCCCCC"
+                           Margin="0,2,0,0"/>
+            </StackPanel>
 
-                <!-- Кнопка Избранное -->
-                <Button Grid.Column="1"
-                        Content="⭐ Избранное"
-                        Background="#4CAF50"
-                        Foreground="White"
-                        BorderThickness="0"
-                        Padding="12,6"
-                        FontSize="13"
-                        FontWeight="SemiBold"
-                        Cursor="Hand"
-                        Click="OpenFavorites_Click"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Center"/>
+            <Button Grid.Column="1"
+                    Content="⭐ Избранное"
+                    Style="{StaticResource PrimaryButton}"
+                    Click="OpenFavorites_Click"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Padding="12,6"/>
+        </Grid>
+
+        <!-- Основной контент: 3 колонки с уменьшенными отступами -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="250"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="250"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Левая панель -->
+            <Grid Grid.Column="0" Margin="0,0,10,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Доступные меню -->
+                <Border Style="{StaticResource CardStyle}" Grid.Row="0" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="📋 Меню" 
+                                   FontSize="14" 
+                                   FontWeight="SemiBold" 
+                                   Foreground="White"
+                                   Margin="0,0,0,8"/>
+
+                        <ListView x:Name="AvailableMenusListView" 
+                                  Style="{StaticResource CompactListStyle}"
+                                  MaxHeight="150"
+                                  SelectionChanged="SelectionChangedMenu">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{Binding Name}" 
+                                                       FontSize="12" 
+                                                       FontWeight="SemiBold" 
+                                                       Foreground="White"/>
+                                            <TextBlock Text="{Binding Description}" 
+                                                       FontSize="10" 
+                                                       Foreground="#CCCCCC"
+                                                       TextWrapping="Wrap"/>
+                                        </StackPanel>
+
+                                        <Button Grid.Column="1"
+                                                Content="🗑️"
+                                                Foreground="#FF4444"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Padding="4"
+                                                FontSize="12"
+                                                Click="DeleteMenu_Click"
+                                                Tag="{Binding Id}"
+                                                VerticalAlignment="Top"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+
+                        <Button Content="🔄 Обновить" 
+                                Style="{StaticResource PrimaryButton}"
+                                Margin="0,8,0,0"
+                                Click="RefreshMenus_Click"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Холодильник -->
+                <Border Style="{StaticResource CardStyle}" Grid.Row="1">
+                    <StackPanel>
+                        <TextBlock Text="📦 Холодильник" 
+                                   FontSize="14" 
+                                   FontWeight="SemiBold" 
+                                   Foreground="White"
+                                   Margin="0,0,0,8"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBox x:Name="NewProductTextBox" 
+                                     Background="#1E1E1E"
+                                     Foreground="White"
+                                     BorderBrush="#404040"
+                                     Padding="6"
+                                     Height="28"
+                                     Width="140"
+                                     FontSize="11"
+                                     Margin="0,0,6,0"/>
+
+                            <Button Content="+"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Padding="8,6"
+                                    Click="AddProduct_Click"/>
+                        </StackPanel>
+
+                        <ListView x:Name="ProductsListView" 
+                                  Style="{StaticResource CompactListStyle}"
+                                  MaxHeight="120">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding}" 
+                                                   Foreground="White"
+                                                   FontSize="11"
+                                                   VerticalAlignment="Center"/>
+                                        <Button Grid.Column="1" 
+                                                Content="×" 
+                                                Foreground="#FF4444"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Padding="6,2"
+                                                FontSize="12"
+                                                Click="RemoveProduct_Click"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+
+                        <Button Content="Обновить" 
+                                Style="{StaticResource PrimaryButton}"
+                                Click="UpdateFridgeButton_Click"
+                                Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
             </Grid>
 
-            <!-- Основной контент -->
-            <Grid Grid.Row="1" Height="600">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="320"/>
-                    <ColumnDefinition Width="*" MaxWidth="450"/>
-                    <ColumnDefinition Width="320"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- Левая панель - Доступные меню -->
-                <Grid Grid.Column="0" Margin="0,0,10,0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-
-                    <!-- Доступные меню -->
-                    <Border Style="{StaticResource CardStyle}" Grid.Row="0" Margin="0,0,0,10">
-                        <StackPanel>
-                            <TextBlock Text="📋 Доступные меню" 
-                                       FontSize="15" 
-                                       FontWeight="SemiBold" 
-                                       Foreground="White"
-                                       Margin="0,0,0,8"/>
-
-                            <TextBlock Text="Выберите одно из готовых меню:" 
-                                       FontSize="11" 
-                                       Foreground="#CCCCCC"
-                                       Margin="0,0,0,8"/>
-
-                            <ListView x:Name="AvailableMenusListView" 
-                                      Background="Transparent"
-                                      BorderThickness="0"
-                                      Height="150"
-                                      SelectionChanged="AvailableMenu_SelectionChanged">
-                                <ListView.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Style="{StaticResource MenuCardStyle}">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                
-                                                <StackPanel Grid.Column="0"
-                                                            MouseLeftButtonDown="MenuCard_MouseLeftButtonDown">
-                                                    <TextBlock Text="{Binding Name}" 
-                                                               FontSize="13" 
-                                                               FontWeight="SemiBold" 
-                                                               Foreground="White"
-                                                               Margin="0,0,0,2"/>
-                                                    <TextBlock Text="{Binding Description}" 
-                                                               FontSize="10" 
-                                                               Foreground="#CCCCCC"
-                                                               TextWrapping="Wrap"/>
-                                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                                        <TextBlock Text="Рецептов: " 
-                                                                   FontSize="10" 
-                                                                   Foreground="#888"/>
-                                                        <TextBlock Text="{Binding RecipeCount}" 
-                                                                   FontSize="10" 
-                                                                   Foreground="#4CAF50"
-                                                                   Margin="3,0,0,0"/>
-                                                    </StackPanel>
-                                                </StackPanel>
-                                                
-                                                <Button Grid.Column="1"
-                                                        Content="🗑️"
-                                                        Foreground="#FF4444"
-                                                        Background="Transparent"
-                                                        BorderThickness="0"
-                                                        Padding="6,0"
-                                                        FontSize="12"
-                                                        Click="DeleteMenu_Click"
-                                                        Tag="{Binding Id}"
-                                                        VerticalAlignment="Center"
-                                                        ToolTip="Удалить меню"/>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ListView.ItemTemplate>
-                            </ListView>
-
-                            <Button Content="🔄 Обновить меню" 
-                                    Style="{StaticResource PrimaryButton}"
-                                    Margin="0,8,0,0"
-                                    Click="RefreshMenus_Click"/>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Продукты в холодильнике -->
-                    <Border Style="{StaticResource CardStyle}" Grid.Row="1" Margin="0,0,0,-80" Height="400" VerticalAlignment="Bottom">
-                        <ScrollViewer Style="{StaticResource ScrollViewerStyle}" MaxHeight="350">
+            <!-- Центральная панель -->
+            <Grid Grid.Column="1" Margin="0,0,10,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
                             <StackPanel>
-                                <TextBlock Text="📦 Продукты в холодильнике" 
-                                           FontSize="15" 
-                                           FontWeight="SemiBold" 
-                                           Foreground="White"
-                                           Margin="0,0,0,8"/>
-
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBox x:Name="NewProductTextBox" 
-                                             Background="#1E1E1E"
-                                             Foreground="White"
-                                             BorderBrush="#404040"
-                                             Padding="8"
-                                             Height="32"
-                                             Width="180"
-                                             Margin="0,0,5,0"/>
-
-                                    <Button Content="Добавить" 
-                                            Style="{StaticResource PrimaryButton}"
-                                            Click="AddProduct_Click"
-                                            Padding="10,8"/>
-                                    
-                                    
-                                </StackPanel>
-
-                                <ListView x:Name="ProductsListView" 
-                                          Background="Transparent"
-                                          BorderThickness="0"
-                                          Margin="0,8,0,0"
-                                          Height="220">
-                                    
-                                    <ListView.ItemTemplate>
-                                        <DataTemplate>
-                                            <Grid Margin="0,2">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Text="{Binding}" 
-                                                           Foreground="White"
-                                                           VerticalAlignment="Center"
-                                                           FontSize="12"/>
-                                                <Button Grid.Column="1" 
-                                                        Content="×" 
-                                                        Foreground="#FF4444"
-                                                        Background="Transparent"
-                                                        BorderThickness="0"
-                                                        Padding="6,0"
-                                                        FontSize="12"
-                                                        Click="RemoveProduct_Click"/>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ListView.ItemTemplate>
-                                </ListView>
-                                <Button Content="Обновить" 
-        Style="{StaticResource PrimaryButton}"
-        Click="UpdateFridgeButton_Click"
-        Padding="10,8"
-        Margin="0,8,0,0"/>
-                            </StackPanel>
-                        </ScrollViewer>
-                    </Border>
-                </Grid>
-
-                <!-- Центральная панель - Текущее меню -->
-                <Grid Grid.Column="1" Margin="5,0">
-                    <ScrollViewer Style="{StaticResource ScrollViewerStyle}">
-                        <StackPanel>
-                            <!-- Заголовок текущего меню -->
-                            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
-                                <StackPanel>
-                                    <TextBlock x:Name="CurrentMenuTitle" 
-                                               Text="Текущее меню не выбрано" 
-                                               FontSize="18" 
-                                               FontWeight="Bold" 
-                                               Foreground="White"
-                                               Margin="0,0,0,4"/>
-                                    <TextBlock x:Name="CurrentMenuDescription" 
-                                               Text="Выберите меню из списка слева" 
-                                               FontSize="11" 
-                                               Foreground="#CCCCCC"
-                                               Margin="0,0,0,8"/>
-
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                        <Button x:Name="SelectMenuButton"
-                                                Content="✅ Выбрать меню"
-                                                Style="{StaticResource PrimaryButton}"
-                                                Click="SelectCurrentMenu_Click"
-                                                Margin="0,0,8,0"
-                                                Padding="10,6"
-                                                IsEnabled="False"/>
-
-                                        <Button Content="🛒 Список покупок"
-                                                Style="{StaticResource PrimaryButton}"
-                                                Click="GenerateShoppingList_Click"
-                                                Background="#2196F3"
-                                                Padding="10,6"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- Дни меню -->
-                            <ItemsControl x:Name="WeeklyMenuItemsControl" Margin="0,0,0,10">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,8">
-                                            <StackPanel>
-                                                <TextBlock Text="{Binding Day}" 
-                                                           FontSize="16" 
-                                                           FontWeight="Bold" 
-                                                           Foreground="#4CAF50"
-                                                           Margin="0,0,0,6"/>
-
-                                                <TextBlock Text="{Binding Meal}" 
-                                                           FontSize="13" 
-                                                           FontWeight="SemiBold" 
-                                                           Foreground="White"
-                                                           Margin="0,0,0,4"/>
-
-                                                <TextBlock Text="{Binding Description}" 
-                                                           FontSize="11" 
-                                                           Foreground="#CCCCCC"
-                                                           TextWrapping="Wrap"
-                                                           Margin="0,0,0,6"/>
-
-                                                <Button Content="📝 Открыть рецепт" 
-                                                        Background="#FF9800"
-                                                        Foreground="White"
-                                                        BorderThickness="0"
-                                                        Padding="8,4"
-                                                        FontSize="11"
-                                                        Cursor="Hand"
-                                                        Click="OpenRecipe_Click"
-                                                        Tag="{Binding RecipeId}"
-                                                        HorizontalAlignment="Left"/>
-                                            </StackPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </ScrollViewer>
-                </Grid>
-
-                <!-- Правая панель - Список покупок -->
-                <Grid Grid.Column="2" Margin="10,0,0,0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <!-- Список покупок -->
-                    <Border Style="{StaticResource CardStyle}" Grid.Row="0" Margin="0,0,0,10">
-                        <ScrollViewer Style="{StaticResource ScrollViewerStyle}" MaxHeight="350">
-                            <StackPanel>
-                                <TextBlock Text="🛒 Список покупок" 
-                                           FontSize="15" 
-                                           FontWeight="SemiBold" 
-                                           Foreground="White"
-                                           Margin="0,0,0,8"/>
-
-                                <TextBlock x:Name="ShoppingListInfo" 
-                                           Text="Список покупок будет создан автоматически при выборе меню" 
+                                <TextBlock x:Name="CurrentMenuTitle" 
+                                           Text="Меню не выбрано" 
+                                           FontSize="16" 
+                                           FontWeight="Bold" 
+                                           Foreground="White"/>
+                                <TextBlock x:Name="CurrentMenuDescription" 
+                                           Text="Выберите меню из списка" 
                                            FontSize="11" 
                                            Foreground="#CCCCCC"
-                                           TextWrapping="Wrap"
                                            Margin="0,0,0,8"/>
 
-                                <ListView x:Name="ShoppingListListView" 
-                                          Background="Transparent"
-                                          BorderThickness="0"
-                                          Height="250">
-                                    <ListView.ItemTemplate>
-                                        <DataTemplate>
-                                            <Grid Margin="0,2">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <CheckBox IsChecked="{Binding IsPurchased}"
-                                                          Margin="0,0,6,0"
-                                                          VerticalAlignment="Center"
-                                                          Checked="ShoppingItem_Checked"
-                                                          Unchecked="ShoppingItem_Unchecked"/>
-                                                <TextBlock Grid.Column="1" 
-                                                           Text="{Binding Name}" 
-                                                           Foreground="White"
-                                                           VerticalAlignment="Center"
-                                                           FontSize="12"/>
-                                                <TextBlock Grid.Column="2" 
-                                                           Text="{Binding Quantity, StringFormat={}{0} {1}}"
-                                                           Foreground="#888"
-                                                           FontSize="10"
-                                                           VerticalAlignment="Center"
-                                                           Margin="8,0,0,0"/>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ListView.ItemTemplate>
-                                </ListView>
-
-                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                    <Button Content="📄 Экспорт" 
-                                            Style="{StaticResource PrimaryButton}"
-                                            Click="ExportShoppingList_Click"
-                                            Margin="0,0,6,0"
-                                            Padding="8,5"/>
-
-                                    <Button Content="🗑️ Очистить" 
-                                            Background="#FF4444"
-                                            Foreground="White"
-                                            BorderThickness="0"
-                                            Padding="8,5"
-                                            FontSize="11"
-                                            Cursor="Hand"
-                                            Click="ClearShoppingList_Click"/>
-                                </StackPanel>
+                                <Button Content="🛒 Список покупок"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Click="GenerateShoppingList_Click"
+                                        HorizontalAlignment="Left"
+                                        MinWidth="160"/>
                             </StackPanel>
-                        </ScrollViewer>
-                    </Border>
+                        </Border>
 
-                    <!-- Информация о пользователе -->
-                    <Border Style="{StaticResource CardStyle}" Grid.Row="1">
-                        <StackPanel>
-                            <TextBlock Text="👤 Информация" 
-                                       FontSize="15" 
-                                       FontWeight="SemiBold" 
-                                       Foreground="White"
-                                       Margin="0,0,0,8"/>
-
-                            <TextBlock x:Name="UserInfoText" 
-                                       Text="Пользователь: Загрузка..." 
-                                       FontSize="11" 
-                                       Foreground="#CCCCCC"
-                                       Margin="0,0,0,4"/>
-
-                            <TextBlock Text="Обновлено: Сегодня" 
-                                       FontSize="10" 
-                                       Foreground="#888"
-                                       Margin="0,0,0,8"/>
-
-                            <Button Content="🔄 Обновить данные" 
-                                    Style="{StaticResource PrimaryButton}"
-                                    Margin="0,8,0,0"
-                                    Click="RefreshData_Click"
-                                    Padding="8,5"/>
-                        </StackPanel>
-                    </Border>
-                </Grid>
+                        <ItemsControl x:Name="WeeklyMenuItemsControl">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource CardStyle}" Margin="0,0,0,8">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Day}" 
+                                                       FontSize="14" 
+                                                       FontWeight="Bold" 
+                                                       Foreground="#4CAF50"/>
+                                            <TextBlock Text="{Binding Meal}" 
+                                                       FontSize="12" 
+                                                       FontWeight="SemiBold" 
+                                                       Foreground="White"
+                                                       Margin="0,2,0,0"/>
+                                            <TextBlock Text="{Binding Description}" 
+                                                       FontSize="11" 
+                                                       Foreground="#CCCCCC"
+                                                       TextWrapping="Wrap"
+                                                       Margin="0,4,0,6"/>
+                                            <Button Content="📝 Рецепт" 
+                                                    Background="#FF9800"
+                                                    Foreground="White"
+                                                    BorderThickness="0"
+                                                    Padding="8,4"
+                                                    FontSize="11"
+                                                    Click="OpenRecipe_Click"
+                                                    Tag="{Binding RecipeId}"
+                                                    HorizontalAlignment="Left"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
             </Grid>
 
-            <!-- Нижняя панель -->
-            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
-                <Button Content="🔙 Выйти" 
-                        Background="#666" 
-                        Foreground="White"
-                        BorderThickness="0"
-                        Padding="15,8"
-                        FontSize="13"
-                        Cursor="Hand"
-                        Click="BackButton_Click"/>
-            </StackPanel>
+            <!-- Правая панель -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Список покупок -->
+                <Border Style="{StaticResource CardStyle}" Grid.Row="0" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="🛒 Покупки" 
+                                   FontSize="14" 
+                                   FontWeight="SemiBold" 
+                                   Foreground="White"
+                                   Margin="0,0,0,8"/>
+
+                        <TextBlock x:Name="ShoppingListInfo" 
+                                   Text="Выберите меню для генерации списка" 
+                                   FontSize="11" 
+                                   Foreground="#CCCCCC"
+                                   TextWrapping="Wrap"
+                                   Margin="0,0,0,8"/>
+
+                        <ListView x:Name="ShoppingListListView" 
+                                  Style="{StaticResource CompactListStyle}"
+                                  MaxHeight="150">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <CheckBox IsChecked="{Binding IsPurchased}"
+                                                  Margin="0,0,6,0"
+                                                  VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" 
+                                                   Text="{Binding Name}" 
+                                                   Foreground="White"
+                                                   FontSize="11"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" 
+                                                   Text="{Binding Quantity, StringFormat={}{0} {1}}"
+                                                   Foreground="#AAA"
+                                                   FontSize="10"
+                                                   VerticalAlignment="Center"
+                                                   Margin="6,0,0,0"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0" HorizontalAlignment="Center">
+                            <Button Content="📄 Экспорт" 
+                                    Style="{StaticResource PrimaryButton}"
+                                    Click="ExportShoppingList_Click"
+                                    Margin="0,0,6,0"/>
+
+                            <Button Content="🗑️ Очистить" 
+                                    Background="#FF4444"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    Padding="8,6"
+                                    FontSize="11"
+                                    Click="ClearShoppingList_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Профиль -->
+                <Border Style="{StaticResource CardStyle}" Grid.Row="1">
+                    <StackPanel>
+                        <TextBlock Text="👤 Профиль" 
+                                   FontSize="14" 
+                                   FontWeight="SemiBold" 
+                                   Foreground="White"
+                                   Margin="0,0,0,6"/>
+
+                        <TextBlock x:Name="UserInfoText" 
+                                   Text="Загрузка..." 
+                                   FontSize="11" 
+                                   Foreground="#CCCCCC"
+                                   Margin="0,0,0,4"/>
+
+                        <Button Content="🔄 Обновить" 
+                                Style="{StaticResource PrimaryButton}"
+                                Click="RefreshData_Click"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Grid>
-    </ScrollViewer>
+
+        <!-- Нижняя панель -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button Content="🔙 Выйти" 
+                    Background="#666" 
+                    Foreground="White"
+                    BorderThickness="0"
+                    Padding="15,8"
+                    FontSize="12"
+                    Cursor="Hand"
+                    Click="BackButton_Click"/>
+        </StackPanel>
+    </Grid>
 </Page>

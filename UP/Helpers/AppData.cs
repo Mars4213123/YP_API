@@ -16,7 +16,7 @@ namespace UP
         public static ApiService ApiService { get; set; }
         public static UserData CurrentUser { get; set; }
 
-        public static ObservableCollection<string> Products { get; } = new ObservableCollection<string>();
+        public static ObservableCollection<Models.IngredientDto> Products { get; } = new ObservableCollection<Models.IngredientDto>();
         public static ObservableCollection<Receipts.DailyMenu> WeeklyMenu { get; } = new ObservableCollection<Receipts.DailyMenu>();
         public static ObservableCollection<string> ShoppingList { get; } = new ObservableCollection<string>();
         public static ObservableCollection<RecipeDetailsPage.RecipeData> Favorites { get; } = new ObservableCollection<RecipeDetailsPage.RecipeData>();

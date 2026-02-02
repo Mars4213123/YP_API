@@ -252,7 +252,7 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="dbcodes\newdb1401v2 %281%29.txt" />
-    <Content Include="Images\scary.jpg" />
+    <Resource Include="Images\scary.jpg" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets" Condition="Exists('..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets')" />

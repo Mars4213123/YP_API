@@ -67,43 +67,30 @@ namespace UP.Services
             return new List<IngredientDto>();
         }
 
-        public async Task<bool> UpdateFridgeAsync(int userId, List<string> productNames)
+        public async Task<List<IngredientDto>> UpdateFridgeAsync(int userId)
         {
             try
             {
-                var fridgeItems = new List<object>();
-                foreach (var name in productNames)
-                {
-                    var foundIngredients = await SearchIngredientsAsync(name);
-                    var bestMatch = foundIngredients.FirstOrDefault();
-                    if (bestMatch != null)
-                    {
-                        fridgeItems.Add(new { IngredientId = bestMatch.Id, Quantity = 1 });
-                        Console.WriteLine($"[UpdateFridgeAsync] Добавлен ингредиент: {name} (ID: {bestMatch.Id})");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"[UpdateFridgeAsync] Ингредиент не найден: {name}");
-                    }
-                }
-                
-                if (fridgeItems.Count == 0)
-                {
-                    Console.WriteLine($"[UpdateFridgeAsync] Нет найденных ингредиентов!");
-                    return false;
-                }
-                
-                var response = await _httpClient.PostAsJsonAsync($"api/userpreferences/user/{userId}/fridge", fridgeItems);
+                var fridgeItems = new List<IngredientDto>();
+
+                var response = await _httpClient.PostAsJsonAsync($"api/ingredients/fridge/{userId}", fridgeItems);
                 var responseString = await response.Content.ReadAsStringAsync();
-                
-                Console.WriteLine($"[UpdateFridgeAsync] Status: {response.StatusCode}, Response: {responseString}");
-                
-                return response.IsSuccessStatusCode;
+
+                var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
+
+                if (responseObj?.data != null)
+                {
+                    var ingredients = JsonConvert.DeserializeObject<List<IngredientDto>>(
+                        responseObj.data.ToString());
+                    return ingredients ?? new List<IngredientDto>();
+                }
+                else return null;
+                    
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[UpdateFridgeAsync] Exception: {ex.Message}");
-                return false;
+                return null;
             }
         }
 
@@ -406,6 +393,33 @@ namespace UP.Services
             }
         }
 
+        public async Task<Models.IngredientDto> FindIngredientByNameAsync(string name)
+        {
+            try
+            {
+                var url = $"api/ingredients/search?name={Uri.EscapeDataString(name)}";
+                var fullUrl = new Uri(_httpClient.BaseAddress, url);
+                Console.WriteLine($"[FindIngredientIdByNameAsync] Full URL: {fullUrl}");
+                var response = await _httpClient.GetAsync(url);
+                var responseString = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode) return null;
+
+                var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
+                if (responseObj == null || responseObj.data == null) return null;
+
+                var firstIngredientToken = responseObj.data[0];
+                var ingredient = firstIngredientToken.ToObject<Models.IngredientDto>();
+
+                return ingredient;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"FindIngredientIdByNameAsync error: {ex.Message}");
+                return null;
+            }
+        }
+
         public async Task<List<RecipeDto>> GetRecipesByFridgeAsync(int userId)
         {
             try
@@ -428,6 +442,24 @@ namespace UP.Services
             {
                 Console.WriteLine($"GetRecipesByFridgeAsync error: {ex.Message}");
                 return new List<RecipeDto>();
+            }
+        }
+        public async Task AddFridgeItem(int userId, string productName)
+        {
+            try
+            {
+                var formData = new MultipartFormDataContent
+                {
+                    { new StringContent(productName), "productName" }
+                };
+                var response = await _httpClient.PostAsync($"api/inventory/add/{userId}", formData);
+                var responseString = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                    throw new HttpRequestException($"Ошибка добавления: {response.StatusCode}");
+            }
+            catch (Exception ex) {
+                Console.WriteLine(ex.Message);
             }
         }
 
