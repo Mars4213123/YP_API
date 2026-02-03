@@ -20,7 +20,7 @@ namespace UP.Pages
             public int RecipeId { get; set; }
         }
 
-        private ObservableCollection<string> _products;
+        private ObservableCollection<Models.IngredientDto> _products;
         private ObservableCollection<DailyMenu> _weeklyMenu;
         private ObservableCollection<AvailableMenu> _availableMenus;
         private ObservableCollection<ShoppingListItemDto> _shoppingList;
@@ -49,7 +49,7 @@ namespace UP.Pages
 
         private void InitializeData()
         {
-            _products = new ObservableCollection<string>();
+            _products = new ObservableCollection<Models.IngredientDto>();
             _weeklyMenu = AppData.WeeklyMenu;
             _shoppingList = new ObservableCollection<ShoppingListItemDto>();
             _availableMenus = new ObservableCollection<AvailableMenu>();
@@ -155,14 +155,14 @@ namespace UP.Pages
                             var key = ingredient.Name.ToLower();
                             if (ingredientDict.ContainsKey(key))
                             {
-                                ingredientDict[key].Quantity += ingredient.Quantity;
+                                //ingredientDict[key].Quantity += ingredient.Quantity;
                             }
                             else
                             {
                                 ingredientDict[key] = new ShoppingListItemDto
                                 {
                                     Name = ingredient.Name,
-                                    Quantity = ingredient.Quantity,
+                                    //Quantity = ingredient.Quantity,
                                     Unit = ingredient.Unit ?? "шт",
                                     IsPurchased = false
                                 };
@@ -262,14 +262,15 @@ namespace UP.Pages
 
             var product = await AppData.ApiService.FindIngredientByNameAsync(name);
 
-            if (!_products.Contains(product.Name))
+            if (product == null) return;
+            
+            if (!_products.Contains(product))
             {
-                _products.Add(product.Name);
-                 await AppData.ApiService.AddFridgeItem(AppData.CurrentUser.Id, name);
+                _products.Add(product);
+                 await AppData.ApiService.AddFridgeItem(AppData.CurrentUser.Id, product);
             }
-            else {
-                MessageBox.Show("Не удалось найти продукт!");
-            }
+
+            ProductsListView.ItemsSource = _products;
 
             NewProductTextBox.Clear();
         }
@@ -336,7 +337,7 @@ namespace UP.Pages
             }
         }
 
-        private void RemoveProduct_Click(object sender, RoutedEventArgs e)
+        private async void RemoveProduct_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -345,8 +346,9 @@ namespace UP.Pages
                     var firstChild = grid.Children[0];
                     if (firstChild is TextBlock textBlock)
                     {
-                        var productName = textBlock.Text;
-                        _products.Remove(productName);
+                        var productName = await AppData.ApiService.FindIngredientByNameAsync(textBlock.Text);
+                        if (productName != null)
+                            _products.Remove(productName);
                     }
                 }
             }

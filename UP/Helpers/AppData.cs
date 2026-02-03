@@ -242,7 +242,7 @@ namespace UP
                 Title = recipe.Title,
                 Description = recipe.Description,
                 ImageUrl = recipe.ImageUrl,
-                Ingredients = recipe.Ingredients?.ConvertAll(i => $"{i.Name} - {i.Quantity} {i.Unit}") ?? new List<string>(),
+                //Ingredients = recipe.Ingredients?.ConvertAll(i => $"{i.Name} - {i.Quantity} {i.Unit}") ?? new List<string>(),
                 Steps = recipe.Instructions ?? new List<string>()
             };
         }

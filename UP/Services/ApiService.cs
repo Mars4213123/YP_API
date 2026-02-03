@@ -6,10 +6,8 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Net.Http.Json;
 using Newtonsoft.Json;
 using UP.Models;
-using static UP.Pages.Receipts;
 
 namespace UP.Services
 {
@@ -73,7 +71,7 @@ namespace UP.Services
             {
                 var fridgeItems = new List<IngredientDto>();
 
-                var response = await _httpClient.PostAsJsonAsync($"api/ingredients/fridge/{userId}", fridgeItems);
+                var response = await _httpClient.GetAsync($"api/ingredients/fridge/{userId}");
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 var responseObj = JsonConvert.DeserializeObject<dynamic>(responseString);
@@ -205,14 +203,14 @@ namespace UP.Services
             }
         }
 
-        public async Task<bool> SetInventoryByNamesAsync(int userId, List<string> productNames)
+        public async Task<bool> SetInventoryByNamesAsync(int userId, List<Models.IngredientDto> productNames)
         {
             try
             {
                 var items = new List<object>();
                 foreach (var name in productNames)
                 {
-                    var trimmed = name.Trim();
+                    var trimmed = name.Name.Trim();
                     if (string.IsNullOrWhiteSpace(trimmed)) continue;
                     
                     var id = await FindIngredientIdByNameAsync(trimmed);
@@ -313,7 +311,6 @@ namespace UP.Services
                 resp.EnsureSuccessStatusCode();
             return resp;
         }
-
         public async Task<T> GetAsync<T>(string relativeUrl)
         {
             var resp = await _httpClient.GetAsync(relativeUrl);
@@ -392,7 +389,6 @@ namespace UP.Services
                 return null;
             }
         }
-
         public async Task<Models.IngredientDto> FindIngredientByNameAsync(string name)
         {
             try
@@ -419,7 +415,6 @@ namespace UP.Services
                 return null;
             }
         }
-
         public async Task<List<RecipeDto>> GetRecipesByFridgeAsync(int userId)
         {
             try
@@ -444,19 +439,23 @@ namespace UP.Services
                 return new List<RecipeDto>();
             }
         }
-        public async Task AddFridgeItem(int userId, string productName)
+        public async Task AddFridgeItem(int userId, Models.IngredientDto productName)
         {
             try
             {
-                var formData = new MultipartFormDataContent
-                {
-                    { new StringContent(productName), "productName" }
-                };
-                var response = await _httpClient.PostAsync($"api/inventory/add/{userId}", formData);
+                var json = System.Text.Json.JsonSerializer.Serialize(productName);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.PostAsync($"api/inventory/FridgeItem/add/{userId}", content);
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException($"Ошибка добавления: {response.StatusCode}");
+                {
+                    var responseBody = await response.Content.ReadAsStringAsync();
+                    throw new HttpRequestException(
+                        $"HTTP {response.StatusCode}: {responseBody}"
+                    );
+                }
             }
             catch (Exception ex) {
                 Console.WriteLine(ex.Message);

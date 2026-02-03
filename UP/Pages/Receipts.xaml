@@ -190,7 +190,7 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{Binding}" 
+                                        <TextBlock Text="{Binding Name}" 
                                                    Foreground="White"
                                                    FontSize="11"
                                                    VerticalAlignment="Center"/>

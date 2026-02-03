@@ -1,73 +1,429 @@
 using Microsoft.EntityFrameworkCore;
+using YP_API.Data;
 using YP_API.Models;
 
 namespace YP_API.Data
 {
-    public class RecipePlannerContext : DbContext
+    public static class DataSeeder
     {
-        public RecipePlannerContext(DbContextOptions<RecipePlannerContext> options) : base(options) { }
-
-        public DbSet<User> Users { get; set; }
-        public DbSet<Recipe> Recipes { get; set; }
-        public DbSet<Ingredient> Ingredients { get; set; }
-        public DbSet<RecipeIngredient> RecipeIngredients { get; set; }
-        public DbSet<Menu> Menus { get; set; }
-        public DbSet<MenuItem> MenuItems { get; set; }
-
-        public DbSet<ShoppingList> ShoppingLists { get; set; }
-        public DbSet<ShoppingListItem> ShoppingListItems { get; set; }
-        public DbSet<UserFavorite> UserFavorites { get; set; }
-        public DbSet<UserAllergy> UserAllergies { get; set; }
-        public DbSet<FridgeItem> FridgeItems { get; set; }
-        public DbSet<UserInventory> UserInventories { get; set; } = null!;
-
-
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        public static void Seed(ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(modelBuilder);
+            // Seed Users
+            modelBuilder.Entity<User>().HasData(
+                new User { Id = 1, Username = "admin", Password = "admin123", Email = "admin@example.com" },
+                new User { Id = 2, Username = "user1", Password = "user123", Email = "user1@example.com" },
+                new User { Id = 3, Username = "user2", Password = "user123", Email = "user2@example.com" }
+            );
 
-            // Указываем точные имена таблиц
-            modelBuilder.Entity<User>().ToTable("users");
-            modelBuilder.Entity<Recipe>().ToTable("recipes");
-            modelBuilder.Entity<Ingredient>().ToTable("ingredients");
-            modelBuilder.Entity<RecipeIngredient>().ToTable("recipe_ingredients");
-            modelBuilder.Entity<Menu>().ToTable("menus");
-            modelBuilder.Entity<MenuItem>().ToTable("menu_items");
-            modelBuilder.Entity<ShoppingList>().ToTable("shopping_lists");
-            modelBuilder.Entity<ShoppingListItem>().ToTable("shopping_list_items");
-            modelBuilder.Entity<UserFavorite>().ToTable("user_favorites");
+            // Seed Ingredients
+            modelBuilder.Entity<Ingredient>().HasData(
+                new Ingredient { Id = 1, Name = "Яйца", Category = "Молочные продукты", Unit = "шт" },
+                new Ingredient { Id = 2, Name = "Молоко", Category = "Молочные продукты", Unit = "мл" },
+                new Ingredient { Id = 3, Name = "Мука", Category = "Бакалея", Unit = "г" },
+                new Ingredient { Id = 4, Name = "Сахар", Category = "Бакалея", Unit = "г" },
+                new Ingredient { Id = 5, Name = "Соль", Category = "Специи", Unit = "г" },
+                new Ingredient { Id = 6, Name = "Перец", Category = "Специи", Unit = "г" },
+                new Ingredient { Id = 7, Name = "Куриная грудка", Category = "Мясо", Unit = "г" },
+                new Ingredient { Id = 8, Name = "Рис", Category = "Крупы", Unit = "г" },
+                new Ingredient { Id = 9, Name = "Картофель", Category = "Овощи", Unit = "г" },
+                new Ingredient { Id = 10, Name = "Лук", Category = "Овощи", Unit = "г" },
+                new Ingredient { Id = 11, Name = "Морковь", Category = "Овощи", Unit = "г" },
+                new Ingredient { Id = 12, Name = "Помидоры", Category = "Овощи", Unit = "г" },
+                new Ingredient { Id = 13, Name = "Оливковое масло", Category = "Масла", Unit = "мл" },
+                new Ingredient { Id = 14, Name = "Сливочное масло", Category = "Молочные продукты", Unit = "г" },
+                new Ingredient { Id = 15, Name = "Чеснок", Category = "Овощи", Unit = "г" }
+            );
 
-            modelBuilder.Entity<User>(entity =>
-            {
-                entity.HasKey(u => u.Id);
-                entity.Property(u => u.Username).IsRequired().HasMaxLength(50);
-                entity.Property(u => u.Password).IsRequired().HasMaxLength(100);
-                entity.Property(u => u.Email).HasMaxLength(100);
-                entity.HasIndex(u => u.Username).IsUnique();
-            });
+            // Seed Recipes
+            modelBuilder.Entity<Recipe>().HasData(
+                new Recipe
+                {
+                    Id = 1,
+                    Title = "Омлет с овощами",
+                    Description = "Легкий и полезный завтрак",
+                    Instructions = "1. Взбить яйца с молоком\n2. Добавить нарезанные овощи\n3. Жарить на среднем огне 5-7 минут",
+                    Calories = 250,
+                    PrepTime = 10,
+                    CookTime = 10,
+                    ImageUrl = "/images/omelette.jpg"
+                },
+                new Recipe
+                {
+                    Id = 2,
+                    Title = "Курица с рисом",
+                    Description = "Сытное основное блюдо",
+                    Instructions = "1. Обжарить курицу\n2. Добавить овощи\n3. Варить рис 20 минут",
+                    Calories = 450,
+                    PrepTime = 15,
+                    CookTime = 30,
+                    ImageUrl = "/images/chicken_rice.jpg"
+                },
+                new Recipe
+                {
+                    Id = 3,
+                    Title = "Картофельное пюре",
+                    Description = "Классический гарнир",
+                    Instructions = "1. Отварить картофель\n2. Растолочь с молоком и маслом\n3. Добавить соль по вкусу",
+                    Calories = 200,
+                    PrepTime = 10,
+                    CookTime = 20,
+                    ImageUrl = "/images/mashed_potatoes.jpg"
+                }
+            );
 
-            modelBuilder.Entity<Recipe>(entity =>
-            {
-                entity.HasKey(r => r.Id);
-                entity.Property(r => r.Title).IsRequired().HasMaxLength(200);
-                entity.Property(r => r.Description).HasMaxLength(1000);
-                entity.Property(r => r.Instructions).HasColumnType("text");
-                entity.Property(r => r.ImageUrl).HasMaxLength(500);
-                entity.Property(r => r.Calories).HasPrecision(10, 2);
-            });
+            // Seed RecipeIngredients
+            modelBuilder.Entity<RecipeIngredient>().HasData(
+                // Омлет с овощами
+                new RecipeIngredient { Id = 1, RecipeId = 1, IngredientId = 1, Quantity = 3 }, // Яйца
+                new RecipeIngredient { Id = 2, RecipeId = 1, IngredientId = 2, Quantity = 50 }, // Молоко
+                new RecipeIngredient { Id = 3, RecipeId = 1, IngredientId = 5, Quantity = 5 }, // Соль
+                new RecipeIngredient { Id = 4, RecipeId = 1, IngredientId = 6, Quantity = 2 }, // Перец
+                new RecipeIngredient { Id = 5, RecipeId = 1, IngredientId = 10, Quantity = 50 }, // Лук
+                new RecipeIngredient { Id = 6, RecipeId = 1, IngredientId = 12, Quantity = 100 }, // Помидоры
 
-            modelBuilder.Entity<Ingredient>(entity =>
-            {
-                entity.HasKey(i => i.Id);
-                entity.Property(i => i.Name).IsRequired().HasMaxLength(100);
-                entity.HasIndex(i => i.Name).IsUnique();
-            });
+                // Курица с рисом
+                new RecipeIngredient { Id = 7, RecipeId = 2, IngredientId = 7, Quantity = 300 }, // Куриная грудка
+                new RecipeIngredient { Id = 8, RecipeId = 2, IngredientId = 8, Quantity = 200 }, // Рис
+                new RecipeIngredient { Id = 9, RecipeId = 2, IngredientId = 10, Quantity = 100 }, // Лук
+                new RecipeIngredient { Id = 10, RecipeId = 2, IngredientId = 11, Quantity = 100 }, // Морковь
+                new RecipeIngredient { Id = 11, RecipeId = 2, IngredientId = 13, Quantity = 30 }, // Оливковое масло
+                new RecipeIngredient { Id = 12, RecipeId = 2, IngredientId = 5, Quantity = 10 }, // Соль
 
-            modelBuilder.Entity<UserFavorite>(entity =>
-            {
-                entity.HasKey(uf => uf.Id);
-                entity.HasIndex(uf => new { uf.UserId, uf.RecipeId }).IsUnique();
-            });
+                // Картофельное пюре
+                new RecipeIngredient { Id = 13, RecipeId = 3, IngredientId = 9, Quantity = 500 }, // Картофель
+                new RecipeIngredient { Id = 14, RecipeId = 3, IngredientId = 2, Quantity = 100 }, // Молоко
+                new RecipeIngredient { Id = 15, RecipeId = 3, IngredientId = 14, Quantity = 50 }, // Сливочное масло
+                new RecipeIngredient { Id = 16, RecipeId = 3, IngredientId = 5, Quantity = 10 } // Соль
+            );
+
+            // Seed UserFavorites
+            modelBuilder.Entity<UserFavorite>().HasData(
+                new UserFavorite { Id = 1, UserId = 1, RecipeId = 1, AddedAt = DateTime.UtcNow.AddDays(-5) },
+                new UserFavorite { Id = 2, UserId = 1, RecipeId = 2, AddedAt = DateTime.UtcNow.AddDays(-3) },
+                new UserFavorite { Id = 3, UserId = 2, RecipeId = 3, AddedAt = DateTime.UtcNow.AddDays(-1) }
+            );
+
+            // Seed UserAllergies
+            modelBuilder.Entity<UserAllergy>().HasData(
+                new UserAllergy { Id = 1, UserId = 1, IngredientId = 1 }, // У пользователя 1 аллергия на яйца
+                new UserAllergy { Id = 2, UserId = 2, IngredientId = 2 }  // У пользователя 2 аллергия на молоко
+            );
+
+            // Seed UserInventories
+            modelBuilder.Entity<UserInventory>().HasData(
+                new UserInventory
+                {
+                    Id = 1,
+                    UserId = 1,
+                    IngredientId = 3, // Мука
+                    Quantity = 1000,
+                    Unit = "г",
+                    AddedAt = DateTime.UtcNow.AddDays(-10),
+                    ExpiryDate = DateTime.UtcNow.AddMonths(6)
+                },
+                new UserInventory
+                {
+                    Id = 2,
+                    UserId = 1,
+                    IngredientId = 4, // Сахар
+                    Quantity = 500,
+                    Unit = "г",
+                    AddedAt = DateTime.UtcNow.AddDays(-5),
+                    ExpiryDate = DateTime.UtcNow.AddMonths(12)
+                },
+                new UserInventory
+                {
+                    Id = 3,
+                    UserId = 2,
+                    IngredientId = 8, // Рис
+                    Quantity = 2000,
+                    Unit = "г",
+                    AddedAt = DateTime.UtcNow.AddDays(-15),
+                    ExpiryDate = DateTime.UtcNow.AddMonths(18)
+                }
+            );
+
+            // Seed FridgeItems
+            modelBuilder.Entity<FridgeItem>().HasData(
+                new FridgeItem
+                {
+                    Id = 1,
+                    UserId = 1,
+                    IngredientId = 2, // Молоко
+                    ProductName = "Молоко пастеризованное",
+                    Quantity = 1000,
+                    Unit = "мл"
+                },
+                new FridgeItem
+                {
+                    Id = 2,
+                    UserId = 1,
+                    IngredientId = 14, // Сливочное масло
+                    ProductName = "Масло сливочное 82.5%",
+                    Quantity = 200,
+                    Unit = "г"
+                },
+                new FridgeItem
+                {
+                    Id = 3,
+                    UserId = 2,
+                    IngredientId = 12, // Помидоры
+                    ProductName = "Помидоры черри",
+                    Quantity = 500,
+                    Unit = "г"
+                }
+            );
+
+            // Seed Menus
+            modelBuilder.Entity<Menu>().HasData(
+                new Menu { Id = 1, UserId = 1, Name = "Еженедельное меню", CreatedAt = DateTime.UtcNow },
+                new Menu { Id = 2, UserId = 2, Name = "Диетическое меню", CreatedAt = DateTime.UtcNow.AddDays(-1) }
+            );
+
+            // Seed MenuItems
+            modelBuilder.Entity<MenuItem>().HasData(
+                new MenuItem
+                {
+                    Id = 1,
+                    MenuId = 1,
+                    RecipeId = 1,
+                    Date = DateTime.Today,
+                    MealType = "Завтрак"
+                },
+                new MenuItem
+                {
+                    Id = 2,
+                    MenuId = 1,
+                    RecipeId = 2,
+                    Date = DateTime.Today,
+                    MealType = "Обед"
+                },
+                new MenuItem
+                {
+                    Id = 3,
+                    MenuId = 2,
+                    RecipeId = 3,
+                    Date = DateTime.Today.AddDays(1),
+                    MealType = "Ужин"
+                }
+            );
+
+            // Seed ShoppingLists
+            modelBuilder.Entity<ShoppingList>().HasData(
+                new ShoppingList
+                {
+                    Id = 1,
+                    UserId = 1,
+                    Name = "Еженедельные покупки",
+                    IsCompleted = false,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new ShoppingList
+                {
+                    Id = 2,
+                    UserId = 2,
+                    Name = "Для ужина",
+                    IsCompleted = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-2)
+                }
+            );
+
+            // Seed ShoppingListItems
+            modelBuilder.Entity<ShoppingListItem>().HasData(
+                new ShoppingListItem
+                {
+                    Id = 1,
+                    ShoppingListId = 1,
+                    Name = "Хлеб",
+                    Quantity = 1,
+                    Unit = "шт",
+                    IsPurchased = false
+                },
+                new ShoppingListItem
+                {
+                    Id = 2,
+                    ShoppingListId = 1,
+                    Name = "Яблоки",
+                    Quantity = 1000,
+                    Unit = "г",
+                    IsPurchased = true
+                },
+                new ShoppingListItem
+                {
+                    Id = 3,
+                    ShoppingListId = 2,
+                    Name = "Сыр",
+                    Quantity = 300,
+                    Unit = "г",
+                    IsPurchased = true
+                }
+            );
         }
     }
 }
+
+public class RecipePlannerContext : DbContext
+{
+    public RecipePlannerContext(DbContextOptions<RecipePlannerContext> options) : base(options) { }
+
+    public DbSet<User> Users { get; set; }
+    public DbSet<Recipe> Recipes { get; set; }
+    public DbSet<Ingredient> Ingredients { get; set; }
+    public DbSet<RecipeIngredient> RecipeIngredients { get; set; }
+    public DbSet<Menu> Menus { get; set; }
+    public DbSet<MenuItem> MenuItems { get; set; }
+
+    public DbSet<ShoppingList> ShoppingLists { get; set; }
+    public DbSet<ShoppingListItem> ShoppingListItems { get; set; }
+    public DbSet<UserFavorite> UserFavorites { get; set; }
+    public DbSet<UserAllergy> UserAllergies { get; set; }
+    public DbSet<FridgeItem> FridgeItems { get; set; }
+    public DbSet<UserInventory> UserInventories { get; set; } = null!;
+
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // Указываем точные имена таблиц
+        modelBuilder.Entity<User>().ToTable("users");
+        modelBuilder.Entity<Recipe>().ToTable("recipes");
+        modelBuilder.Entity<Ingredient>().ToTable("ingredients");
+        modelBuilder.Entity<RecipeIngredient>().ToTable("recipe_ingredients");
+        modelBuilder.Entity<Menu>().ToTable("menus");
+        modelBuilder.Entity<MenuItem>().ToTable("menu_items");
+        modelBuilder.Entity<ShoppingList>().ToTable("shopping_lists");
+        modelBuilder.Entity<ShoppingListItem>().ToTable("shopping_list_items");
+        modelBuilder.Entity<UserFavorite>().ToTable("user_favorites");
+        modelBuilder.Entity<UserAllergy>().ToTable("user_allergies");
+        modelBuilder.Entity<FridgeItem>().ToTable("fridge_items");
+        modelBuilder.Entity<UserInventory>().ToTable("user_inventories");
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasKey(u => u.Id);
+            entity.Property(u => u.Username).IsRequired().HasMaxLength(50);
+            entity.Property(u => u.Password).IsRequired().HasMaxLength(100);
+            entity.Property(u => u.Email).HasMaxLength(100);
+            entity.HasIndex(u => u.Username).IsUnique();
+        });
+
+        modelBuilder.Entity<Recipe>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.Title).IsRequired().HasMaxLength(200);
+            entity.Property(r => r.Description).HasMaxLength(1000);
+            entity.Property(r => r.Instructions).HasColumnType("text");
+            entity.Property(r => r.ImageUrl).HasMaxLength(500);
+            entity.Property(r => r.Calories).HasPrecision(10, 2);
+        });
+
+        modelBuilder.Entity<Ingredient>(entity =>
+        {
+            entity.HasKey(i => i.Id);
+            entity.Property(i => i.Name).IsRequired().HasMaxLength(100);
+            entity.HasIndex(i => i.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<UserFavorite>(entity =>
+        {
+            entity.HasKey(uf => uf.Id);
+            entity.HasIndex(uf => new { uf.UserId, uf.RecipeId }).IsUnique();
+        });
+
+        modelBuilder.Entity<UserAllergy>(entity =>
+        {
+            entity.HasKey(ua => ua.Id);
+            entity.HasIndex(ua => new { ua.UserId, ua.IngredientId }).IsUnique();
+        });
+
+        modelBuilder.Entity<UserInventory>(entity =>
+        {
+            entity.HasKey(ui => ui.Id);
+            entity.HasIndex(ui => new { ui.UserId, ui.IngredientId }).IsUnique();
+        });
+
+        modelBuilder.Entity<FridgeItem>(entity =>
+        {
+            entity.HasKey(fi => fi.Id);
+            entity.HasIndex(fi => new { fi.UserId, fi.IngredientId }).IsUnique();
+        });
+
+        // ВАЖНО: Вызов метода заполнения данными
+        DataSeeder.Seed(modelBuilder);
+    }
+}
+
+//using Microsoft.EntityFrameworkCore;
+//using YP_API.Models;
+
+//namespace YP_API.Data
+//{
+//    public class RecipePlannerContext : DbContext
+//    {
+//        public RecipePlannerContext(DbContextOptions<RecipePlannerContext> options) : base(options) { }
+
+//        public DbSet<User> Users { get; set; }
+//        public DbSet<Recipe> Recipes { get; set; }
+//        public DbSet<Ingredient> Ingredients { get; set; }
+//        public DbSet<RecipeIngredient> RecipeIngredients { get; set; }
+//        public DbSet<Menu> Menus { get; set; }
+//        public DbSet<MenuItem> MenuItems { get; set; }
+
+//        public DbSet<ShoppingList> ShoppingLists { get; set; }
+//        public DbSet<ShoppingListItem> ShoppingListItems { get; set; }
+//        public DbSet<UserFavorite> UserFavorites { get; set; }
+//        public DbSet<UserAllergy> UserAllergies { get; set; }
+//        public DbSet<FridgeItem> FridgeItems { get; set; }
+//        public DbSet<UserInventory> UserInventories { get; set; } = null!;
+
+
+//        protected override void OnModelCreating(ModelBuilder modelBuilder)
+//        {
+//            base.OnModelCreating(modelBuilder);
+
+//            // Указываем точные имена таблиц
+//            modelBuilder.Entity<User>().ToTable("users");
+//            modelBuilder.Entity<Recipe>().ToTable("recipes");
+//            modelBuilder.Entity<Ingredient>().ToTable("ingredients");
+//            modelBuilder.Entity<RecipeIngredient>().ToTable("recipe_ingredients");
+//            modelBuilder.Entity<Menu>().ToTable("menus");
+//            modelBuilder.Entity<MenuItem>().ToTable("menu_items");
+//            modelBuilder.Entity<ShoppingList>().ToTable("shopping_lists");
+//            modelBuilder.Entity<ShoppingListItem>().ToTable("shopping_list_items");
+//            modelBuilder.Entity<UserFavorite>().ToTable("user_favorites");
+
+//            modelBuilder.Entity<User>(entity =>
+//            {
+//                entity.HasKey(u => u.Id);
+//                entity.Property(u => u.Username).IsRequired().HasMaxLength(50);
+//                entity.Property(u => u.Password).IsRequired().HasMaxLength(100);
+//                entity.Property(u => u.Email).HasMaxLength(100);
+//                entity.HasIndex(u => u.Username).IsUnique();
+//            });
+
+//            modelBuilder.Entity<Recipe>(entity =>
+//            {
+//                entity.HasKey(r => r.Id);
+//                entity.Property(r => r.Title).IsRequired().HasMaxLength(200);
+//                entity.Property(r => r.Description).HasMaxLength(1000);
+//                entity.Property(r => r.Instructions).HasColumnType("text");
+//                entity.Property(r => r.ImageUrl).HasMaxLength(500);
+//                entity.Property(r => r.Calories).HasPrecision(10, 2);
+//            });
+
+//            modelBuilder.Entity<Ingredient>(entity =>
+//            {
+//                entity.HasKey(i => i.Id);
+//                entity.Property(i => i.Name).IsRequired().HasMaxLength(100);
+//                entity.HasIndex(i => i.Name).IsUnique();
+//            });
+
+//            modelBuilder.Entity<UserFavorite>(entity =>
+//            {
+//                entity.HasKey(uf => uf.Id);
+//                entity.HasIndex(uf => new { uf.UserId, uf.RecipeId }).IsUnique();
+//            });
+//        }
+//    }
+//}

@@ -80,7 +80,7 @@ namespace UP.Pages
                         _ingredientsList.Add(new IngredientDisplay
                         {
                             Name = ingredient.Name ?? "Неизвестный ингредиент",
-                            Quantity = ingredient.Quantity,
+                            //Quantity = ingredient.Quantity,
                             Unit = ingredient.Unit ?? "шт"
                         });
                     }

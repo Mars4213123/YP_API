@@ -47,7 +47,7 @@ namespace YP_API.Controllers
                             Name = name.Trim(),
                             Category = "Прочее",
                             Unit = "шт",
-                            StandardUnit = "шт",
+                            //StandardUnit = "шт",
                             Allergens = ""
                         };
 
@@ -140,7 +140,7 @@ namespace YP_API.Controllers
                     Name = dto.Name.Trim(),
                     Unit = "шт",
                     Category = "Другое",
-                    StandardUnit = "шт",
+                    //StandardUnit = "шт",
                     Allergens = ""
                 };
 

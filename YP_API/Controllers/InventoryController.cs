@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using YP_API.Data;
 using YP_API.Models;
@@ -32,8 +33,8 @@ namespace YP_API.Controllers
                     _context.Ingredients.Add(ingredient);
                 }
 
-                var fridgeIngredient = new FridgeItem { IngredientId = ingredient.Id, UserId = userId, ProductName = productName, Quantity = quantity, Unit = unit };
-                _context.FridgeItems.Add(fridgeIngredient);
+                //var fridgeIngredient = new FridgeItem { IngredientId = ingredient.Id, UserId = userId, ProductName = productName, Quantity = quantity, Unit = unit };
+                //_context.FridgeItems.Add(fridgeIngredient);
                 
                 await _context.SaveChangesAsync();
                 var existing = await _context.UserInventories
@@ -66,6 +67,23 @@ namespace YP_API.Controllers
                     }
                 }
                 catch { /* ignore menu generation errors */ }
+
+                return Ok(new { success = true, menuGenerated = false });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        [HttpPost("FridgeItem/add/{userId}")]
+        public async Task<IActionResult> AddFridgeItem(int userId, [FromBody] Ingredient ingredient)
+        {
+            try
+            {
+                var fridgeIngredient = new FridgeItem { IngredientId = ingredient.Id, UserId = userId, ProductName = ingredient.Name, Quantity = 1, Unit = ingredient.Unit};
+                _context.FridgeItems.Add(fridgeIngredient);
+                await _context.SaveChangesAsync();
 
                 return Ok(new { success = true, menuGenerated = false });
             }

@@ -76,7 +76,7 @@
         public string Name { get; set; }
         public string Category { get; set; }
         public string Unit { get; set; }
-        public string StandardUnit { get; set; }
+        //public string StandardUnit { get; set; }
         public string? Allergens { get; set; }
     }
 
