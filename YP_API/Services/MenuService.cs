@@ -1,7 +1,11 @@
+using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using YP_API.Data;
 using YP_API.Interfaces;
 using YP_API.Models;
+using YP_API.Models.AIAPI.Responce;
+using YP_API.Models.AIAPI;
 
 namespace YP_API.Services
 {
@@ -71,6 +75,14 @@ namespace YP_API.Services
             await _context.SaveChangesAsync();
 
             return userMenu.Id;
+
+
         }
+
+        
+
+
+
+
     }
 }

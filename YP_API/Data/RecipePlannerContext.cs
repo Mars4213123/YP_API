@@ -10,7 +10,7 @@ namespace YP_API.Data
         {
             // Seed Users
             modelBuilder.Entity<User>().HasData(
-                new User { Id = 1, Username = "admin", Password = "admin123", Email = "admin@example.com" },
+                new User { Id = 1, Username = "qwe", Password = "qweqwe", Email = "admin@example.com" },
                 new User { Id = 2, Username = "user1", Password = "user123", Email = "user1@example.com" },
                 new User { Id = 3, Username = "user2", Password = "user123", Email = "user2@example.com" }
             );
