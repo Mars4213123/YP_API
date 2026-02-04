@@ -53,7 +53,6 @@ namespace YP_API.Helpers
             }
             return responseMessage;
         }
-
         public static async Task<GeneratedMenuDto?> GenerateAndParseMenuAsync(string token, List<Ingredient> ingredients, int daysCount)
         {
             var finalMenu = new GeneratedMenuDto
@@ -96,8 +95,6 @@ namespace YP_API.Helpers
 
             return finalMenu.Items.Count > 0 ? finalMenu : null;
         }
-
-        // Новый метод промпта для 1 дня
         public static string CreateSingleDayPrompt(List<Ingredient> ingredients, int dayNumber)
         {
             // Преобразуем список доступных продуктов в строку
@@ -190,7 +187,6 @@ namespace YP_API.Helpers
 }}
 ";
         }
-        // Вспомогательный метод для очистки Markdown
         private static string CleanJson(string json)
         {
             if (string.IsNullOrEmpty(json)) return json;
@@ -199,9 +195,6 @@ namespace YP_API.Helpers
             json = json.Replace("```json", "").Replace("```", "").Trim();
             return json;
         }
-
-
-
         public static async Task<string> GetToken(string rqUID, string bearer)
         {
             string ReturnToken = null;

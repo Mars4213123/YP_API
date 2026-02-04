@@ -10,8 +10,8 @@
 
         public class GeneratedMenuItemDto
         {
-            public int DayNumber { get; set; } // 1, 2, 3... (смещение от даты начала)
-            public string MealType { get; set; } // "Завтрак", "Обед", "Ужин"
+            public int DayNumber { get; set; } 
+            public string MealType { get; set; } 
             public GeneratedRecipeDto Recipe { get; set; }
         }
 

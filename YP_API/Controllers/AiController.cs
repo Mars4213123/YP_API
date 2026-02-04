@@ -1,28 +1,32 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using YP_API.Data;
 using YP_API.Helpers;
 using YP_API.Models;
 using YP_API.Models.AIAPI;
 
 namespace YP_API.Controllers
 {
+
     public class UserQueryDto
     {
-        // Текст вопроса от пользователя
         public string Prompt { get; set; }
+        public List<Ingredient> Ingredients { get; set; }
     }
-
-
 
     [Route("api/[controller]")]
     [ApiController]
     public class AiController : ControllerBase
     {
+        private readonly RecipePlannerContext _context;
 
-        // Если ваш метод GetAnswer находится в статическом классе GigaChatService:
-        // (Если он не статический, нужно внедрить сервис через конструктор)
+        public AiController(RecipePlannerContext context)
+        {
+            _context = context;
+        }
 
-        [HttpPost("ask")]
-        public async Task<IActionResult> AskGigaChat([FromBody] UserQueryDto input)
+        [HttpPost("ask/{userId}")]
+        public async Task<IActionResult> AskGigaChat(int userId, [FromBody] UserQueryDto input)
         {
             if (string.IsNullOrWhiteSpace(input.Prompt))
             {
@@ -43,49 +47,96 @@ namespace YP_API.Controllers
                 var token = await GigaChatHelper.GetToken(GigaChatHelper.ClientId, GigaChatHelper.AuthorizationKey);
                 var response = await GigaChatHelper.GetAnswer(token, messages);
 
-                if (response == null || response.choices == null || response.choices.Count == 0)
+                var generatedMenu = await GigaChatHelper.GenerateAndParseMenuAsync(token, input.Ingredients, 1);
+
+                var menuEntity = new Menu
                 {
-                    return StatusCode(502, "Не удалось получить ответ от GigaChat API.");
+                    UserId = userId,
+                    Name = generatedMenu.MenuName,
+                    CreatedAt = DateTime.UtcNow,
+                    Items = new List<MenuItem>()
+                };
+
+                DateTime startDate = DateTime.Today;
+
+                foreach (var itemDto in generatedMenu.Items)
+                {
+                    var recipeEntity = new Recipe
+                    {
+                        Title = itemDto.Recipe.Title,
+                        Description = itemDto.Recipe.Description,
+                        Instructions = string.Join("\n", itemDto.Recipe.Instructions),
+                        Calories = itemDto.Recipe.Calories,
+                        PrepTime = itemDto.Recipe.PrepTime,
+                        CookTime = itemDto.Recipe.CookTime,
+                        ImageUrl = "",
+                        RecipeIngredients = new List<RecipeIngredient>()
+                    };
+
+                    foreach (var ingDto in itemDto.Recipe.Ingredients)
+                    {
+                        var ingName = ingDto.Name.Trim();
+
+                        var ingredientEntity = await _context.Ingredients
+                            .FirstOrDefaultAsync(i => i.Name == ingName);
+
+                        if (ingredientEntity == null)
+                        {
+                            ingredientEntity = new Ingredient
+                            {
+                                Name = ingName,
+                                Unit = ingDto.Unit,
+                                Category = "Сгенерировано", 
+                                Allergens = ""
+                            };
+                        }
+
+                        recipeEntity.RecipeIngredients.Add(new RecipeIngredient
+                        {
+                            Ingredient = ingredientEntity, 
+                            Quantity = ingDto.Quantity
+                        });
+                    }
+
+                    var menuItemEntity = new MenuItem
+                    {
+                        Date = startDate.AddDays(itemDto.DayNumber - 1),
+                        MealType = itemDto.MealType,
+                        Recipe = recipeEntity 
+                    };
+                    menuEntity.Items.Add(menuItemEntity);
                 }
 
-                // 4. Возврат ответа клиенту
-                // Возвращаем только текст ответа, чтобы не перегружать клиента лишними данными
+                _context.Menus.Add(menuEntity);
+                await _context.SaveChangesAsync();
+
                 return Ok(new
                 {
-                    answer = response.choices[0].message.content,
-                    usage = response.usage // Можно вернуть и статистику токенов
+                    Message = "Меню успешно сгенерировано на основе тестовых продуктов",
+                    MenuId = menuEntity.Id,
+                    InputIngredients = input.Ingredients.Select(i => i.Name),
+                    Result = generatedMenu
                 });
             }
             catch (Exception ex)
             {
-                // Логирование ошибки
                 return StatusCode(500, $"Внутренняя ошибка сервера: {ex.Message}");
             }
         }
 
-
-
-
-
-    [HttpGet("test-generation-real")]
+        [HttpGet("test-generation-real")]
         public async Task<IActionResult> TestGenerationWithMockData()
         {
             try
             {
-                // 1. Создаем тестовый список ингредиентов (имитация того, что есть в холодильнике)
                 var mockIngredients = new List<Ingredient>
-        {
-            new Ingredient { Name = "Куриная грудка", Unit = "кг" },
-            new Ingredient { Name = "Рис", Unit = "кг" },
-            new Ingredient { Name = "Помидоры", Unit = "шт" },
-            new Ingredient { Name = "Сметана", Unit = "г" },
-            new Ingredient { Name = "Чеснок", Unit = "зуб" }
-        };
-
-                // 2. Получаем токен (используя ваш метод GetToken)
-                // ВАЖНО: Подставьте свои реальные RqUID и Authorization Key (AuthData)
-                string rqUid = Guid.NewGuid().ToString();
-                string authData = "ВАШ_BASE64_KEY_ЗДЕСЬ";
+                {
+                    new Ingredient { Name = "Куриная грудка", Unit = "кг" },
+                    new Ingredient { Name = "Рис", Unit = "кг" },
+                    new Ingredient { Name = "Помидоры", Unit = "шт" },
+                    new Ingredient { Name = "Сметана", Unit = "г" },
+                    new Ingredient { Name = "Чеснок", Unit = "зуб" }
+                };
 
                 string token = await GigaChatHelper.GetToken(GigaChatHelper.ClientId, GigaChatHelper.AuthorizationKey);
 
@@ -94,8 +145,6 @@ namespace YP_API.Controllers
                     return StatusCode(500, "Ошибка получения токена (Token is null)");
                 }
 
-                // 3. Вызываем сервис генерации (предполагаем, что методы выше находятся в классе AiService)
-                // Если методы в том же контроллере, просто вызываем их:
                 var generatedMenu = await GigaChatHelper.GenerateAndParseMenuAsync(token, mockIngredients, 1);
 
                 if (generatedMenu == null)
