@@ -158,14 +158,14 @@ namespace UP.Pages
                             var key = ingredient.Name.ToLower();
                             if (ingredientDict.ContainsKey(key))
                             {
-                                //ingredientDict[key].Quantity += ingredient.Quantity;
+                                ingredientDict[key].Quantity += ingredient.Quantity;
                             }
                             else
                             {
                                 ingredientDict[key] = new ShoppingListItemDto
                                 {
                                     Name = ingredient.Name,
-                                    //Quantity = ingredient.Quantity,
+                                    Quantity = ingredient.Quantity,
                                     Unit = ingredient.Unit ?? "шт",
                                     IsPurchased = false
                                 };
