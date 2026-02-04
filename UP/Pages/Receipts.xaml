@@ -207,7 +207,7 @@
                             </ListView.ItemTemplate>
                         </ListView>
 
-                        <Button Content="Обновить" 
+                        <Button Content="Сгенерировать меню" 
                                 Style="{StaticResource PrimaryButton}"
                                 Click="UpdateFridgeButton_Click"
                                 Margin="0,8,0,0"/>

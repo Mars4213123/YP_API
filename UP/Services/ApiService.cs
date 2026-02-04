@@ -65,7 +65,7 @@ namespace UP.Services
             return new List<IngredientDto>();
         }
 
-        public async Task<List<IngredientDto>> UpdateFridgeAsync(int userId)
+        public async Task<List<Models.IngredientDto>> UpdateFridgeAsync(int userId)
         {
             try
             {
@@ -78,7 +78,7 @@ namespace UP.Services
 
                 if (responseObj?.data != null)
                 {
-                    var ingredients = JsonConvert.DeserializeObject<List<IngredientDto>>(
+                    var ingredients = JsonConvert.DeserializeObject<List<Models.IngredientDto>>(
                         responseObj.data.ToString());
                     return ingredients ?? new List<IngredientDto>();
                 }
@@ -114,6 +114,41 @@ namespace UP.Services
             {
                 Console.WriteLine($"[GenerateMenuAsync] Exception: {ex.Message}");
                 return false;
+            }
+        }
+
+        public async Task<Models.MenuDto> GenerateMenuFromGigaChatAsync(int userId, List<Models.IngredientDto> ingredients)
+        {
+            try
+            {
+                var requestData = new
+                {
+                    Prompt = "Составь меню на день из моих продуктов",
+                    Ingredients = ingredients
+                };
+
+                var json = JsonConvert.SerializeObject(requestData);
+
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.PostAsync($"api/Ai/ask/{userId}", content);
+                var responseString = await response.Content.ReadAsStringAsync();
+
+                Console.WriteLine($"[GenerateMenuAsync] Status: {response.StatusCode}, Response: {responseString}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"[GenerateMenuAsync] Ошибка при генерации меню: {responseString}");
+                    return null;
+                }
+
+                var menu = JsonConvert.DeserializeObject<Models.MenuDto>(responseString);
+                return menu;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[GenerateMenuAsync] Exception: {ex.Message}");
+                return null;
             }
         }
 

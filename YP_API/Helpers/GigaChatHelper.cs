@@ -127,8 +127,8 @@ namespace YP_API.Helpers
         ""prepTime"": 15,
         ""cookTime"": 20,
         ""instructions"": [
-           ""Шаг 1: Нарежьте овощи."",
-           ""Шаг 2: Обжарьте их.""
+           ""Нарежьте овощи."",
+           ""Обжарьте их.""
         ],
         ""ingredients"": [
             {{ ""name"": ""Продукт А"", ""quantity"": 100, ""unit"": ""г"" }},

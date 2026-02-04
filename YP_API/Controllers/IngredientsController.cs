@@ -103,7 +103,7 @@ namespace YP_API.Controllers
                 var result = fridgeItems.Select(fi => new
                 {
                     Id = fi.IngredientId,
-                    Name = fi.ProductName,       // или fi.Ingredient.Name — зависит от логики
+                    Name = fi.ProductName,       
                     Category = fi.Ingredient?.Category ?? "Неизвестно",
                     Unit = fi.Unit,
                     Quantity = fi.Quantity

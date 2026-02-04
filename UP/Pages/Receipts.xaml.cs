@@ -44,7 +44,10 @@ namespace UP.Pages
 
         private async void LoadFridgeIngridients()
         {
-            ProductsListView.ItemsSource = await AppData.ApiService.UpdateFridgeAsync(AppData.CurrentUser.Id);
+           
+            var products = await AppData.ApiService.UpdateFridgeAsync(AppData.CurrentUser.Id);
+            _products = new ObservableCollection<Models.IngredientDto>(products);
+            ProductsListView.ItemsSource = _products;
         }
 
         private void InitializeData()
@@ -277,15 +280,15 @@ namespace UP.Pages
 
         private async void UpdateFridgeButton_Click(object sender, RoutedEventArgs e)
         {
-            await RefreshFridgeAndGenerateMenu();
+            await GenerateMenu();
         }
 
         private async void RefreshData_Click(object sender, RoutedEventArgs e)
         {
-            await RefreshFridgeAndGenerateMenu();
+            //await RefreshFridgeAndGenerateMenu();
         }
 
-        private async Task RefreshFridgeAndGenerateMenu()
+        private async Task GenerateMenu()
         {
             try
             {
@@ -296,6 +299,7 @@ namespace UP.Pages
                 }
 
                 var productsList = _products.ToList();
+
                 if (!productsList.Any())
                 {
                     MessageBox.Show("В холодильнике нет продуктов", "Информация");
@@ -303,14 +307,16 @@ namespace UP.Pages
                 }
 
                 var setOk = await AppData.ApiService.SetInventoryByNamesAsync(AppData.CurrentUser.Id, productsList);
+
                 if (!setOk)
                 {
                     MessageBox.Show("Не удалось сохранить продукты в инвентарь", "Ошибка");
                     return;
                 }
 
-                var genOk = await AppData.ApiService.GenerateMenuAsync(AppData.CurrentUser.Id);
-                if (!genOk)
+                var menu = await AppData.ApiService.GenerateMenuFromGigaChatAsync(AppData.CurrentUser.Id, productsList);
+
+                if (menu == null)
                 {
                     var fridgeRecipes = await AppData.ApiService.GetRecipesByFridgeAsync(AppData.CurrentUser.Id);
                     if (fridgeRecipes == null || fridgeRecipes.Count == 0)
@@ -319,7 +325,7 @@ namespace UP.Pages
                         return;
                     }
                 }
-                
+
                 await LoadAvailableMenus();
 
                 if (_availableMenus.Count > 0)
@@ -336,6 +342,58 @@ namespace UP.Pages
                 MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка");
             }
         }
+
+        //private async Task RefreshFridgeAndGenerateMenu()
+        //{
+        //    try
+        //    {
+        //        if (AppData.CurrentUser == null)
+        //        {
+        //            MessageBox.Show("Пользователь не авторизован", "Ошибка");
+        //            return;
+        //        }
+
+        //        var productsList = _products.ToList();
+        //        if (!productsList.Any())
+        //        {
+        //            MessageBox.Show("В холодильнике нет продуктов", "Информация");
+        //            return;
+        //        }
+
+        //        var setOk = await AppData.ApiService.SetInventoryByNamesAsync(AppData.CurrentUser.Id, productsList);
+        //        if (!setOk)
+        //        {
+        //            MessageBox.Show("Не удалось сохранить продукты в инвентарь", "Ошибка");
+        //            return;
+        //        }
+
+        //        var genOk = await AppData.ApiService.GenerateMenuAsync(AppData.CurrentUser.Id);
+        //        if (!genOk)
+        //        {
+        //            var fridgeRecipes = await AppData.ApiService.GetRecipesByFridgeAsync(AppData.CurrentUser.Id);
+        //            if (fridgeRecipes == null || fridgeRecipes.Count == 0)
+        //            {
+        //                MessageBox.Show("Найдено 0 рецептов из ваших продуктов", "Информация");
+        //                return;
+        //            }
+        //        }
+
+        //        await LoadAvailableMenus();
+
+        //        if (_availableMenus.Count > 0)
+        //        {
+        //            var lastMenu = _availableMenus.Last();
+        //            AvailableMenusListView.SelectedItem = lastMenu;
+        //            await DisplayMenuDetails(lastMenu);
+        //        }
+
+        //        MessageBox.Show("Холодильник обновлен и меню сгенерировано!", "Успех");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка");
+        //    }
+        //}
 
         private async void RemoveProduct_Click(object sender, RoutedEventArgs e)
         {

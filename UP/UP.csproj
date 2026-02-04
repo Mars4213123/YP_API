@@ -171,7 +171,6 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Helpers\AppData.cs" />
-    <Compile Include="Helpers\GigaChatHelper.cs" />
     <Compile Include="Models\ApiModels.cs" />
     <Compile Include="Models\Request.cs" />
     <Compile Include="Models\Responce\ResponceMessage.cs" />
