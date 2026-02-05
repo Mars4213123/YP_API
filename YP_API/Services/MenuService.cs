@@ -1,11 +1,7 @@
-using System.Text;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
 using YP_API.Data;
 using YP_API.Interfaces;
 using YP_API.Models;
-using YP_API.Models.AIAPI.Responce;
-using YP_API.Models.AIAPI;
 
 namespace YP_API.Services
 {
@@ -21,7 +17,6 @@ namespace YP_API.Services
 
         public async Task<int?> GenerateMenuFromInventoryAsync(int userId)
         {
-            // Get user's inventory ingredient ids
             var ingredientIds = await _context.UserInventories
                 .Where(ui => ui.UserId == userId)
                 .Select(ui => ui.IngredientId)
@@ -30,13 +25,11 @@ namespace YP_API.Services
             if (!ingredientIds.Any())
                 return null;
 
-            // Exclude recipes that contain ingredients the user is allergic to
             var allergyIds = await _context.UserAllergies
                 .Where(a => a.UserId == userId)
                 .Select(a => a.IngredientId)
                 .ToListAsync();
 
-            // Find recipes that use at least one ingredient from inventory and no allergy ingredients
             var candidateRecipes = await _context.Recipes
                 .Include(r => r.RecipeIngredients)
                 .Where(r => r.RecipeIngredients.Any(ri => ingredientIds.Contains(ri.IngredientId))
@@ -75,14 +68,6 @@ namespace YP_API.Services
             await _context.SaveChangesAsync();
 
             return userMenu.Id;
-
-
         }
-
-        
-
-
-
-
     }
 }

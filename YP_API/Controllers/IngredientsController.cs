@@ -54,7 +54,6 @@ namespace YP_API.Controllers
                         _context.Ingredients.Add(newIngredient);
                         await _context.SaveChangesAsync();
 
-                        // Добавляем созданный ингредиент в список результата
                         ingredients.Add(newIngredient);
                     }
                     else

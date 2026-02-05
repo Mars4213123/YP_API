@@ -6,21 +6,14 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using UP.Helpers;
-using UP.Models; // Используем общие модели
-using UP.Services;
+using UP.Models;
 
 namespace UP.Pages
 {
     public partial class Receipts : Page
     {
-        // Локальные классы УДАЛЕНЫ, используем общие
-
         private ObservableCollection<IngredientDto> _products;
-
-        // Используем DailyMenuViewModel из AppData.cs
         private ObservableCollection<DailyMenuViewModel> _weeklyMenu;
-
-        // Используем AvailableMenu из UP.Models
         private ObservableCollection<AvailableMenu> _availableMenus;
 
         private ObservableCollection<ShoppingListItemDto> _shoppingList;
@@ -252,7 +245,13 @@ namespace UP.Pages
 
             if (id != null)
             {
-                var ingredientDto = new IngredientDto { Id = id.Value, Name = name, Unit = "шт" };
+                var ingredientDto = new IngredientDto
+                {
+                    Id = id.Value,
+                    Name = name,
+                    Unit = "шт",
+                    Category = "Разное"
+                };
 
                 if (!_products.Any(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
                 {

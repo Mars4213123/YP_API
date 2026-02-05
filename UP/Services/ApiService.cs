@@ -369,16 +369,19 @@ namespace UP.Services
             return new List<IngredientDto>();
         }
 
-        public async Task<bool> AddFridgeItem(int userId, Models.IngredientDto productName)
+        public async Task<bool> AddFridgeItem(int userId, IngredientDto productName)
         {
             try
             {
-                var formData = new MultipartFormDataContent();
-                formData.Add(new StringContent(productName.Name), "productName");
-                formData.Add(new StringContent("1"), "quantity");
-                formData.Add(new StringContent(productName.Unit ?? "шт"), "unit");
+                var json = JsonConvert.SerializeObject(productName);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var response = await _httpClient.PostAsync($"api/inventory/FridgeItem/add/{userId}", content);
 
-                var response = await _httpClient.PostAsync($"api/inventory/add/{userId}", formData);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorText = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"Ошибка {response.StatusCode}: {errorText}");
+                }
 
                 return response.IsSuccessStatusCode;
             }

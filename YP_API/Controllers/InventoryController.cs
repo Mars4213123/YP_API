@@ -18,69 +18,39 @@ namespace YP_API.Controllers
             _menuService = menuService;
         }
 
-        [HttpPost("add/{userId}")]
-        public async Task<IActionResult> AddProduct(int userId, [FromForm] string productName, [FromForm] decimal quantity = 1, [FromForm] string unit = "шт")
-        {
-            try
-            {
-                var ingredient = await _context.Ingredients
-                    .FirstOrDefaultAsync(i => i.Name.ToLower() == productName.ToLower());
-
-                if (ingredient == null)
-                {
-                    ingredient = new Ingredient { Name = productName };
-                    _context.Ingredients.Add(ingredient);
-                }
-
-                //var fridgeIngredient = new FridgeItem { IngredientId = ingredient.Id, UserId = userId, ProductName = productName, Quantity = quantity, Unit = unit };
-                //_context.FridgeItems.Add(fridgeIngredient);
-                
-                await _context.SaveChangesAsync();
-                var existing = await _context.UserInventories
-                    .FirstOrDefaultAsync(ui => ui.UserId == userId && ui.IngredientId == ingredient.Id);
-
-                if (existing != null)
-                {
-                    existing.Quantity += quantity;
-                }
-                else
-                {
-                    _context.UserInventories.Add(new UserInventory
-                    {
-                        UserId = userId,
-                        IngredientId = ingredient.Id,
-                        Quantity = quantity,
-                        Unit = unit
-                    });
-                }
-
-                await _context.SaveChangesAsync();
-
-                // Try to generate a weekly menu based on updated inventory
-                try
-                {
-                    var menuId = await _menuService.GenerateMenuFromInventoryAsync(userId);
-                    if (menuId.HasValue)
-                    {
-                        return Ok(new { success = true, menuGenerated = true, menuId = menuId.Value });
-                    }
-                }
-                catch { /* ignore menu generation errors */ }
-
-                return Ok(new { success = true, menuGenerated = false });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = ex.Message });
-            }
-        }
 
         [HttpPost("FridgeItem/add/{userId}")]
         public async Task<IActionResult> AddFridgeItem(int userId, [FromBody] Ingredient ingredient)
         {
+
             try
             {
-                var fridgeIngredient = new FridgeItem { IngredientId = ingredient.Id, UserId = userId, ProductName = ingredient.Name, Quantity = 1, Unit = ingredient.Unit};
+                var existingIngredient = await _context.Ingredients.FindAsync(ingredient.Id);
+
+                if (existingIngredient == null)
+                {
+                    if (string.IsNullOrEmpty(ingredient.Category))
+                    {
+                        ingredient.Category = "Разное";
+                    }
+
+                    _context.Ingredients.Add(ingredient);
+                    await _context.SaveChangesAsync();
+                }
+                else
+                {
+                    ingredient = existingIngredient;
+                }
+
+                var fridgeIngredient = new FridgeItem
+                {
+                    IngredientId = ingredient.Id,
+                    UserId = userId,
+                    ProductName = ingredient.Name,
+                    Quantity = 1,
+                    Unit = ingredient.Unit ?? "шт"
+                };
+
                 _context.FridgeItems.Add(fridgeIngredient);
                 await _context.SaveChangesAsync();
 
