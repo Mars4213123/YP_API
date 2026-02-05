@@ -6,33 +6,24 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using UP.Helpers;
-using UP.Models;
+using UP.Models; // Используем общие модели
+using UP.Services;
 
 namespace UP.Pages
 {
     public partial class Receipts : Page
     {
-        public class DailyMenu
-        {
-            public string Day { get; set; }
-            public string Meal { get; set; }
-            public string Description { get; set; }
-            public int RecipeId { get; set; }
-        }
+        // Локальные классы УДАЛЕНЫ, используем общие
 
-        private ObservableCollection<Models.IngredientDto> _products;
-        private ObservableCollection<DailyMenu> _weeklyMenu;
+        private ObservableCollection<IngredientDto> _products;
+
+        // Используем DailyMenuViewModel из AppData.cs
+        private ObservableCollection<DailyMenuViewModel> _weeklyMenu;
+
+        // Используем AvailableMenu из UP.Models
         private ObservableCollection<AvailableMenu> _availableMenus;
-        private ObservableCollection<ShoppingListItemDto> _shoppingList;
 
-        public class AvailableMenu
-        {
-            public int Id { get; set; }
-            public string Name { get; set; }
-            public string Description { get; set; }
-            public int RecipeCount { get; set; }
-            public int TotalDays { get; set; }
-        }
+        private ObservableCollection<ShoppingListItemDto> _shoppingList;
 
         public Receipts()
         {
@@ -44,31 +35,43 @@ namespace UP.Pages
 
         private async void LoadFridgeIngridients()
         {
-           
             var products = await AppData.ApiService.UpdateFridgeAsync(AppData.CurrentUser.Id);
-            _products = new ObservableCollection<Models.IngredientDto>(products);
-            ProductsListView.ItemsSource = _products;
+            if (products != null)
+            {
+                _products = new ObservableCollection<IngredientDto>(products);
+                ProductsListView.ItemsSource = _products;
+            }
         }
+
         private void InitializeData()
         {
-            _products = new ObservableCollection<Models.IngredientDto>();
+            _products = new ObservableCollection<IngredientDto>();
+
             _weeklyMenu = AppData.WeeklyMenu;
-            _shoppingList = new ObservableCollection<ShoppingListItemDto>();
+            _shoppingList = AppData.ShoppingList.Count > 0
+                ? new ObservableCollection<ShoppingListItemDto>() 
+                : new ObservableCollection<ShoppingListItemDto>();
+
             _availableMenus = new ObservableCollection<AvailableMenu>();
 
-            if (_products.Count != 0)
-                ProductsListView.ItemsSource = _products;
+            if (AppData.Products.Count > 0)
+            {
+                _products = AppData.Products;
+            }
 
+            ProductsListView.ItemsSource = _products;
             WeeklyMenuItemsControl.ItemsSource = _weeklyMenu;
             AvailableMenusListView.ItemsSource = _availableMenus;
             ShoppingListListView.ItemsSource = _shoppingList;
 
             LoadAvailableMenusOnInit();
         }
+
         private async void LoadAvailableMenusOnInit()
         {
             await LoadAvailableMenus();
         }
+
         private void LoadUserInfo()
         {
             if (AppData.CurrentUser != null)
@@ -76,13 +79,15 @@ namespace UP.Pages
                 UserInfoText.Text = $"Пользователь: {AppData.CurrentUser.Username}";
             }
         }
-        private async void AvailableMenuSelectionChanged(object sender, SelectionChangedEventArgs e)
+
+        private async void SelectionChangedMenu(object sender, SelectionChangedEventArgs e)
         {
             if (AvailableMenusListView.SelectedItem is AvailableMenu selectedMenu)
             {
                 await DisplayMenuDetails(selectedMenu);
             }
         }
+
         private async Task DisplayMenuDetails(AvailableMenu selectedMenu)
         {
             try
@@ -92,26 +97,27 @@ namespace UP.Pages
                 if (fullMenuDto == null)
                 {
                     ToastContainer.ShowToast("Не удалось загрузить детали меню", Elements.ToastType.Error);
-                    //MessageBox.Show("Не удалось загрузить детали меню", "Ошибка");
                     return;
                 }
 
                 CurrentMenuTitle.Text = fullMenuDto.Name;
-                CurrentMenuDescription.Text = $"Создано: {fullMenuDto.CreatedAt:dd.MM.yyyy}";
 
                 _weeklyMenu.Clear();
 
-                if (fullMenuDto.Items != null && fullMenuDto.Items.Count > 0)
+                if (fullMenuDto.Days != null)
                 {
-                    foreach (var item in fullMenuDto.Items)
+                    foreach (var day in fullMenuDto.Days)
                     {
-                        _weeklyMenu.Add(new DailyMenu
+                        foreach (var meal in day.Meals)
                         {
-                            Day = item.Date.ToString("dddd"),
-                            Meal = item.MealType,
-                            Description = item.RecipeTitle,
-                            RecipeId = item.RecipeId
-                        });
+                            _weeklyMenu.Add(new DailyMenuViewModel
+                            {
+                                Day = day.Date,
+                                Meal = meal.MealType,
+                                Description = meal.RecipeTitle,
+                                RecipeId = meal.RecipeId
+                            });
+                        }
                     }
                 }
 
@@ -120,7 +126,6 @@ namespace UP.Pages
             catch (Exception ex)
             {
                 ToastContainer.ShowToast("Не удалось загрузить меню: " + ex.Message, Elements.ToastType.Error);
-                //MessageBox.Show("Не удалось загрузить меню: " + ex.Message, "Ошибка");
             }
         }
 
@@ -130,14 +135,20 @@ namespace UP.Pages
             {
                 var menuDetails = await AppData.ApiService.GetMenuDetailsAsync(menuId);
 
-                if (menuDetails == null || menuDetails.Items == null || menuDetails.Items.Count == 0)
+                if (menuDetails == null || menuDetails.Days == null)
                 {
                     ShoppingListInfo.Text = "Меню не содержит рецептов";
                     _shoppingList.Clear();
                     return;
                 }
 
-                var recipeIds = menuDetails.Items.Select(item => item.RecipeId).Distinct().ToList();
+                var recipeIds = new List<int>();
+                foreach (var day in menuDetails.Days)
+                {
+                    recipeIds.AddRange(day.Meals.Select(m => m.RecipeId));
+                }
+                recipeIds = recipeIds.Distinct().ToList();
+
                 _shoppingList.Clear();
                 var ingredientDict = new Dictionary<string, ShoppingListItemDto>();
 
@@ -153,23 +164,19 @@ namespace UP.Pages
                             if (ingredient == null || string.IsNullOrWhiteSpace(ingredient.Name)) continue;
 
                             var key = ingredient.Name.ToLower();
-                            if (ingredientDict.ContainsKey(key))
-                            {
-                                //ingredientDict[key].Quantity += ingredient.Quantity;
-                            }
-                            else
+                            if (!ingredientDict.ContainsKey(key))
                             {
                                 ingredientDict[key] = new ShoppingListItemDto
                                 {
                                     Name = ingredient.Name,
-                                    //Quantity = ingredient.Quantity,
+                                    // Quantity = ingredient.Quantity, // Если в DTO нет Quantity
                                     Unit = ingredient.Unit ?? "шт",
                                     IsPurchased = false
                                 };
                             }
                         }
                     }
-                    catch {}
+                    catch { }
                 }
 
                 foreach (var item in ingredientDict.Values.OrderBy(x => x.Name))
@@ -182,12 +189,11 @@ namespace UP.Pages
             catch (Exception ex)
             {
                 ShoppingListInfo.Text = "Ошибка при генерации списка покупок";
-
                 ToastContainer.ShowToast("Не удалось сгенерировать список покупок: " + ex.Message, Elements.ToastType.Error);
             }
         }
 
-        private async void OpenRecipe_Click(object sender, RoutedEventArgs e)
+        private void OpenRecipe_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -195,13 +201,11 @@ namespace UP.Pages
 
                 if (sender is Button button)
                 {
-                    // Попытка из Tag
                     if (button.Tag is int id && id > 0)
                     {
                         recipeId = id;
                     }
-                    // Попытка из DataContext
-                    else if (button.DataContext is DailyMenu dailyMenu && dailyMenu.RecipeId > 0)
+                    else if (button.DataContext is DailyMenuViewModel dailyMenu && dailyMenu.RecipeId > 0)
                     {
                         recipeId = dailyMenu.RecipeId;
                     }
@@ -209,21 +213,14 @@ namespace UP.Pages
 
                 if (recipeId.HasValue)
                 {
-                    var recipe = await AppData.ApiService.GetRecipeAsync(recipeId.Value);
-                    if (recipe != null)
-                    {
-                        var detailsPage = new RecipeDetailsPage(recipe);
-                        MainWindow.mainWindow.OpenPages(detailsPage);
-                        return;
-                    }
+                    MainWindow.mainWindow.OpenPages(new RecipeDetailsPage(recipeId.Value));
+                    return;
                 }
                 ToastContainer.ShowToast("Не удалось загрузить рецепт", Elements.ToastType.Error);
-                //MessageBox.Show("Не удалось загрузить рецепт", "Ошибка");
             }
             catch (Exception ex)
             {
                 ToastContainer.ShowToast($"Ошибка загрузки рецепта: {ex.Message}", Elements.ToastType.Error);
-                //MessageBox.Show($"Ошибка загрузки рецепта: {ex.Message}", "Ошибка");
             }
         }
 
@@ -232,19 +229,11 @@ namespace UP.Pages
             try
             {
                 _availableMenus.Clear();
-
                 var menusFromApi = await AppData.ApiService.GetUserMenusAsync(AppData.CurrentUser.Id);
 
                 foreach (var m in menusFromApi)
                 {
-                    _availableMenus.Add(new AvailableMenu
-                    {
-                        Id = m.Id,
-                        Name = m.Name,
-                        Description = m.Description,
-                        RecipeCount = m.RecipeCount,
-                        TotalDays = m.TotalDays
-                    });
+                    _availableMenus.Add(m);
                 }
             }
             catch (Exception ex)
@@ -256,32 +245,28 @@ namespace UP.Pages
         private async void AddProduct_Click(object sender, RoutedEventArgs e)
         {
             var name = NewProductTextBox.Text.Trim();
-
             if (string.IsNullOrWhiteSpace(name)) return;
 
-            var product = await AppData.ApiService.FindIngredientByNameAsync(name);
+            var id = await AppData.ApiService.FindIngredientIdByNameAsync(name);
+            if (id == null) id = await AppData.ApiService.CreateIngredientByNameAsync(name);
 
-            if (product == null) return;
-            
-            if (!_products.Contains(product))
+            if (id != null)
             {
-                _products.Add(product);
-                 await AppData.ApiService.AddFridgeItem(AppData.CurrentUser.Id, product);
-            }
+                var ingredientDto = new IngredientDto { Id = id.Value, Name = name, Unit = "шт" };
 
-            ProductsListView.ItemsSource = _products;
+                if (!_products.Any(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _products.Add(ingredientDto);
+                    await AppData.ApiService.AddFridgeItem(AppData.CurrentUser.Id, ingredientDto);
+                }
+            }
 
             NewProductTextBox.Clear();
         }
 
-        private async void UpdateFridgeButton_Click(object sender, RoutedEventArgs e)
-        {
-            await GenerateMenu();
-        }
-
         private async void RefreshData_Click(object sender, RoutedEventArgs e)
         {
-            //await RefreshFridgeAndGenerateMenu();
+            // Реализация обновления, если нужно
         }
 
         private async Task GenerateMenu()
@@ -295,7 +280,6 @@ namespace UP.Pages
                 }
 
                 var productsList = _products.ToList();
-
                 if (!productsList.Any())
                 {
                     ToastContainer.ShowToast("В холодильнике нет продуктов", Elements.ToastType.Info);
@@ -303,7 +287,6 @@ namespace UP.Pages
                 }
 
                 var setOk = await AppData.ApiService.SetInventoryByNamesAsync(AppData.CurrentUser.Id, productsList);
-
                 if (!setOk)
                 {
                     ToastContainer.ShowToast("Не удалось сохранить продукты в инвентарь", Elements.ToastType.Error);
@@ -314,21 +297,20 @@ namespace UP.Pages
 
                 if (menu == null)
                 {
-                    var fridgeRecipes = await AppData.ApiService.GetRecipesByFridgeAsync(AppData.CurrentUser.Id);
-                    if (fridgeRecipes == null || fridgeRecipes.Count == 0)
-                    {
-                        ToastContainer.ShowToast("Найдено 0 рецептов из ваших продуктов", Elements.ToastType.Info);
-                        return;
-                    }
+                    ToastContainer.ShowToast("Не удалось сгенерировать меню", Elements.ToastType.Error);
+                    return;
                 }
 
                 await LoadAvailableMenus();
 
                 if (_availableMenus.Count > 0)
                 {
-                    var lastMenu = _availableMenus.Last();
-                    AvailableMenusListView.SelectedItem = lastMenu;
-                    await DisplayMenuDetails(lastMenu);
+                    var lastMenu = _availableMenus.OrderByDescending(m => m.Id).FirstOrDefault();
+                    if (lastMenu != null)
+                    {
+                        AvailableMenusListView.SelectedItem = lastMenu;
+                        await DisplayMenuDetails(lastMenu);
+                    }
                 }
 
                 ToastContainer.ShowToast("Холодильник обновлен и меню сгенерировано!", Elements.ToastType.Success);
@@ -339,78 +321,15 @@ namespace UP.Pages
             }
         }
 
-        //private async Task RefreshFridgeAndGenerateMenu()
-        //{
-        //    try
-        //    {
-        //        if (AppData.CurrentUser == null)
-        //        {
-        //            MessageBox.Show("Пользователь не авторизован", "Ошибка");
-        //            return;
-        //        }
-
-        //        var productsList = _products.ToList();
-        //        if (!productsList.Any())
-        //        {
-        //            MessageBox.Show("В холодильнике нет продуктов", "Информация");
-        //            return;
-        //        }
-
-        //        var setOk = await AppData.ApiService.SetInventoryByNamesAsync(AppData.CurrentUser.Id, productsList);
-        //        if (!setOk)
-        //        {
-        //            MessageBox.Show("Не удалось сохранить продукты в инвентарь", "Ошибка");
-        //            return;
-        //        }
-
-        //        var genOk = await AppData.ApiService.GenerateMenuAsync(AppData.CurrentUser.Id);
-        //        if (!genOk)
-        //        {
-        //            var fridgeRecipes = await AppData.ApiService.GetRecipesByFridgeAsync(AppData.CurrentUser.Id);
-        //            if (fridgeRecipes == null || fridgeRecipes.Count == 0)
-        //            {
-        //                MessageBox.Show("Найдено 0 рецептов из ваших продуктов", "Информация");
-        //                return;
-        //            }
-        //        }
-
-        //        await LoadAvailableMenus();
-
-        //        if (_availableMenus.Count > 0)
-        //        {
-        //            var lastMenu = _availableMenus.Last();
-        //            AvailableMenusListView.SelectedItem = lastMenu;
-        //            await DisplayMenuDetails(lastMenu);
-        //        }
-
-        //        MessageBox.Show("Холодильник обновлен и меню сгенерировано!", "Успех");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка");
-        //    }
-        //}
         private async void RemoveProduct_Click(object sender, RoutedEventArgs e)
         {
-            try
+            // Логика удаления продукта (если есть API для удаления)
+            // Пока просто удаляем из списка UI
+            if (sender is Button button && button.DataContext is IngredientDto product)
             {
-                if (sender is Button button && button.Parent is Grid grid && grid.Children.Count > 0)
-                {
-                    var firstChild = grid.Children[0];
-                    if (firstChild is TextBlock textBlock)
-                    {
-                        var productName = await AppData.ApiService.FindIngredientByNameAsync(textBlock.Text);
-                        if (productName != null)
-                            _products.Remove(productName);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                ToastContainer.ShowToast($"Ошибка удаления продукта: {ex.Message}", Elements.ToastType.Error);
+                _products.Remove(product);
             }
         }
-
 
         private async void GenerateShoppingList_Click(object sender, RoutedEventArgs e)
         {
@@ -424,64 +343,36 @@ namespace UP.Pages
             ToastContainer.ShowToast("Список покупок обновлен!", Elements.ToastType.Success);
         }
 
-        private async void ExportShoppingList_Click(object sender, RoutedEventArgs e)
+        private void ExportShoppingList_Click(object sender, RoutedEventArgs e)
         {
             if (_shoppingList == null || _shoppingList.Count == 0)
             {
-                ToastContainer.ShowToast("Список покупок пуст. Сначала выберите меню!", Elements.ToastType.Info);
+                ToastContainer.ShowToast("Список покупок пуст.", Elements.ToastType.Info);
                 return;
             }
 
             var saveDialog = new Microsoft.Win32.SaveFileDialog
             {
-                Filter = "Текстовые файлы (*.txt)|*.txt|Файлы CSV (*.csv)|*.csv",
-                FileName = "Список_покупок.txt",
-                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+                Filter = "Текстовые файлы (*.txt)|*.txt",
+                FileName = "Список_покупок.txt"
             };
 
             if (saveDialog.ShowDialog() == true)
             {
-                try
+                var lines = new List<string> { "Список покупок", "==================" };
+                foreach (var item in _shoppingList)
                 {
-                    var lines = new List<string>
-            {
-                "Список покупок",
-                "==================",
-                $"Дата: {DateTime.Now:dd.MM.yyyy HH:mm}",
-                ""
-            };
-
-                    foreach (var item in _shoppingList)
-                    {
-                        if (item != null)
-                        {
-                            var status = item.IsPurchased ? "✓" : "○";
-                            // Примечание: у вас закомментировано Quantity — раскомментируйте, если нужно
-                            lines.Add($"{status} {item.Name} - {item.Quantity} {item.Unit}");
-                        }
-                    }
-
-                    lines.Add("");
-                    lines.Add($"Всего товаров: {_shoppingList.Count}");
-
-                    System.IO.File.WriteAllLines(saveDialog.FileName, lines, System.Text.Encoding.UTF8);
-                    ToastContainer.ShowToast($"Список покупок экспортирован:\n{System.IO.Path.GetFileName(saveDialog.FileName)}", Elements.ToastType.Success);
+                    lines.Add($"[ ] {item.Name} ({item.Unit})");
                 }
-                catch (Exception ex)
-                {
-                    ToastContainer.ShowToast($"Ошибка при экспорте: {ex.Message}", Elements.ToastType.Error);
-                }
+                System.IO.File.WriteAllLines(saveDialog.FileName, lines);
+                ToastContainer.ShowToast("Файл сохранен", Elements.ToastType.Success);
             }
         }
 
         private void ClearShoppingList_Click(object sender, RoutedEventArgs e)
         {
-            if (MessageBox.Show("Очистить весь список покупок?", "Подтверждение",
-                              MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
-            {
-                _shoppingList.Clear();
-                ShoppingListInfo.Text = "Список покупок очищен";
-            }
+            _shoppingList.Clear();
+            ShoppingListInfo.Text = "Список покупок очищен";
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
@@ -500,37 +391,15 @@ namespace UP.Pages
         {
             if (sender is Button button && button.Tag is int menuId)
             {
-                // Подтверждение — оставляем MessageBox
-                var result = MessageBox.Show(
-                    "Вы уверены что хотите удалить это меню?",
-                    "Подтверждение удаления",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
+                var result = MessageBox.Show("Удалить меню?", "Подтверждение", MessageBoxButton.YesNo);
                 if (result == MessageBoxResult.Yes)
                 {
-                    try
+                    var success = await AppData.ApiService.DeleteMenuAsync(menuId);
+                    if (success)
                     {
-                        var deleteSuccess = await AppData.ApiService.DeleteMenuAsync(menuId);
-
-                        if (deleteSuccess)
-                        {
-                            await LoadAvailableMenus();
-
-                            CurrentMenuTitle.Text = "Текущее меню не выбрано";
-                            CurrentMenuDescription.Text = "Выберите меню из списка слева";
-                            _weeklyMenu.Clear();
-
-                            ToastContainer.ShowToast("Меню удалено", Elements.ToastType.Success);
-                        }
-                        else
-                        {
-                            ToastContainer.ShowToast("Не удалось удалить меню", Elements.ToastType.Error);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        ToastContainer.ShowToast($"Ошибка при удалении меню: {ex.Message}", Elements.ToastType.Error);
+                        await LoadAvailableMenus();
+                        _weeklyMenu.Clear();
+                        ToastContainer.ShowToast("Меню удалено", Elements.ToastType.Success);
                     }
                 }
             }
@@ -541,20 +410,9 @@ namespace UP.Pages
             MainWindow.mainWindow.OpenPages(new FavoritesPage());
         }
 
-        private async void SelectionChangedMenu(object sender, SelectionChangedEventArgs e)
+        private async void GenerateMenu_Click(object sender, RoutedEventArgs e)
         {
-            if (AvailableMenusListView.SelectedItem is AvailableMenu selectedMenu)
-            {
-                try
-                {
-                    await DisplayMenuDetails(selectedMenu);
-                    //MessageBox.Show($"Меню '{selectedMenu.Name}' выбрано!", "Успех");
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Ошибка выбора меню: {ex.Message}", "Ошибка");
-                }
-            }
+            await GenerateMenu();
         }
     }
 }

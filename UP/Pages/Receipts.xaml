@@ -202,7 +202,7 @@
 
                         <Button Content="Сгенерировать меню" 
                                 Style="{StaticResource PrimaryButton}"
-                                Click="UpdateFridgeButton_Click"
+                                Click="GenerateMenu_Click"
                                 Margin="0,8,0,0"/>
                     </StackPanel>
                 </Border>

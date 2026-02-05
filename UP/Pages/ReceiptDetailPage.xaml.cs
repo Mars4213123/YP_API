@@ -11,138 +11,102 @@ namespace UP.Pages
 {
     public partial class RecipeDetailsPage : Page
     {
-        public class RecipeData
+        // Вспомогательный класс для отображения ингредиентов в ListView
+        public class IngredientViewItem
         {
-            public string Title { get; set; }
-            public string Description { get; set; }
-            public string ImageUrl { get; set; }
-            public List<string> Ingredients { get; set; }
-            public List<string> Steps { get; set; }
+            public string Text { get; set; }
         }
 
-        public class IngredientDisplay
+        // Вспомогательный класс для отображения шагов
+        public class StepViewItem
         {
-            public string Name { get; set; }
-            public decimal Quantity { get; set; }
-            public string Unit { get; set; }
-            
-            public override string ToString()
-            {
-                if (Quantity > 0)
-                    return $"• {Name} - {Quantity} {Unit}";
-                return $"• {Name}";
-            }
+            public int Number { get; set; }
+            public string Text { get; set; }
         }
 
-        private RecipeData _currentRecipe;
-        private List<IngredientDisplay> _ingredientsList = new List<IngredientDisplay>();
+        private RecipeDto _currentRecipe;
+        private int _recipeId;
 
-        public RecipeDetailsPage(string title, string description, string imageUrl, List<string> ingredients, List<string> steps)
+        // Конструктор по ID (основной)
+        public RecipeDetailsPage(int recipeId)
         {
             InitializeComponent();
-
-            _currentRecipe = new RecipeData
-            {
-                Title = title,
-                Description = description,
-                ImageUrl = imageUrl,
-                Ingredients = ingredients,
-                Steps = steps
-            };
-
-            LoadRecipeData();
+            _recipeId = recipeId;
+            Loaded += Page_Loaded;
         }
 
+        // Конструктор по объекту (вспомогательный)
         public RecipeDetailsPage(RecipeDto recipe)
         {
             InitializeComponent();
-
-            Console.WriteLine($"[RecipeDetailsPage] Загружаем рецепт: {recipe.Title}");
-            Console.WriteLine($"[RecipeDetailsPage] Ингредиентов: {recipe.Ingredients?.Count ?? 0}");
-            Console.WriteLine($"[RecipeDetailsPage] Шаги: {recipe.Instructions?.Count ?? 0}");
-
-            _currentRecipe = new RecipeData
-            {
-                Title = recipe.Title ?? "Рецепт",
-                Description = recipe.Description ?? "",
-                ImageUrl = recipe.ImageUrl ?? "",
-                Ingredients = new List<string>(),
-                Steps = recipe.Instructions ?? new List<string>()
-            };
-
-            // Преобразуем ингредиенты для отображения
-            if (recipe.Ingredients != null && recipe.Ingredients.Count > 0)
-            {
-                foreach (var ingredient in recipe.Ingredients)
-                {
-                    if (ingredient != null)
-                    {
-                        _ingredientsList.Add(new IngredientDisplay
-                        {
-                            Name = ingredient.Name ?? "Неизвестный ингредиент",
-                            //Quantity = ingredient.Quantity,
-                            Unit = ingredient.Unit ?? "шт"
-                        });
-                    }
-                }
-            }
-
-            LoadRecipeData();
+            _currentRecipe = recipe;
+            _recipeId = recipe.Id;
+            DisplayRecipe(_currentRecipe);
         }
 
-        private void LoadRecipeData()
+        private async void Page_Loaded(object sender, RoutedEventArgs e)
         {
-            try
+            if (_currentRecipe == null && _recipeId > 0)
             {
-                RecipeTitleText.Text = _currentRecipe.Title;
-                RecipeDescriptionText.Text = _currentRecipe.Description;
-
-                // Загружаем изображение
-                LoadImage(_currentRecipe.ImageUrl);
-
-                // Используем список ингредиентов
-                if (_ingredientsList.Count > 0)
+                try
                 {
-                    IngredientsList.ItemsSource = _ingredientsList;
-                    Console.WriteLine($"[LoadRecipeData] Загружено {_ingredientsList.Count} ингредиентов");
-                }
-                else if (_currentRecipe.Ingredients.Count > 0)
-                {
-                    IngredientsList.ItemsSource = _currentRecipe.Ingredients;
-                    Console.WriteLine($"[LoadRecipeData] Загружено {_currentRecipe.Ingredients.Count} ингредиентов (строки)");
-                }
-                else
-                {
-                    IngredientsList.ItemsSource = new List<string> { "Нет информации об ингредиентах" };
-                }
-
-                // Загружаем шаги приготовления
-                var stepObjects = new ObservableCollection<dynamic>();
-                int stepNumber = 1;
-                
-                if (_currentRecipe.Steps != null && _currentRecipe.Steps.Count > 0)
-                {
-                    foreach (var step in _currentRecipe.Steps)
+                    // Загружаем рецепт через API
+                    var recipe = await AppData.ApiService.GetRecipeAsync(_recipeId);
+                    if (recipe != null)
                     {
-                        if (!string.IsNullOrWhiteSpace(step))
-                        {
-                            stepObjects.Add(new { StepNumber = stepNumber++, StepText = step });
-                        }
+                        _currentRecipe = recipe;
+                        DisplayRecipe(_currentRecipe);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Рецепт не найден.", "Ошибка");
                     }
                 }
-                
-                if (stepObjects.Count == 0)
+                catch (Exception ex)
                 {
-                    stepObjects.Add(new { StepNumber = 1, StepText = "Инструкции не доступны" });
+                    MessageBox.Show($"Ошибка загрузки: {ex.Message}", "Ошибка");
                 }
-                
-                StepsList.ItemsSource = stepObjects;
-                Console.WriteLine($"[LoadRecipeData] Загружено {stepObjects.Count} шагов приготовления");
             }
-            catch (Exception ex)
+        }
+
+        private void DisplayRecipe(RecipeDto recipe)
+        {
+            if (recipe == null) return;
+
+            RecipeTitleText.Text = recipe.Title;
+            RecipeDescriptionText.Text = recipe.Description;
+
+            // Загрузка картинки
+            LoadImage(recipe.ImageUrl);
+
+            // Ингредиенты
+            if (recipe.Ingredients != null)
             {
-                Console.WriteLine($"[LoadRecipeData] Ошибка: {ex.Message}");
-                MessageBox.Show($"Ошибка при загрузке рецепта: {ex.Message}", "Ошибка");
+                var ingredientItems = recipe.Ingredients.Select(i => new IngredientViewItem
+                {
+                    Text = $"• {i.Name} {i.Unit}" // Можно добавить количество, если оно есть в DTO
+                }).ToList();
+
+                if (ingredientItems.Count == 0)
+                    ingredientItems.Add(new IngredientViewItem { Text = "Нет информации об ингредиентах" });
+
+                IngredientsList.ItemsSource = ingredientItems;
+            }
+
+            // Шаги приготовления
+            if (recipe.Instructions != null && recipe.Instructions.Any())
+            {
+                var steps = new List<StepViewItem>();
+                int i = 1;
+                foreach (var step in recipe.Instructions)
+                {
+                    steps.Add(new StepViewItem { Number = i++, Text = step });
+                }
+                StepsList.ItemsSource = steps;
+            }
+            else
+            {
+                StepsList.ItemsSource = new List<StepViewItem> { new StepViewItem { Number = 1, Text = "Инструкции не доступны" } };
             }
         }
 
@@ -150,35 +114,23 @@ namespace UP.Pages
         {
             if (string.IsNullOrWhiteSpace(imageUrl))
             {
-                Console.WriteLine("[LoadImage] URL картинки пуст, используем заглушку");
                 SetDefaultImage();
                 return;
             }
 
             try
             {
-                Console.WriteLine($"[LoadImage] Загружаем изображение: {imageUrl}");
-                
-                // Пытаемся загрузить изображение
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
                 bitmap.UriSource = new Uri(imageUrl, UriKind.RelativeOrAbsolute);
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;
                 bitmap.EndInit();
-                
-                bitmap.DownloadCompleted += (s, e) => Console.WriteLine("[LoadImage] Изображение успешно загружено");
-                bitmap.DownloadFailed += (s, e) => 
-                {
-                    Console.WriteLine($"[LoadImage] Ошибка загрузки: {e.ErrorException?.Message}");
-                    SetDefaultImage();
-                };
 
+                bitmap.DownloadFailed += (s, e) => SetDefaultImage();
                 RecipeImage.Source = bitmap;
-                RecipeImage.Height = 250;
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($"[LoadImage] Exception: {ex.Message}");
                 SetDefaultImage();
             }
         }
@@ -187,99 +139,63 @@ namespace UP.Pages
         {
             try
             {
-                // Используем цветную заглушку
-                var bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.UriSource = new Uri("pack://application:,,,/Resources/DefaultRecipe.png", UriKind.Absolute);
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.EndInit();
-                
+                // Укажите правильный путь к заглушке в ресурсах
+                var bitmap = new BitmapImage(new Uri("pack://application:,,,/Resources/DefaultRecipe.png"));
                 RecipeImage.Source = bitmap;
             }
             catch
             {
-                // Если нет файла, просто скрываем
                 RecipeImage.Visibility = Visibility.Collapsed;
             }
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
-            MainWindow.mainWindow.OpenPages(new Receipts());
+            if (NavigationService.CanGoBack) NavigationService.GoBack();
         }
 
         private void AddToShoppingList_Click(object sender, RoutedEventArgs e)
         {
+            if (_currentRecipe?.Ingredients == null) return;
+
             try
             {
-                int addedCount = 0;
-                foreach (var ingredient in _ingredientsList)
+                int count = 0;
+                foreach (var ing in _currentRecipe.Ingredients)
                 {
-                    // ShoppingList хранит строки, добавляем в формате "Название - Количество Единица"
-                    string itemText = $"{ingredient.Name}";
-                    if (ingredient.Quantity > 0)
-                    {
-                        itemText += $" - {ingredient.Quantity} {ingredient.Unit}";
-                    }
-                    
+                    // Добавляем в глобальный список покупок (строки)
+                    string itemText = $"{ing.Name} {ing.Unit}";
                     AppData.ShoppingList.Add(itemText);
-                    addedCount++;
+                    count++;
                 }
 
-                if (addedCount > 0)
-                {
-                    MessageBox.Show(
-                        $"Добавлено {addedCount} ингредиентов в список покупок!",
-                        "Успех",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
-                }
+                if (count > 0)
+                    MessageBox.Show($"Добавлено {count} ингредиентов.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
                 else
-                {
-                    MessageBox.Show("Нечего добавлять", "Информация");
-                }
+                    MessageBox.Show("Нечего добавлять.", "Инфо");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AddToShoppingList_Click] Error: {ex.Message}");
                 MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка");
             }
         }
 
         private async void AddToFavorites_Click(object sender, RoutedEventArgs e)
         {
+            if (_currentRecipe == null) return;
+
             try
             {
-                Console.WriteLine($"[AddToFavorites_Click] Добавляем в избранное: {_currentRecipe.Title}");
-                
-                // Преобразуем в RecipeData формат которы ожидает AddToFavorites
-                var recipeDataForFav = new RecipeData
-                {
-                    Title = _currentRecipe.Title,
-                    Description = _currentRecipe.Description,
-                    ImageUrl = _currentRecipe.ImageUrl,
-                    Ingredients = _ingredientsList.Select(i => $"{i.Name} - {i.Quantity} {i.Unit}").ToList(),
-                    Steps = _currentRecipe.Steps
-                };
+                // Теперь передаем RecipeDto, как требует обновленный AppData
+                bool success = await AppData.AddToFavorites(_currentRecipe);
 
-                var success = await AppData.AddToFavorites(recipeDataForFav);
-                
                 if (success)
-                {
-                    MessageBox.Show(
-                        "Рецепт добавлен в избранное!",
-                        "Успех",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
-                }
+                    MessageBox.Show("Рецепт добавлен в избранное!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
                 else
-                {
-                    MessageBox.Show("Не удалось добавить в избранное", "Ошибка");
-                }
+                    MessageBox.Show("Уже в избранном или ошибка.", "Инфо");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AddToFavorites_Click] Error: {ex.Message}");
                 MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка");
             }
         }

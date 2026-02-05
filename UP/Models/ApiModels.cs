@@ -62,6 +62,12 @@ namespace UP.Models
         }
     }
 
+    public class GigaChatApiResponse
+    {
+        public string Message { get; set; }
+        public int MenuId { get; set; }
+    }
+
     public class IngredientDto
     {
         public int Id { get; set; }
@@ -112,5 +118,12 @@ namespace UP.Models
         public string Unit { get; set; }
         public string Category { get; set; }
         public bool IsPurchased { get; set; }
+    }
+
+    public class AvailableMenu
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }

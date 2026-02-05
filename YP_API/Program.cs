@@ -52,7 +52,6 @@ builder.Services.AddHttpClient<IPovarScraperService, PovarScraperService>();
 var app = builder.Build();
 ;
 
-// юбрнлюрхвеяйне янгдюмхе аюгш дюммшу
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<RecipePlannerContext>();

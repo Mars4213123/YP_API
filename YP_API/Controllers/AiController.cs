@@ -6,12 +6,6 @@ using YP_API.Models;
 namespace YP_API.Controllers
 {
 
-    public class UserQueryDto
-    {
-        public string Prompt { get; set; }
-        public List<Ingredient> Ingredients { get; set; }
-    }
-
     [Route("api/[controller]")]
     [ApiController]
     public class AiController : ControllerBase
@@ -24,19 +18,17 @@ namespace YP_API.Controllers
         }
 
         [HttpPost("ask/{userId}")]
-        public async Task<IActionResult> AskGigaChat(int userId, [FromBody] UserQueryDto input)
+        public async Task<IActionResult> AskGigaChat(int userId, [FromBody] List<Ingredient> Ingredients)
         {
-            if (string.IsNullOrWhiteSpace(input.Prompt) && (input.Ingredients == null || !input.Ingredients.Any()))
+            if (Ingredients == null || !Ingredients.Any())
             {
                 return BadRequest("Запрос не может быть пустым.");
             }
 
             try
             {
-                // 1. Получаем токен и ответ от AI (без изменений)
                 var token = await GigaChatHelper.GetToken(GigaChatHelper.ClientId, GigaChatHelper.AuthorizationKey);
-                // ... логика получения промпта ...
-                var generatedMenu = await GigaChatHelper.GenerateAndParseMenuAsync(token, input.Ingredients, 1);
+                var generatedMenu = await GigaChatHelper.GenerateAndParseMenuAsync(token, Ingredients, 1);
 
                 if (generatedMenu == null) return StatusCode(502, "Ошибка генерации меню.");
 
@@ -49,11 +41,6 @@ namespace YP_API.Controllers
                 };
 
                 DateTime startDate = DateTime.Today;
-
-                // === ИСПРАВЛЕНИЕ НАЧИНАЕТСЯ ЗДЕСЬ ===
-
-                // Создаем словарь для отслеживания ингредиентов в рамках ЭТОГО запроса.
-                // Ключ: Название в нижнем регистре, Значение: Сущность ингредиента
                 var localIngredientCache = new Dictionary<string, Ingredient>();
 
                 foreach (var itemDto in generatedMenu.Items)
@@ -66,29 +53,25 @@ namespace YP_API.Controllers
                         Calories = itemDto.Recipe.Calories,
                         PrepTime = itemDto.Recipe.PrepTime,
                         CookTime = itemDto.Recipe.CookTime,
-                        ImageUrl = "",
                         RecipeIngredients = new List<RecipeIngredient>()
                     };
 
                     foreach (var ingDto in itemDto.Recipe.Ingredients)
                     {
                         var ingName = ingDto.Name.Trim();
-                        var ingKey = ingName.ToLower(); // Ключ для поиска
+                        var ingKey = ingName.ToLower(); 
 
                         Ingredient ingredientEntity;
 
-                        // ШАГ 1: Проверяем, обрабатывали ли мы этот ингредиент в текущем цикле
                         if (localIngredientCache.ContainsKey(ingKey))
                         {
                             ingredientEntity = localIngredientCache[ingKey];
                         }
                         else
                         {
-                            // ШАГ 2: Если нет в кэше, ищем в БД
                             ingredientEntity = await _context.Ingredients
                                 .FirstOrDefaultAsync(i => i.Name == ingName);
 
-                            // ШАГ 3: Если нет в БД, создаем новый
                             if (ingredientEntity == null)
                             {
                                 ingredientEntity = new Ingredient
@@ -98,11 +81,8 @@ namespace YP_API.Controllers
                                     Category = "Сгенерировано",
                                     Allergens = ""
                                 };
-                                // Важно: Явно добавляем в контекст, чтобы EF знал о нем
                                 _context.Ingredients.Add(ingredientEntity);
                             }
-
-                            // ШАГ 4: Добавляем в локальный кэш, чтобы следующий рецепт использовал ЭТОТ ЖЕ объект
                             localIngredientCache[ingKey] = ingredientEntity;
                         }
 
@@ -134,7 +114,6 @@ namespace YP_API.Controllers
             }
             catch (Exception ex)
             {
-                // Логируем внутреннее исключение, так как оно содержит детали SQL ошибки
                 var innerMessage = ex.InnerException?.Message ?? "";
                 return StatusCode(500, $"Внутренняя ошибка сервера: {ex.Message} {innerMessage}");
             }

@@ -176,6 +176,7 @@
     <Compile Include="Helpers\AppData.cs" />
     <Compile Include="Helpers\Toast.cs" />
     <Compile Include="Models\ApiModels.cs" />
+    <Compile Include="Models\Menu.cs" />
     <Compile Include="Models\Request.cs" />
     <Compile Include="Models\Responce\ResponceMessage.cs" />
     <Compile Include="Models\Responce\ResponceToken.cs" />

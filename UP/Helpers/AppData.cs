@@ -5,32 +5,42 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using UP.Models;
-using UP.Pages;
 using UP.Services;
 
 namespace UP
 {
+    // Вспомогательный класс для отображения в списке меню
+    public class DailyMenuViewModel
+    {
+        public string Day { get; set; }
+        public string Meal { get; set; }
+        public string Description { get; set; }
+        public int RecipeId { get; set; }
+    }
+
     public static class AppData
     {
         public static ApiService ApiService { get; set; }
         public static UserData CurrentUser { get; set; }
 
-        public static ObservableCollection<Models.IngredientDto> Products { get; } = new ObservableCollection<Models.IngredientDto>();
-        public static ObservableCollection<Receipts.DailyMenu> WeeklyMenu { get; } = new ObservableCollection<Receipts.DailyMenu>();
-        public static ObservableCollection<string> ShoppingList { get; } = new ObservableCollection<string>();
-        public static ObservableCollection<RecipeDetailsPage.RecipeData> Favorites { get; } = new ObservableCollection<RecipeDetailsPage.RecipeData>();
-        public static ObservableCollection<Models.RecipeDto> AllRecipes { get; } = new ObservableCollection<Models.RecipeDto>();
-        public static List<RecipeDto> FridgeRecipes { get; set; }
+        public static ObservableCollection<IngredientDto> Products { get; } = new ObservableCollection<IngredientDto>();
 
+        public static ObservableCollection<DailyMenuViewModel> WeeklyMenu { get; } = new ObservableCollection<DailyMenuViewModel>();
+
+        public static ObservableCollection<string> ShoppingList { get; } = new ObservableCollection<string>();
+
+        // ИСПРАВЛЕНО: Теперь здесь RecipeDto, а не RecipeData
+        public static ObservableCollection<RecipeDto> Favorites { get; } = new ObservableCollection<RecipeDto>();
+
+        public static ObservableCollection<RecipeDto> AllRecipes { get; } = new ObservableCollection<RecipeDto>();
+
+        public static List<RecipeDto> FridgeRecipes { get; set; } = new List<RecipeDto>();
 
         public static async Task<bool> InitializeAfterLogin(UserData user)
         {
             CurrentUser = user;
             return await LoadInitialData();
         }
-
-
-       
 
         public static async Task<bool> LoadInitialData()
         {
@@ -44,7 +54,7 @@ namespace UP
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка загрузки данных: {ex.Message}", "Ошибка");
+                MessageBox.Show($"Ошибка инициализации: {ex.Message}");
                 return false;
             }
         }
@@ -55,34 +65,21 @@ namespace UP
             {
                 var recipes = await ApiService.GetRecipesAsync();
                 AllRecipes.Clear();
-
-                foreach (var recipe in recipes)
-                {
-                    AllRecipes.Add(recipe);
-                }
+                foreach (var r in recipes) AllRecipes.Add(r);
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error loading recipes: {ex.Message}");
-            }
+            catch { }
         }
 
         public static async Task LoadFavorites()
         {
             try
             {
-                var favorites = await ApiService.GetFavoritesAsync();
+                var favs = await ApiService.GetFavoritesAsync();
                 Favorites.Clear();
-
-                foreach (var recipe in favorites)
-                {
-                    Favorites.Add(ConvertToRecipeData(recipe));
-                }
+                // ИСПРАВЛЕНО: Просто добавляем DTO, конвертация не нужна
+                foreach (var r in favs) Favorites.Add(r);
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error loading favorites: {ex.Message}");
-            }
+            catch { }
         }
 
         public static async Task LoadCurrentMenu()
@@ -91,171 +88,85 @@ namespace UP
             {
                 var menu = await ApiService.GetCurrentMenuAsync();
                 WeeklyMenu.Clear();
-
-                if (menu != null && menu.Items != null)
+                if (menu?.Days != null)
                 {
-                    // Группируем элементы меню по дате
-                    var groupedItems = menu.Items
-                        .GroupBy(i => i.Date) // Группируем по строке даты "yyyy-MM-dd"
-                        .OrderBy(g => g.Key); // Сортируем по дате
-
-                    foreach (var dayGroup in groupedItems)
+                    foreach (var day in menu.Days)
                     {
-                        foreach (var meal in dayGroup)
+                        foreach (var meal in day.Meals)
                         {
-                            WeeklyMenu.Add(new Receipts.DailyMenu
+                            WeeklyMenu.Add(new DailyMenuViewModel
                             {
-                                Day = dayGroup.Key.ToString("dd.MM.yyyy"), // Преобразуем дату в строку
-                                                                           // Дата (строка)
-                                Meal = meal.RecipeTitle,
-                                Description = $"{meal.MealType}", // Или другое описание
+                                Day = day.Date,
+                                Meal = meal.MealType,
+                                Description = meal.RecipeTitle,
                                 RecipeId = meal.RecipeId
                             });
                         }
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error loading menu: {ex.Message}");
-            }
+            catch { }
         }
-
 
         public static async Task LoadShoppingList()
         {
             try
             {
-                var shoppingList = await ApiService.GetCurrentShoppingListAsync();
+                var list = await ApiService.GetCurrentShoppingListAsync();
                 ShoppingList.Clear();
-
-                if (shoppingList != null && shoppingList.Items != null)
+                if (list?.Items != null)
                 {
-                    foreach (var item in shoppingList.Items)
+                    foreach (var item in list.Items)
                     {
                         if (!item.IsPurchased)
-                        {
                             ShoppingList.Add($"{item.Name} - {item.Quantity} {item.Unit}");
-                        }
                     }
-
-                    Console.WriteLine($"Загружено {shoppingList.Items.Count} товаров в список покупок");
-                }
-                else
-                {
-                    Console.WriteLine("Список покупок пуст или не загружен");
                 }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error loading shopping list: {ex.Message}");
-                MessageBox.Show($"Ошибка загрузки списка покупок: {ex.Message}", "Ошибка");
-            }
+            catch { }
         }
 
-        public static async Task<bool> AddToFavorites(RecipeDetailsPage.RecipeData recipe)
+        // ИСПРАВЛЕНО: Принимаем RecipeDto
+        public static async Task<bool> AddToFavorites(RecipeDto recipe)
         {
-            try
+            if (recipe == null) return false;
+            var success = await ApiService.ToggleFavoriteAsync(recipe.Id);
+            if (success && !Favorites.Any(f => f.Id == recipe.Id))
             {
-                Console.WriteLine($"[AddToFavorites] Добавляем в избранное: {recipe.Title}");
-                
-                var apiRecipe = AllRecipes.FirstOrDefault(r => r.Title == recipe.Title);
-                if (apiRecipe != null)
-                {
-                    var success = await ApiService.ToggleFavoriteAsync(apiRecipe.Id);
-                    
-                    if (success)
-                    {
-                        Console.WriteLine($"[AddToFavorites] Успешно добавлено на сервер, добавляем в локальный список");
-                        
-                        // Добавляем в локальный список если его там еще нет
-                        if (!Favorites.Any(f => f.Title == recipe.Title))
-                        {
-                            Favorites.Add(recipe);
-                            Console.WriteLine($"[AddToFavorites] Рецепт добавлен в локальный список. Всего: {Favorites.Count}");
-                        }
-                        else
-                        {
-                            Console.WriteLine($"[AddToFavorites] Рецепт уже в списке");
-                        }
-                    }
-                    
-                    return success;
-                }
-                
-                Console.WriteLine($"[AddToFavorites] Рецепт не найден в AllRecipes");
-                return false;
+                Favorites.Add(recipe);
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[AddToFavorites] Exception: {ex.Message}");
-                return false;
-            }
+            return success;
         }
+
+        // ИСПРАВЛЕНО: Принимаем RecipeDto
+        public static async Task<bool> RemoveFromFavorites(RecipeDto recipe)
+        {
+            if (recipe == null) return false;
+            var success = await ApiService.ToggleFavoriteAsync(recipe.Id);
+            if (success)
+            {
+                var item = Favorites.FirstOrDefault(f => f.Id == recipe.Id);
+                if (item != null) Favorites.Remove(item);
+            }
+            return success;
+        }
+
         public static async Task LoadFridgeRecipes()
         {
-            var userId = CurrentUser?.Id ?? 0;
-            if (userId == 0)
-            {
-                FridgeRecipes = new List<RecipeDto>();
-                return;
-            }
-
-            FridgeRecipes = await ApiService.GetRecipesByFridgeAsync(userId);
-        }
-
-        public static async Task<bool> RemoveFromFavorites(RecipeDetailsPage.RecipeData recipe)
-        {
-            try
-            {
-                Console.WriteLine($"[RemoveFromFavorites] Удаляем из избранного: {recipe.Title}");
-                
-                var apiRecipe = AllRecipes.FirstOrDefault(r => r.Title == recipe.Title);
-                if (apiRecipe != null)
-                {
-                    var success = await ApiService.ToggleFavoriteAsync(apiRecipe.Id);
-                    
-                    if (success)
-                    {
-                        Console.WriteLine($"[RemoveFromFavorites] Успешно удалено на сервере");
-                        return true;
-                    }
-                    
-                    return false;
-                }
-                
-                Console.WriteLine($"[RemoveFromFavorites] Рецепт не найден в AllRecipes");
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[RemoveFromFavorites] Exception: {ex.Message}");
-                return false;
-            }
-        }
-
-        private static RecipeDetailsPage.RecipeData ConvertToRecipeData(Models.RecipeDto recipe)
-        {
-            return new RecipeDetailsPage.RecipeData
-            {
-                Title = recipe.Title,
-                Description = recipe.Description,
-                ImageUrl = recipe.ImageUrl,
-                //Ingredients = recipe.Ingredients?.ConvertAll(i => $"{i.Name} - {i.Quantity} {i.Unit}") ?? new List<string>(),
-                Steps = recipe.Instructions ?? new List<string>()
-            };
+            if (CurrentUser == null) return;
+            FridgeRecipes = await ApiService.GetRecipesByFridgeAsync(CurrentUser.Id);
         }
 
         public static void Logout()
         {
             CurrentUser = null;
             ApiService.ClearToken();
-
             Products.Clear();
             WeeklyMenu.Clear();
             ShoppingList.Clear();
             Favorites.Clear();
             AllRecipes.Clear();
+            FridgeRecipes?.Clear();
         }
     }
 }
