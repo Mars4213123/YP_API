@@ -22,7 +22,6 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
-
         <Style x:Key="CardStyle" TargetType="Border">
             <Setter Property="Background" Value="#2D2D30"/>
             <Setter Property="BorderBrush" Value="#404040"/>
@@ -72,7 +71,7 @@
                                Stretch="Uniform"
                                Margin="0,0,0,15"
                                VerticalAlignment="Top"
-                               MaxHeight="300"/>
+                               MaxHeight="250"/>
 
                         <TextBlock x:Name="RecipeDescriptionText"
                                    Text="Краткое описание рецепта."
