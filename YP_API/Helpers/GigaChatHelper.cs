@@ -11,7 +11,7 @@ namespace YP_API.Helpers
     {
         public static string ClientId = "019bca1f-0f50-72b2-b33b-7fb5c3b89be6";
         public static string AuthorizationKey = "MDE5YmNhMWYtMGY1MC03MmIyLWIzM2ItN2ZiNWMzYjg5YmU2OjE2NjQxYWQ0LWVhMjctNDYzYi1hYjRmLTRjZTI4ZDU1NTVkOA==";
-        public static async Task<Models.AIAPI.Responce.ResponseMessage> GetAnswer(string token, List<Models.AIAPI.Request.Message> messages)
+        public static async Task<Models.AIAPI.Responce.ResponseMessage> GetAnswer(string token, List<Request.Message> messages)
         {
             Models.AIAPI.Responce.ResponseMessage responseMessage = null;
             string Url = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions";
@@ -61,16 +61,14 @@ namespace YP_API.Helpers
                 Items = new List<GeneratedMenuItemDto>()
             };
 
-            // Генерируем каждый день отдельно
             for (int i = 1; i <= daysCount; i++)
             {
-                // 1. Промпт теперь просит меню ТОЛЬКО НА 1 ДЕНЬ (день № i)
                 string systemPrompt = CreateSingleDayPrompt(ingredients, i);
 
                 var messages = new List<Request.Message>
-        {
-            new Request.Message { role = "user", content = systemPrompt }
-        };
+                {
+                    new Request.Message { role = "user", content = systemPrompt }
+                };
 
                 var response = await GetAnswer(token, messages);
                 if (response?.choices?.Count > 0)
@@ -78,7 +76,6 @@ namespace YP_API.Helpers
                     string json = CleanJson(response.choices[0].message.content);
                     try
                     {
-                        // Десериализуем маленькую часть (1 день)
                         var dayMenu = JsonConvert.DeserializeObject<GeneratedMenuDto>(json);
                         if (dayMenu?.Items != null)
                         {
@@ -88,7 +85,6 @@ namespace YP_API.Helpers
                     catch (Exception ex)
                     {
                         Console.WriteLine($"Ошибка генерации дня {i}: {ex.Message}");
-                        // Можно добавить retry (повторную попытку) здесь
                     }
                 }
             }
@@ -152,46 +148,45 @@ namespace YP_API.Helpers
         }
         public static string CreateMenuPrompt(List<Ingredient> ingredients, int daysCount)
         {
-            // ИСПРАВЛЕНИЕ: Преобразуем список объектов в строку с названиями через запятую
             string ingredientsString = string.Join(", ", ingredients.Select(i => i.Name));
 
             return $@"
-Ты — профессиональный диетолог и шеф-повар. Твоя задача — составить меню на {daysCount} дней.
-Меню должно быть составлено с приоритетным использованием следующих ингредиентов (но можно добавлять и обычные специи/масло): {ingredientsString}.
-
-ТЫ ОБЯЗАН ВЕРНУТЬ ОТВЕТ ТОЛЬКО В ФОРМАТЕ JSON. 
-НЕ ПИШИ НИКАКОГО ВСТУПИТЕЛЬНОГО ИЛИ ЗАКЛЮЧИТЕЛЬНОГО ТЕКСТА.
-НЕ ИСПОЛЬЗУЙ MARKDOWN (```json). ПРОСТО ЧИСТЫЙ JSON.
-
-Используй следующую структуру JSON:
-{{
-  ""menuName"": ""Название меню"",
-  ""items"": [
-    {{
-      ""dayNumber"": 1,
-      ""mealType"": ""Завтрак"",
-      ""recipe"": {{
-        ""title"": ""Название блюда"",
-        ""description"": ""Краткое описание"",
-        ""instructions"": ""Шаг 1... Шаг 2..."",
-        ""calories"": 350,
-        ""prepTime"": 15,
-        ""cookTime"": 20,
-        ""ingredients"": [
-            {{ ""name"": ""Продукт 1"", ""quantity"": 2, ""unit"": ""шт"" }},
-            {{ ""name"": ""Продукт 2"", ""quantity"": 100, ""unit"": ""мл"" }}
-        ]
-      }}
-    }}
-  ]
-}}
-";
+                    Ты — профессиональный диетолог и шеф-повар. Твоя задача — составить меню на {daysCount} дней.
+                    Меню должно быть составлено с приоритетным использованием следующих ингредиентов (но можно добавлять и обычные специи/масло): {ingredientsString}.
+                    
+                    ТЫ ОБЯЗАН ВЕРНУТЬ ОТВЕТ ТОЛЬКО В ФОРМАТЕ JSON. 
+                    НЕ ПИШИ НИКАКОГО ВСТУПИТЕЛЬНОГО ИЛИ ЗАКЛЮЧИТЕЛЬНОГО ТЕКСТА.
+                    НЕ ИСПОЛЬЗУЙ MARKDOWN (```json). ПРОСТО ЧИСТЫЙ JSON.
+                    
+                    Используй следующую структуру JSON:
+                    {{
+                      ""menuName"": ""Название меню"",
+                      ""items"": [
+                        {{
+                          ""dayNumber"": 1,
+                          ""mealType"": ""Завтрак"",
+                          ""recipe"": {{
+                            ""title"": ""Название блюда"",
+                            ""description"": ""Краткое описание"",
+                            ""instructions"": ""Шаг 1... Шаг 2..."",
+                            ""calories"": 350,
+                            ""prepTime"": 15,
+                            ""cookTime"": 20,
+                            ""imageurl"": ""Ссылка на картинку по типу (www.image.ru)""
+                            ""ingredients"": [
+                                {{ ""name"": ""Продукт 1"", ""quantity"": 2, ""unit"": ""шт"" }},
+                                {{ ""name"": ""Продукт 2"", ""quantity"": 100, ""unit"": ""мл"" }}
+                            ]
+                          }}
+                        }}
+                      ]
+                    }}
+                    ";
         }
         private static string CleanJson(string json)
         {
             if (string.IsNullOrEmpty(json)) return json;
 
-            // Убираем ```json в начале и ``` в конце, если они есть
             json = json.Replace("```json", "").Replace("```", "").Trim();
             return json;
         }
@@ -228,6 +223,5 @@ namespace YP_API.Helpers
             }
             return ReturnToken;
         }
-
     }
 }

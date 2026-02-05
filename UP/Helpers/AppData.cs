@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using UP.Models;
-using UP.Models;
 using UP.Pages;
 using UP.Services;
 
@@ -258,11 +257,5 @@ namespace UP
             Favorites.Clear();
             AllRecipes.Clear();
         }
-
-
-
-
-
-
     }
 }

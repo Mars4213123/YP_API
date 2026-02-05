@@ -5,6 +5,8 @@ using YP_API.Interfaces;
 using YP_API.Repositories;
 using YP_API.Services;
 
+System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12 | System.Net.SecurityProtocolType.Tls13;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddCors(options =>
@@ -30,6 +32,8 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+
+
 var connectionString = "Server=localhost;Port=3306;Database=recipe_planner;Uid=root;Pwd=;";
 
 builder.Services.AddDbContext<RecipePlannerContext>(options =>
@@ -42,7 +46,11 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<YP_API.Interfaces.IMenuService, YP_API.Services.MenuService>();
 
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient<IPovarScraperService, PovarScraperService>();
+
 var app = builder.Build();
+;
 
 // ÀÂÒÎÌÀÒÈ×ÅÑÊÎÅ ÑÎÇÄÀÍÈÅ ÁÀÇÛ ÄÀÍÍÛÕ
 using (var scope = app.Services.CreateScope())
@@ -82,7 +90,6 @@ if (app.Environment.IsDevelopment())
 
 app.MapControllers();
 
-// Ýíäïîèíòû äëÿ ïðîâåðêè ÁÄ (èñïðàâëåííûå)
 app.MapGet("/api/debug/db-status", async (RecipePlannerContext context) =>
 {
     try

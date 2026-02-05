@@ -170,7 +170,11 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Elements\Notification.xaml.cs">
+      <DependentUpon>Notification.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Helpers\AppData.cs" />
+    <Compile Include="Helpers\Toast.cs" />
     <Compile Include="Models\ApiModels.cs" />
     <Compile Include="Models\Request.cs" />
     <Compile Include="Models\Responce\ResponceMessage.cs" />
@@ -184,6 +188,10 @@
     </Compile>
     <Compile Include="Services\ApiService.cs" />
     <Compile Include="Services\DatabaseServiceMySQL.cs" />
+    <Page Include="Elements\Notification.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

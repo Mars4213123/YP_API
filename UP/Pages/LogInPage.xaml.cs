@@ -4,8 +4,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using UP.Models;
-using UP.Services;
+using UP.Elements;
+using UP.Helpers;
 
 namespace UP.Pages
 {
@@ -41,14 +41,14 @@ namespace UP.Pages
 
             if (string.IsNullOrWhiteSpace(username))
             {
-                ShowMessage("Введите имя пользователя");
+                ShowMessage("Введите имя пользователя", ToastType.Info);
                 UsernameTextBox.Focus();
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(password))
             {
-                ShowMessage("Введите пароль");
+                ShowMessage("Введите пароль", ToastType.Info);
                 PasswordBox.Focus();
                 return;
             }
@@ -63,17 +63,17 @@ namespace UP.Pages
                 var success = await AppData.InitializeAfterLogin(user);
                 if (success)
                 {
-                    ShowMessage($"Успешный вход! Добро пожаловать, {user.Username}");
+                    ShowMessage($"Успешный вход! Добро пожаловать, {user.Username}", ToastType.Success);
                     MainWindow.mainWindow.OpenPages(new Receipts());
                 }
             }
             catch (HttpRequestException httpEx)
             {
-                ShowMessage($"Ошибка сети: {httpEx.Message}\n\nПроверьте:\n1. Запущен ли бекенд\n2. Блокирует ли фаервол\n3. Доступен ли localhost:7197");
+                ShowMessage($"Ошибка сети: {httpEx.Message}\n\nПроверьте:\n1. Запущен ли бекенд\n2. Блокирует ли фаервол\n3. Доступен ли localhost:7197", ToastType.Error);
             }
             catch (Exception ex)
             {
-                ShowMessage($"Ошибка входа: {ex.Message}");
+                ShowMessage($"Ошибка входа: {ex.Message}", ToastType.Error);
             }
             finally
             {
@@ -82,10 +82,12 @@ namespace UP.Pages
             }
         }
 
-        private void ShowMessage(string message)
+        private void ShowMessage(string message, ToastType type)
         {
-            MessageBox.Show(message, "Вход в систему",
-                          MessageBoxButton.OK, MessageBoxImage.Information);
+            ToastContainer.ShowToast(message, type);
+
+            //MessageBox.Show(message, "Вход в систему",
+            //              MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void RegisterText_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

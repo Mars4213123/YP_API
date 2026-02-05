@@ -5,8 +5,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using UP.Helpers;
 using UP.Models;
-using UP.Services;
 
 namespace UP.Pages
 {
@@ -49,7 +49,6 @@ namespace UP.Pages
             _products = new ObservableCollection<Models.IngredientDto>(products);
             ProductsListView.ItemsSource = _products;
         }
-
         private void InitializeData()
         {
             _products = new ObservableCollection<Models.IngredientDto>();
@@ -66,12 +65,10 @@ namespace UP.Pages
 
             LoadAvailableMenusOnInit();
         }
-
         private async void LoadAvailableMenusOnInit()
         {
             await LoadAvailableMenus();
         }
-
         private void LoadUserInfo()
         {
             if (AppData.CurrentUser != null)
@@ -79,7 +76,6 @@ namespace UP.Pages
                 UserInfoText.Text = $"Пользователь: {AppData.CurrentUser.Username}";
             }
         }
-
         private async void AvailableMenuSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (AvailableMenusListView.SelectedItem is AvailableMenu selectedMenu)
@@ -87,7 +83,6 @@ namespace UP.Pages
                 await DisplayMenuDetails(selectedMenu);
             }
         }
-
         private async Task DisplayMenuDetails(AvailableMenu selectedMenu)
         {
             try
@@ -96,7 +91,8 @@ namespace UP.Pages
 
                 if (fullMenuDto == null)
                 {
-                    MessageBox.Show("Не удалось загрузить детали меню", "Ошибка");
+                    ToastContainer.ShowToast("Не удалось загрузить детали меню", Elements.ToastType.Error);
+                    //MessageBox.Show("Не удалось загрузить детали меню", "Ошибка");
                     return;
                 }
 
@@ -123,7 +119,8 @@ namespace UP.Pages
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось загрузить меню: " + ex.Message, "Ошибка");
+                ToastContainer.ShowToast("Не удалось загрузить меню: " + ex.Message, Elements.ToastType.Error);
+                //MessageBox.Show("Не удалось загрузить меню: " + ex.Message, "Ошибка");
             }
         }
 
@@ -158,24 +155,21 @@ namespace UP.Pages
                             var key = ingredient.Name.ToLower();
                             if (ingredientDict.ContainsKey(key))
                             {
-                                ingredientDict[key].Quantity += ingredient.Quantity;
+                                //ingredientDict[key].Quantity += ingredient.Quantity;
                             }
                             else
                             {
                                 ingredientDict[key] = new ShoppingListItemDto
                                 {
                                     Name = ingredient.Name,
-                                    Quantity = ingredient.Quantity,
+                                    //Quantity = ingredient.Quantity,
                                     Unit = ingredient.Unit ?? "шт",
                                     IsPurchased = false
                                 };
                             }
                         }
                     }
-                    catch
-                    {
-                        // Игнорируем ошибки отдельных рецептов
-                    }
+                    catch {}
                 }
 
                 foreach (var item in ingredientDict.Values.OrderBy(x => x.Name))
@@ -188,7 +182,8 @@ namespace UP.Pages
             catch (Exception ex)
             {
                 ShoppingListInfo.Text = "Ошибка при генерации списка покупок";
-                MessageBox.Show("Не удалось сгенерировать список покупок: " + ex.Message, "Ошибка");
+
+                ToastContainer.ShowToast("Не удалось сгенерировать список покупок: " + ex.Message, Elements.ToastType.Error);
             }
         }
 
@@ -222,12 +217,13 @@ namespace UP.Pages
                         return;
                     }
                 }
-
-                MessageBox.Show("Не удалось загрузить рецепт", "Ошибка");
+                ToastContainer.ShowToast("Не удалось загрузить рецепт", Elements.ToastType.Error);
+                //MessageBox.Show("Не удалось загрузить рецепт", "Ошибка");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка загрузки рецепта: {ex.Message}", "Ошибка");
+                ToastContainer.ShowToast($"Ошибка загрузки рецепта: {ex.Message}", Elements.ToastType.Error);
+                //MessageBox.Show($"Ошибка загрузки рецепта: {ex.Message}", "Ошибка");
             }
         }
 
@@ -253,7 +249,7 @@ namespace UP.Pages
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Не удалось загрузить список меню: " + ex.Message, "Ошибка");
+                ToastContainer.ShowToast("Не удалось загрузить список меню: " + ex.Message, Elements.ToastType.Error);
             }
         }
 
@@ -294,7 +290,7 @@ namespace UP.Pages
             {
                 if (AppData.CurrentUser == null)
                 {
-                    MessageBox.Show("Пользователь не авторизован", "Ошибка");
+                    ToastContainer.ShowToast("Пользователь не авторизован", Elements.ToastType.Error);
                     return;
                 }
 
@@ -302,7 +298,7 @@ namespace UP.Pages
 
                 if (!productsList.Any())
                 {
-                    MessageBox.Show("В холодильнике нет продуктов", "Информация");
+                    ToastContainer.ShowToast("В холодильнике нет продуктов", Elements.ToastType.Info);
                     return;
                 }
 
@@ -310,7 +306,7 @@ namespace UP.Pages
 
                 if (!setOk)
                 {
-                    MessageBox.Show("Не удалось сохранить продукты в инвентарь", "Ошибка");
+                    ToastContainer.ShowToast("Не удалось сохранить продукты в инвентарь", Elements.ToastType.Error);
                     return;
                 }
 
@@ -321,7 +317,7 @@ namespace UP.Pages
                     var fridgeRecipes = await AppData.ApiService.GetRecipesByFridgeAsync(AppData.CurrentUser.Id);
                     if (fridgeRecipes == null || fridgeRecipes.Count == 0)
                     {
-                        MessageBox.Show("Найдено 0 рецептов из ваших продуктов", "Информация");
+                        ToastContainer.ShowToast("Найдено 0 рецептов из ваших продуктов", Elements.ToastType.Info);
                         return;
                     }
                 }
@@ -335,11 +331,11 @@ namespace UP.Pages
                     await DisplayMenuDetails(lastMenu);
                 }
 
-                MessageBox.Show("Холодильник обновлен и меню сгенерировано!", "Успех");
+                ToastContainer.ShowToast("Холодильник обновлен и меню сгенерировано!", Elements.ToastType.Success);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка");
+                ToastContainer.ShowToast($"Ошибка: {ex.Message}", Elements.ToastType.Error);
             }
         }
 
@@ -394,7 +390,6 @@ namespace UP.Pages
         //        MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка");
         //    }
         //}
-
         private async void RemoveProduct_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -412,7 +407,7 @@ namespace UP.Pages
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка удаления продукта: {ex.Message}", "Ошибка");
+                ToastContainer.ShowToast($"Ошибка удаления продукта: {ex.Message}", Elements.ToastType.Error);
             }
         }
 
@@ -421,19 +416,19 @@ namespace UP.Pages
         {
             if (!(AvailableMenusListView.SelectedItem is AvailableMenu selectedMenu))
             {
-                MessageBox.Show("Сначала выберите меню из списка", "Информация");
+                ToastContainer.ShowToast("Сначала выберите меню из списка", Elements.ToastType.Info);
                 return;
             }
 
             await GenerateShoppingListForMenu(selectedMenu.Id);
-            MessageBox.Show("Список покупок обновлен!", "Успех");
+            ToastContainer.ShowToast("Список покупок обновлен!", Elements.ToastType.Success);
         }
 
         private async void ExportShoppingList_Click(object sender, RoutedEventArgs e)
         {
             if (_shoppingList == null || _shoppingList.Count == 0)
             {
-                MessageBox.Show("Список покупок пуст. Сначала выберите меню!", "Информация");
+                ToastContainer.ShowToast("Список покупок пуст. Сначала выберите меню!", Elements.ToastType.Info);
                 return;
             }
 
@@ -449,18 +444,19 @@ namespace UP.Pages
                 try
                 {
                     var lines = new List<string>
-                    {
-                        "Список покупок",
-                        "==================",
-                        $"Дата: {DateTime.Now:dd.MM.yyyy HH:mm}",
-                        ""
-                    };
+            {
+                "Список покупок",
+                "==================",
+                $"Дата: {DateTime.Now:dd.MM.yyyy HH:mm}",
+                ""
+            };
 
                     foreach (var item in _shoppingList)
                     {
                         if (item != null)
                         {
                             var status = item.IsPurchased ? "✓" : "○";
+                            // Примечание: у вас закомментировано Quantity — раскомментируйте, если нужно
                             lines.Add($"{status} {item.Name} - {item.Quantity} {item.Unit}");
                         }
                     }
@@ -469,11 +465,11 @@ namespace UP.Pages
                     lines.Add($"Всего товаров: {_shoppingList.Count}");
 
                     System.IO.File.WriteAllLines(saveDialog.FileName, lines, System.Text.Encoding.UTF8);
-                    MessageBox.Show($"Список покупок экспортирован в:\n{saveDialog.FileName}", "Успех");
+                    ToastContainer.ShowToast($"Список покупок экспортирован:\n{System.IO.Path.GetFileName(saveDialog.FileName)}", Elements.ToastType.Success);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Ошибка при экспорте: {ex.Message}", "Ошибка");
+                    ToastContainer.ShowToast($"Ошибка при экспорте: {ex.Message}", Elements.ToastType.Error);
                 }
             }
         }
@@ -497,13 +493,14 @@ namespace UP.Pages
         private async void RefreshMenus_Click(object sender, RoutedEventArgs e)
         {
             await LoadAvailableMenus();
-            MessageBox.Show("Список меню обновлен", "Успех");
+            ToastContainer.ShowToast("Список меню обновлен", Elements.ToastType.Success);
         }
 
         private async void DeleteMenu_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.Tag is int menuId)
             {
+                // Подтверждение — оставляем MessageBox
                 var result = MessageBox.Show(
                     "Вы уверены что хотите удалить это меню?",
                     "Подтверждение удаления",
@@ -524,16 +521,16 @@ namespace UP.Pages
                             CurrentMenuDescription.Text = "Выберите меню из списка слева";
                             _weeklyMenu.Clear();
 
-                            MessageBox.Show("Меню удалено", "Успех");
+                            ToastContainer.ShowToast("Меню удалено", Elements.ToastType.Success);
                         }
                         else
                         {
-                            MessageBox.Show("Не удалось удалить меню", "Ошибка");
+                            ToastContainer.ShowToast("Не удалось удалить меню", Elements.ToastType.Error);
                         }
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"Ошибка при удалении меню: {ex.Message}", "Ошибка");
+                        ToastContainer.ShowToast($"Ошибка при удалении меню: {ex.Message}", Elements.ToastType.Error);
                     }
                 }
             }
@@ -551,7 +548,7 @@ namespace UP.Pages
                 try
                 {
                     await DisplayMenuDetails(selectedMenu);
-                    MessageBox.Show($"Меню '{selectedMenu.Name}' выбрано!", "Успех");
+                    //MessageBox.Show($"Меню '{selectedMenu.Name}' выбрано!", "Успех");
                 }
                 catch (Exception ex)
                 {
