@@ -39,8 +39,6 @@ namespace UP.Models
         
         [JsonProperty("instructions")]
         public string InstructionsRaw { get; set; }
-        
-        // Вспомогательное свойство для удобства
         public List<string> Instructions
         {
             get
@@ -48,7 +46,6 @@ namespace UP.Models
                 if (string.IsNullOrWhiteSpace(InstructionsRaw))
                     return new List<string>();
                 
-                // Если это одна строка, разбиваем по точкам или просто возвращаем как есть
                 if (InstructionsRaw.Contains("."))
                 {
                     return InstructionsRaw.Split(new[] { '.', '\n' }, System.StringSplitOptions.RemoveEmptyEntries)
@@ -72,7 +69,7 @@ namespace UP.Models
     {
         public int Id { get; set; }
         public string Name { get; set; }
-        //public decimal Quantity { get; set; }
+        public decimal Quantity { get; set; }
         public string Unit { get; set; }
         public string Category { get; set; }
     }

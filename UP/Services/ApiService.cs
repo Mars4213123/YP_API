@@ -85,7 +85,6 @@ namespace UP.Services
                 throw new Exception($"Login error: {ex.Message}");
             }
         }
-
         public async Task<UserData> RegisterAsync(string username, string email, string password)
         {
             try
@@ -135,7 +134,6 @@ namespace UP.Services
             }
             catch { return new List<RecipeDto>(); }
         }
-
         public async Task<RecipeDto> GetRecipeAsync(int id)
         {
             try

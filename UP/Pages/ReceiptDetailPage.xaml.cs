@@ -1,23 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
-using UP.Models;
+using System.Windows.Navigation;
+using UP.Models; // Убедись, что тут твои DTO (RecipeDto и т.д.)
 
 namespace UP.Pages
 {
     public partial class RecipeDetailsPage : Page
     {
-        // Вспомогательный класс для отображения ингредиентов в ListView
+        // Вспомогательные классы для отображения в списках XAML
         public class IngredientViewItem
         {
-            public string Text { get; set; }
+            public string Name { get; set; }
+            public string Amount { get; set; }
         }
 
-        // Вспомогательный класс для отображения шагов
         public class StepViewItem
         {
             public int Number { get; set; }
@@ -27,7 +27,7 @@ namespace UP.Pages
         private RecipeDto _currentRecipe;
         private int _recipeId;
 
-        // Конструктор по ID (основной)
+        // Конструктор, если переходим по ID (нужна загрузка)
         public RecipeDetailsPage(int recipeId)
         {
             InitializeComponent();
@@ -35,7 +35,7 @@ namespace UP.Pages
             Loaded += Page_Loaded;
         }
 
-        // Конструктор по объекту (вспомогательный)
+        // Конструктор, если передаем готовый объект (из списка)
         public RecipeDetailsPage(RecipeDto recipe)
         {
             InitializeComponent();
@@ -46,12 +46,14 @@ namespace UP.Pages
 
         private async void Page_Loaded(object sender, RoutedEventArgs e)
         {
+            // Если рецепт не передан, но есть ID — загружаем с сервера
             if (_currentRecipe == null && _recipeId > 0)
             {
                 try
                 {
-                    // Загружаем рецепт через API
+                    // Метод GetRecipeAsync должен быть реализован в твоем ApiService
                     var recipe = await AppData.ApiService.GetRecipeAsync(_recipeId);
+
                     if (recipe != null)
                     {
                         _currentRecipe = recipe;
@@ -60,6 +62,7 @@ namespace UP.Pages
                     else
                     {
                         MessageBox.Show("Рецепт не найден.", "Ошибка");
+                        if (NavigationService.CanGoBack) NavigationService.GoBack();
                     }
                 }
                 catch (Exception ex)
@@ -73,40 +76,58 @@ namespace UP.Pages
         {
             if (recipe == null) return;
 
+            // 1. Заполняем текстовые поля
             RecipeTitleText.Text = recipe.Title;
             RecipeDescriptionText.Text = recipe.Description;
 
-            // Загрузка картинки
+            // 2. Заполняем статистику (Чипсы)
+            // Время (Подготовка + Готовка)
+            int totalMinutes = recipe.PrepTime + recipe.CookTime;
+            PrepTimeText.Text = $"{totalMinutes} мин";
+
+            // Калории
+            CaloriesText.Text = $"{Math.Round(recipe.Calories)} ккал";
+
+            // Количество ингредиентов
+            int ingCount = recipe.Ingredients?.Count ?? 0;
+            IngredientsCountText.Text = $"{ingCount} инг.";
+
+            // 3. Загрузка изображения
             LoadImage(recipe.ImageUrl);
 
-            // Ингредиенты
             if (recipe.Ingredients != null)
             {
-                var ingredientItems = recipe.Ingredients.Select(i => new IngredientViewItem
+                var viewItems = recipe.Ingredients.Select(i => new IngredientViewItem
                 {
-                    Text = $"• {i.Name} {i.Unit}" // Можно добавить количество, если оно есть в DTO
+                    Name = i.Name,
+                    Amount = $"{i.Quantity:0.##} {i.Unit}"
                 }).ToList();
 
-                if (ingredientItems.Count == 0)
-                    ingredientItems.Add(new IngredientViewItem { Text = "Нет информации об ингредиентах" });
+                if (viewItems.Count == 0)
+                {
+                    viewItems.Add(new IngredientViewItem { Name = "Ингредиенты не указаны", Amount = "" });
+                }
 
-                IngredientsList.ItemsSource = ingredientItems;
+                IngredientsList.ItemsSource = viewItems;
             }
 
-            // Шаги приготовления
             if (recipe.Instructions != null && recipe.Instructions.Any())
             {
-                var steps = new List<StepViewItem>();
-                int i = 1;
-                foreach (var step in recipe.Instructions)
+                int stepNum = 1;
+                var steps = recipe.Instructions.Select(instr => new StepViewItem
                 {
-                    steps.Add(new StepViewItem { Number = i++, Text = step });
-                }
+                    Number = stepNum++,
+                    Text = instr.Trim()
+                }).ToList();
+
                 StepsList.ItemsSource = steps;
             }
             else
             {
-                StepsList.ItemsSource = new List<StepViewItem> { new StepViewItem { Number = 1, Text = "Инструкции не доступны" } };
+                StepsList.ItemsSource = new List<StepViewItem>
+                {
+                    new StepViewItem { Number = 1, Text = "Инструкции по приготовлению отсутствуют." }
+                };
             }
         }
 
@@ -127,6 +148,7 @@ namespace UP.Pages
                 bitmap.EndInit();
 
                 bitmap.DownloadFailed += (s, e) => SetDefaultImage();
+
                 RecipeImage.Source = bitmap;
             }
             catch
@@ -139,9 +161,7 @@ namespace UP.Pages
         {
             try
             {
-                // Укажите правильный путь к заглушке в ресурсах
-                var bitmap = new BitmapImage(new Uri("pack://application:,,,/Resources/DefaultRecipe.png"));
-                RecipeImage.Source = bitmap;
+                RecipeImage.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/DefaultRecipe.png"));
             }
             catch
             {
@@ -151,32 +171,26 @@ namespace UP.Pages
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
-            if (NavigationService.CanGoBack) NavigationService.GoBack();
+            if (NavigationService.CanGoBack)
+                NavigationService.GoBack();
         }
 
-        private void AddToShoppingList_Click(object sender, RoutedEventArgs e)
+        private async void AddToShoppingList_Click(object sender, RoutedEventArgs e)
         {
-            if (_currentRecipe?.Ingredients == null) return;
+            if (_currentRecipe == null) return;
 
             try
             {
-                int count = 0;
-                foreach (var ing in _currentRecipe.Ingredients)
-                {
-                    // Добавляем в глобальный список покупок (строки)
-                    string itemText = $"{ing.Name} {ing.Unit}";
-                    AppData.ShoppingList.Add(itemText);
-                    count++;
-                }
+                //bool success = await AppData.ApiService.ToggleFavoriteAsync(AppData.CurrentUserId, _currentRecipe.Id);
 
-                if (count > 0)
-                    MessageBox.Show($"Добавлено {count} ингредиентов.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
-                else
-                    MessageBox.Show("Нечего добавлять.", "Инфо");
+                //if (success)
+                //    MessageBox.Show("Ингредиенты успешно добавлены в список покупок!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+                //else
+                //    MessageBox.Show("Не удалось добавить ингредиенты.", "Ошибка");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка");
+                MessageBox.Show($"Ошибка соединения: {ex.Message}", "Ошибка");
             }
         }
 
@@ -186,13 +200,12 @@ namespace UP.Pages
 
             try
             {
-                // Теперь передаем RecipeDto, как требует обновленный AppData
-                bool success = await AppData.AddToFavorites(_currentRecipe);
+                bool success = await AppData.ApiService.ToggleFavoriteAsync(_currentRecipe.Id);
 
                 if (success)
                     MessageBox.Show("Рецепт добавлен в избранное!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
                 else
-                    MessageBox.Show("Уже в избранном или ошибка.", "Инфо");
+                    MessageBox.Show("Этот рецепт уже в вашем избранном.", "Инфо", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {

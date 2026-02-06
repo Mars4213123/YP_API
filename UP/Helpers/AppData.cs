@@ -9,7 +9,6 @@ using UP.Services;
 
 namespace UP
 {
-    // Вспомогательный класс для отображения в списке меню
     public class DailyMenuViewModel
     {
         public string Day { get; set; }
@@ -28,8 +27,6 @@ namespace UP
         public static ObservableCollection<DailyMenuViewModel> WeeklyMenu { get; } = new ObservableCollection<DailyMenuViewModel>();
 
         public static ObservableCollection<string> ShoppingList { get; } = new ObservableCollection<string>();
-
-        // ИСПРАВЛЕНО: Теперь здесь RecipeDto, а не RecipeData
         public static ObservableCollection<RecipeDto> Favorites { get; } = new ObservableCollection<RecipeDto>();
 
         public static ObservableCollection<RecipeDto> AllRecipes { get; } = new ObservableCollection<RecipeDto>();
@@ -76,7 +73,7 @@ namespace UP
             {
                 var favs = await ApiService.GetFavoritesAsync();
                 Favorites.Clear();
-                // ИСПРАВЛЕНО: Просто добавляем DTO, конвертация не нужна
+
                 foreach (var r in favs) Favorites.Add(r);
             }
             catch { }
@@ -126,7 +123,6 @@ namespace UP
             catch { }
         }
 
-        // ИСПРАВЛЕНО: Принимаем RecipeDto
         public static async Task<bool> AddToFavorites(RecipeDto recipe)
         {
             if (recipe == null) return false;
@@ -138,7 +134,6 @@ namespace UP
             return success;
         }
 
-        // ИСПРАВЛЕНО: Принимаем RecipeDto
         public static async Task<bool> RemoveFromFavorites(RecipeDto recipe)
         {
             if (recipe == null) return false;
