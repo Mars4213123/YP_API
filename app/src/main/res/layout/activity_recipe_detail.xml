@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_main">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <ImageView
+            android:id="@+id/ivRecipeImage"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:scaleType="centerCrop"
+            android:src="@mipmap/ic_launcher"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:id="@+id/tvRecipeTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/primary_green"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:text="Название рецепта"/>
+
+        <TextView
+            android:id="@+id/tvDescription"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_gray"
+            android:textSize="14sp"
+            android:layout_marginTop="8dp"
+            android:text="Описание..."/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🧂 Ингредиенты"
+            android:textColor="@color/text_white"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:id="@+id/tvIngredients"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_gray"
+            android:textSize="14sp"
+            android:lineSpacingExtra="4dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="👨‍🍳 Приготовление"
+            android:textColor="@color/text_white"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:id="@+id/tvInstructions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_gray"
+            android:textSize="14sp"
+            android:lineSpacingExtra="4dp"/>
+
+    </LinearLayout>
+</ScrollView>

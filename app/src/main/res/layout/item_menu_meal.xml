@@ -1,0 +1,33 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/card_background"
+    android:padding="12dp"
+    android:layout_marginBottom="8dp">
+
+    <TextView
+        android:id="@+id/tvDateMeal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/primary_green"
+        android:textStyle="bold"
+        android:textSize="14sp"
+        android:text="2026-02-06 (Обед)"/>
+
+    <TextView
+        android:id="@+id/tvRecipeName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/text_white"
+        android:textSize="16sp"
+        android:text="Название блюда"/>
+
+    <Button
+        android:id="@+id/btnOpenRecipe"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="📝 Рецепт"
+        android:textSize="12sp"
+        android:backgroundTint="#FF9800"/>
+</LinearLayout>

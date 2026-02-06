@@ -1,0 +1,48 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_main"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="32dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Вход в систему"
+        android:textColor="@color/text_white"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="32dp"/>
+
+    <EditText
+        android:id="@+id/etUsername"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/card_background"
+        android:hint="Имя пользователя"
+        android:textColorHint="@color/text_gray"
+        android:textColor="@color/text_white"
+        android:padding="16dp"
+        android:layout_marginBottom="16dp"/>
+
+    <EditText
+        android:id="@+id/etPassword"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/card_background"
+        android:hint="Пароль"
+        android:textColorHint="@color/text_gray"
+        android:textColor="@color/text_white"
+        android:padding="16dp"
+        android:inputType="textPassword"
+        android:layout_marginBottom="24dp"/>
+
+    <Button
+        android:id="@+id/btnLogin"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Войти"
+        android:backgroundTint="@color/primary_green"/>
+
+</LinearLayout>

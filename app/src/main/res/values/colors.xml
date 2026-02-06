@@ -2,4 +2,10 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="background_main">#1E1E1E</color>
+    <color name="card_background">#2D2D30</color>
+    <color name="primary_green">#4CAF50</color>
+    <color name="text_white">#FFFFFF</color>
+    <color name="text_gray">#CCCCCC</color>
+    <color name="delete_red">#FF4444</color>
 </resources>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_main"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/tvMenuTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Меню на неделю"
+        android:textColor="@color/text_white"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp"/>
+
+    <Button
+        android:id="@+id/btnGenerateShop"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🛒 Создать список покупок"
+        android:backgroundTint="@color/primary_green"
+        android:layout_marginBottom="8dp"/>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvMenu"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+</LinearLayout>
