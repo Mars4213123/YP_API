@@ -139,35 +139,35 @@ namespace YP_API.Data
             );
 
             // Seed FridgeItems
-            modelBuilder.Entity<FridgeItem>().HasData(
-                new FridgeItem
-                {
-                    Id = 1,
-                    UserId = 1,
-                    IngredientId = 2, // Молоко
-                    ProductName = "Молоко пастеризованное",
-                    Quantity = 1000,
-                    Unit = "мл"
-                },
-                new FridgeItem
-                {
-                    Id = 2,
-                    UserId = 1,
-                    IngredientId = 14, // Сливочное масло
-                    ProductName = "Масло сливочное 82.5%",
-                    Quantity = 200,
-                    Unit = "г"
-                },
-                new FridgeItem
-                {
-                    Id = 3,
-                    UserId = 2,
-                    IngredientId = 12, // Помидоры
-                    ProductName = "Помидоры черри",
-                    Quantity = 500,
-                    Unit = "г"
-                }
-            );
+            //modelBuilder.Entity<FridgeItem>().HasData(
+            //    new FridgeItem
+            //    {
+            //        Id = 1,
+            //        UserId = 1,
+            //        IngredientId = 2, // Молоко
+            //        ProductName = "Молоко пастеризованное",
+            //        Quantity = 1000,
+            //        Unit = "мл"
+            //    },
+            //    new FridgeItem
+            //    {
+            //        Id = 2,
+            //        UserId = 1,
+            //        IngredientId = 14, // Сливочное масло
+            //        ProductName = "Масло сливочное 82.5%",
+            //        Quantity = 200,
+            //        Unit = "г"
+            //    },
+            //    new FridgeItem
+            //    {
+            //        Id = 3,
+            //        UserId = 2,
+            //        IngredientId = 12, // Помидоры
+            //        ProductName = "Помидоры черри",
+            //        Quantity = 500,
+            //        Unit = "г"
+            //    }
+            //);
 
             // Seed Menus
             modelBuilder.Entity<Menu>().HasData(
