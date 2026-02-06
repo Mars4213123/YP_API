@@ -64,7 +64,7 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
-                                <Image Source="{Binding ImageUrl}" 
+                                <Image Source="{Binding DisplayImage}" 
                                        Width="130"
                                        Height="100"
                                        Stretch="UniformToFill"

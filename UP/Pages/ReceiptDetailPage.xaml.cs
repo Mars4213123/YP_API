@@ -5,13 +5,12 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
-using UP.Models; // Убедись, что тут твои DTO (RecipeDto и т.д.)
+using UP.Models; 
 
 namespace UP.Pages
 {
     public partial class RecipeDetailsPage : Page
     {
-        // Вспомогательные классы для отображения в списках XAML
         public class IngredientViewItem
         {
             public string Name { get; set; }
@@ -27,7 +26,6 @@ namespace UP.Pages
         private RecipeDto _currentRecipe;
         private int _recipeId;
 
-        // Конструктор, если переходим по ID (нужна загрузка)
         public RecipeDetailsPage(int recipeId)
         {
             InitializeComponent();
@@ -35,7 +33,6 @@ namespace UP.Pages
             Loaded += Page_Loaded;
         }
 
-        // Конструктор, если передаем готовый объект (из списка)
         public RecipeDetailsPage(RecipeDto recipe)
         {
             InitializeComponent();
@@ -46,12 +43,10 @@ namespace UP.Pages
 
         private async void Page_Loaded(object sender, RoutedEventArgs e)
         {
-            // Если рецепт не передан, но есть ID — загружаем с сервера
             if (_currentRecipe == null && _recipeId > 0)
             {
                 try
                 {
-                    // Метод GetRecipeAsync должен быть реализован в твоем ApiService
                     var recipe = await AppData.ApiService.GetRecipeAsync(_recipeId);
 
                     if (recipe != null)
@@ -76,23 +71,17 @@ namespace UP.Pages
         {
             if (recipe == null) return;
 
-            // 1. Заполняем текстовые поля
             RecipeTitleText.Text = recipe.Title;
             RecipeDescriptionText.Text = recipe.Description;
 
-            // 2. Заполняем статистику (Чипсы)
-            // Время (Подготовка + Готовка)
-            int totalMinutes = recipe.PrepTime + recipe.CookTime;
+            int totalMinutes = recipe.PrepTime + recipe.CookTime
+                ;
             PrepTimeText.Text = $"{totalMinutes} мин";
-
-            // Калории
             CaloriesText.Text = $"{Math.Round(recipe.Calories)} ккал";
 
-            // Количество ингредиентов
             int ingCount = recipe.Ingredients?.Count ?? 0;
             IngredientsCountText.Text = $"{ingCount} инг.";
 
-            // 3. Загрузка изображения
             LoadImage(recipe.ImageUrl);
 
             if (recipe.Ingredients != null)
@@ -161,7 +150,7 @@ namespace UP.Pages
         {
             try
             {
-                RecipeImage.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/DefaultRecipe.png"));
+                RecipeImage.Source = new BitmapImage(new Uri("pack://application:,,,/Images/receipt.png"));
             }
             catch
             {

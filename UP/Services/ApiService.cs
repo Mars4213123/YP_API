@@ -156,7 +156,7 @@ namespace UP.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync("api/favorites");
+                var response = await _httpClient.GetAsync($"api/recipes/favorites/{AppData.CurrentUser.Id}");
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode) return new List<RecipeDto>();

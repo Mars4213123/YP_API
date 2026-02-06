@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
+using System.Windows.Media.Imaging;
 using Newtonsoft.Json;
 
 namespace UP.Models
@@ -55,6 +57,26 @@ namespace UP.Models
                 }
                 
                 return new List<string> { InstructionsRaw };
+            }
+        }
+        [NotMapped]
+        public string DisplayImage
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(ImageUrl))
+                {
+                    return "pack://application:,,,/Images/receipt.png";
+                }
+
+                var bitmap = new BitmapImage(new Uri(ImageUrl, UriKind.Relative));
+                bitmap.DecodeFailed += (s, e) =>
+                {
+                    ImageUrl = "pack://application:,,,/Images/receipt.png";
+                };
+                    
+
+                return ImageUrl;
             }
         }
     }

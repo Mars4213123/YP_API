@@ -3,8 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using UP.Models; // Важно: Используем RecipeDto
-using UP.Pages;
+using UP.Models;
 
 namespace UP.Pages
 {
@@ -38,10 +37,8 @@ namespace UP.Pages
 
         private void OpenRecipe_Click(object sender, RoutedEventArgs e)
         {
-            // Берем объект из DataContext кнопки
             if (sender is Button button && button.DataContext is RecipeDto recipe)
             {
-                // Открываем детали, передавая весь объект RecipeDto
                 var detailsPage = new RecipeDetailsPage(recipe);
                 MainWindow.mainWindow.OpenPages(detailsPage);
             }
@@ -54,12 +51,10 @@ namespace UP.Pages
                 if (MessageBox.Show($"Удалить рецепт '{recipe.Title}' из избранного?",
                     "Подтверждение", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                 {
-                    // Метод RemoveFromFavorites в AppData теперь принимает RecipeDto
                     var success = await AppData.RemoveFromFavorites(recipe);
 
                     if (success)
                     {
-                        // Принудительно удаляем из UI, если ObservableCollection не обновилась
                         if (_favorites.Contains(recipe))
                         {
                             _favorites.Remove(recipe);
