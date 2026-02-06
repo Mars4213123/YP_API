@@ -860,6 +860,34 @@ namespace UP.Services
             }
         }
 
+
+
+        public async Task<bool> RemoveFridgeItemAsync(int userId, int ingredientId)
+        {
+            try
+            {
+
+                var response = await _httpClient.DeleteAsync($"api/inventory/remove/{userId}/{ingredientId}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorText = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"[RemoveFridgeItemAsync] Ошибка сервера: {errorText}");
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[RemoveFridgeItemAsync] Ошибка соединения: {ex.Message}");
+                return false;
+            }
+        }
+
+
+
+
     }
 
     public class ApiResponse<T>

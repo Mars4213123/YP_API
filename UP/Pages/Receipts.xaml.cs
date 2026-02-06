@@ -337,24 +337,30 @@ namespace UP.Pages
             }
         }
 
+        // UP/Pages/Receipts.xaml.cs
+
         private async void RemoveProduct_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                if (sender is Button button && button.Parent is Grid grid && grid.Children.Count > 0)
+                if (sender is Button button && button.DataContext is Models.IngredientDto productToRemove)
                 {
-                    var firstChild = grid.Children[0];
-                    if (firstChild is TextBlock textBlock)
+
+                    bool isDeleted = await AppData.ApiService.RemoveFridgeItemAsync(AppData.CurrentUser.Id, productToRemove.Id);
+
+                    if (isDeleted)
                     {
-                        var productName = await AppData.ApiService.FindIngredientByNameAsync(textBlock.Text);
-                        if (productName != null)
-                            _products.Remove(productName);
+                        _products.Remove(productToRemove);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Не удалось удалить продукт. Возможно, ошибка на сервере.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка удаления продукта: {ex.Message}", "Ошибка");
+                MessageBox.Show($"Ошибка интерфейса: {ex.Message}", "Ошибка");
             }
         }
 

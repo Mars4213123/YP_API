@@ -139,5 +139,42 @@ namespace YP_API.Controllers
             public decimal Quantity { get; set; }
             public string? Unit { get; set; }
         }
+
+
+
+
+
+        [HttpDelete("remove/{userId}/{ingredientId}")]
+        public async Task<IActionResult> RemoveFridgeItem(int userId, int ingredientId)
+        {
+            try
+            {
+                var item = await _context.FridgeItems
+                    .FirstOrDefaultAsync(fi => fi.UserId == userId && fi.IngredientId == ingredientId);
+
+                if (item != null)
+                {
+                    _context.FridgeItems.Remove(item);
+                    await _context.SaveChangesAsync();
+                    return Ok(new { success = true, message = "Продукт удален" });
+                }
+
+                var inventoryItem = await _context.UserInventories
+                    .FirstOrDefaultAsync(ui => ui.UserId == userId && ui.IngredientId == ingredientId);
+
+                if (inventoryItem != null)
+                {
+                    _context.UserInventories.Remove(inventoryItem);
+                    await _context.SaveChangesAsync();
+                    return Ok(new { success = true, message = "Продукт удален из инвентаря" });
+                }
+
+                return NotFound(new { error = "Продукт не найден в холодильнике" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
     }
 }
