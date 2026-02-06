@@ -34,7 +34,7 @@ builder.Services.AddSwaggerGen(c =>
 
 
 
-var connectionString = "Server=localhost;Port=3306;Database=recipe_planner;Uid=root;Pwd=;";
+var connectionString = "Server=127.0.0.1;Port=3306;Database=recipe_planner;Uid=root;Pwd=;";
 
 builder.Services.AddDbContext<RecipePlannerContext>(options =>
 {
@@ -44,10 +44,11 @@ builder.Services.AddDbContext<RecipePlannerContext>(options =>
 builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<YP_API.Interfaces.IMenuService, YP_API.Services.MenuService>();
+builder.Services.AddScoped<IMenuService, MenuService>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient<IPovarScraperService, PovarScraperService>();
+builder.Services.AddScoped<IImageGenerationService, ImageGenerationService>();
 
 var app = builder.Build();
 ;

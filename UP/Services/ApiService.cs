@@ -35,7 +35,6 @@ namespace UP.Services
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         }
 
-        // --- Auth ---
 
         public void SetToken(string token)
         {
@@ -204,8 +203,6 @@ namespace UP.Services
             catch { return new List<RecipeDto>(); }
         }
 
-        // --- Menus (Исправленная логика) ---
-
         public async Task<List<AvailableMenu>> GetUserMenusAsync(int userId)
         {
             try
@@ -295,6 +292,7 @@ namespace UP.Services
                         {
                             foreach (var meal in day.Meals)
                             {
+                                
                                 await ParseImageForRecipe(meal.RecipeId, meal.RecipeTitle);
                             }
                         }
@@ -310,9 +308,30 @@ namespace UP.Services
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(title)) return;
-                string query = Uri.EscapeDataString(title);
-                await _httpClient.GetAsync($"api/images/parse-povar?RecipeId={recipeId}&query={query}");
+                if (string.IsNullOrWhiteSpace(title))
+                    return;
+
+                var requestData = new
+                {
+                    RecipeId = recipeId,
+                    query = title  
+                };
+
+                string json = System.Text.Json.JsonSerializer.Serialize(requestData);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                HttpResponseMessage response = await _httpClient.PostAsync("api/images/generate", content);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    string errorBody = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"Ошибка генерации изображения для рецепта {recipeId}: {response.StatusCode}, тело: {errorBody}");
+                }
+
+                //if (string.IsNullOrWhiteSpace(title)) return;
+                //string query = Uri.EscapeDataString(title);
+                //await _httpClient.GetAsync($"api/images/generate?RecipeId={recipeId}&query={query}");
+                //await _httpClient.GetAsync($"api/images/parse-povar?RecipeId={recipeId}&query={query}");
             }
             catch { }
         }

@@ -1,4 +1,6 @@
-﻿namespace YP_API.Models
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace YP_API.Models
 {
     public class User
     {
@@ -98,7 +100,7 @@
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public User User { get; set; }
-        public ICollection<MenuItem> Items { get; set; } = new List<MenuItem>();
+        public List<MenuItem> Items { get; set; } = new List<MenuItem>();
     }
 
     public class MenuItem
@@ -108,7 +110,6 @@
         public int RecipeId { get; set; }
         public DateTime Date { get; set; }
         public string MealType { get; set; }
-
         public Menu Menu { get; set; }
         public Recipe Recipe { get; set; }
     }

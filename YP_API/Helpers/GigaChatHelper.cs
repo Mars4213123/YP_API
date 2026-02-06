@@ -1,5 +1,5 @@
-﻿using Newtonsoft.Json;
-using System.Text;
+﻿using System.Text;
+using Newtonsoft.Json;
 using YP_API.Models;
 using YP_API.Models.AIAPI;
 using static YP_API.Models.AIAPI.Responce.ResponceMenu;
@@ -190,7 +190,7 @@ namespace YP_API.Helpers
             json = json.Replace("```json", "").Replace("```", "").Trim();
             return json;
         }
-        public static async Task<string> GetToken(string rqUID, string bearer)
+        public static async Task<string> GetToken()
         {
             string ReturnToken = null;
             string Url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth";
@@ -201,8 +201,8 @@ namespace YP_API.Helpers
                 {
                     HttpRequestMessage Request = new HttpRequestMessage(HttpMethod.Post, Url);
                     Request.Headers.Add("Accept", "application/json");
-                    Request.Headers.Add("RqUID", rqUID);
-                    Request.Headers.Add("Authorization", $"Basic {bearer}");
+                    Request.Headers.Add("RqUID", ClientId);
+                    Request.Headers.Add("Authorization", $"Basic {AuthorizationKey}");
                     var Data = new List<KeyValuePair<string, string>>
                     {
                         new KeyValuePair<string, string>("scope", "GIGACHAT_API_PERS")

@@ -62,13 +62,11 @@ namespace YP_API.Controllers
             }
         }
 
-        // УСТАНОВИТЬ инвентарь (заменить старый)
         [HttpPost("set/{userId}")]
         public async Task<IActionResult> SetInventory(int userId, [FromBody] List<InventoryItemDto> items)
         {
             try
             {
-                // Очищаем старый инвентарь
                 var oldInventory = await _context.UserInventories
                     .Where(ui => ui.UserId == userId)
                     .ToListAsync();
@@ -76,7 +74,6 @@ namespace YP_API.Controllers
                 _context.UserInventories.RemoveRange(oldInventory);
                 await _context.SaveChangesAsync();
 
-                // Добавляем новый инвентарь
                 foreach (var item in items)
                 {
                     var ingredient = await _context.Ingredients.FindAsync(item.IngredientId);

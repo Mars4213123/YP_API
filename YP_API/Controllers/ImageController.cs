@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using YP_API.Data;
+using YP_API.Models;
 using YP_API.Services;
 
 namespace YP_API.Controllers
@@ -17,12 +18,13 @@ namespace YP_API.Controllers
     public class ImagesController : ControllerBase
     {
         private readonly IPovarScraperService _povarService;
-
+        private readonly IImageGenerationService _imageService;
         private readonly RecipePlannerContext _context;
 
-        public ImagesController(IPovarScraperService povarService, RecipePlannerContext context)
+        public ImagesController(IPovarScraperService povarService, IImageGenerationService imageService,RecipePlannerContext context)
         {
             _povarService = povarService;
+            _imageService = imageService;
             _context = context;
         }
 
@@ -48,12 +50,33 @@ namespace YP_API.Controllers
                 return NotFound(new { message = "Рецепт не найден" });
 
             recepie.ImageUrl = imageUrl;
+
             await _context.SaveChangesAsync();
 
             return Ok(new
             {
                 query = recipeImage.query,
                 source = "povar.ru",
+                url = imageUrl
+            });
+        }
+        [HttpPost("generate")]
+        public async Task<IActionResult> GenerateImage([FromBody] RecipeImageDto recipeImage)
+        {
+            if (string.IsNullOrWhiteSpace(recipeImage.query))
+                return BadRequest("Prompt is required.");
+
+            string imageUrl = await _imageService.GenerateImageUrlAsync(recipeImage.query);
+
+            if (imageUrl == null)
+                return StatusCode(500, "Failed to generate image.");
+
+            var recepie = await _context.Recipes.FirstOrDefaultAsync(x => x.Id == recipeImage.RecipeId);
+
+            recepie.ImageUrl = imageUrl;
+            await _context.SaveChangesAsync();
+
+            return Ok(new {
                 url = imageUrl
             });
         }

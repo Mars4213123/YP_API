@@ -27,7 +27,7 @@ namespace YP_API.Controllers
 
             try
             {
-                var token = await GigaChatHelper.GetToken(GigaChatHelper.ClientId, GigaChatHelper.AuthorizationKey);
+                var token = await GigaChatHelper.GetToken();
                 var generatedMenu = await GigaChatHelper.GenerateAndParseMenuAsync(token, Ingredients, 1);
 
                 if (generatedMenu == null) return StatusCode(502, "Ошибка генерации меню.");
@@ -133,7 +133,7 @@ namespace YP_API.Controllers
                     new Ingredient { Name = "Чеснок", Unit = "зуб" }
                 };
 
-                string token = await GigaChatHelper.GetToken(GigaChatHelper.ClientId, GigaChatHelper.AuthorizationKey);
+                string token = await GigaChatHelper.GetToken();
 
                 if (string.IsNullOrEmpty(token))
                 {
@@ -147,7 +147,6 @@ namespace YP_API.Controllers
                     return StatusCode(502, "GigaChat вернул пустой ответ или ошибка парсинга.");
                 }
 
-                // 4. Возвращаем результат
                 return Ok(new
                 {
                     Message = "Меню успешно сгенерировано на основе тестовых продуктов",

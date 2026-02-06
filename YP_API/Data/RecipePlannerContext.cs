@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using YP_API.Data;
 using YP_API.Models;
 
 namespace YP_API.Data
@@ -68,7 +67,6 @@ namespace YP_API.Data
                 }
             );
             modelBuilder.Entity<RecipeIngredient>().HasData(
-                // Омлет с овощами
                 new RecipeIngredient { Id = 1, RecipeId = 1, IngredientId = 1, Quantity = 3 }, // Яйца
                 new RecipeIngredient { Id = 2, RecipeId = 1, IngredientId = 2, Quantity = 50 }, // Молоко
                 new RecipeIngredient { Id = 3, RecipeId = 1, IngredientId = 5, Quantity = 5 }, // Соль
@@ -104,7 +102,6 @@ namespace YP_API.Data
                 new UserAllergy { Id = 2, UserId = 2, IngredientId = 2 }  // У пользователя 2 аллергия на молоко
             );
 
-            // Seed UserInventories
             modelBuilder.Entity<UserInventory>().HasData(
                 new UserInventory
                 {
@@ -176,7 +173,7 @@ namespace YP_API.Data
             );
 
             // Seed MenuItems
-            modelBuilder.Entity<MenuItem>().HasData(
+            /*modelBuilder.Entity<MenuItem>().HasData(
                 new MenuItem
                 {
                     Id = 1,
@@ -201,7 +198,7 @@ namespace YP_API.Data
                     Date = DateTime.Today.AddDays(1),
                     MealType = "Ужин"
                 }
-            );
+            );*/
 
             // Seed ShoppingLists
             modelBuilder.Entity<ShoppingList>().HasData(
@@ -279,7 +276,6 @@ namespace YP_API.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // Указываем точные имена таблиц
             modelBuilder.Entity<User>().ToTable("users");
             modelBuilder.Entity<Recipe>().ToTable("recipes");
             modelBuilder.Entity<Ingredient>().ToTable("ingredients");
@@ -343,12 +339,10 @@ namespace YP_API.Data
                 entity.HasIndex(fi => new { fi.UserId, fi.IngredientId }).IsUnique();
             });
 
-            // ВАЖНО: Вызов метода заполнения данными
             DataSeeder.Seed(modelBuilder);
         }
     }
 }
-
 
 //using Microsoft.EntityFrameworkCore;
 //using YP_API.Models;

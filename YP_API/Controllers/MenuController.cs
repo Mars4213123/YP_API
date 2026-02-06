@@ -5,6 +5,15 @@ using YP_API.Models;
 
 namespace YP_API.Controllers
 {
+    public class MenuDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public int RecipeCount { get; set; }
+        public IEnumerable<DateTime> Dates { get; set; }
+    }
+
     [ApiController]
     [Route("api/[controller]")]
     public class MenuController : ControllerBase
@@ -16,50 +25,47 @@ namespace YP_API.Controllers
             _context = context;
         }
 
-        // ПОЛУЧИТЬ меню для выбора пользователем
-        [HttpGet("available")]
-        public async Task<ActionResult> GetAvailableMenus()
-        {
-            try
-            {
-                var menus = await _context.Menus
-                    .Include(m => m.Items)
-                        .ThenInclude(i => i.Recipe)
-                    .Select(m => new
-                    {
-                        Id = m.Id,
-                        Name = m.Name,
-                        CreatedAt = m.CreatedAt,
-                        TotalDays = m.Items.Select(i => i.Date.Date).Distinct().Count(),
-                        Recipes = m.Items.Select(i => new
-                        {
-                            Id = i.RecipeId,
-                            Title = i.Recipe.Title,
-                            Date = i.Date.ToString("yyyy-MM-dd"),
-                            MealType = i.MealType
-                        })
-                    })
-                    .ToListAsync();
+        //[HttpGet("available")]
+        //public async Task<ActionResult> GetAvailableMenus()
+        //{
+        //    try
+        //    {
+        //        var menus = await _context.Menus
+        //            .Include(m => m.Items)
+        //                .ThenInclude(i => i.Recipe)
+        //            .Select(m => new
+        //            {
+        //                Id = m.Id,
+        //                Name = m.Name,
+        //                CreatedAt = m.CreatedAt,
+        //                TotalDays = m.Items.Select(i => i.Date.Date).Distinct().Count(),
+        //                Recipes = m.Items.Select(i => new
+        //                {
+        //                    Id = i.RecipeId,
+        //                    Title = i.Recipe.Title,
+        //                    Date = i.Date.ToString("yyyy-MM-dd"),
+        //                    MealType = i.MealType
+        //                })
+        //            })
+        //            .ToListAsync();
 
-                return Ok(new
-                {
-                    success = true,
-                    data = menus
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = ex.Message });
-            }
-        }
+        //        return Ok(new
+        //        {
+        //            success = true,
+        //            data = menus
+        //        });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { error = ex.Message });
+        //    }
+        //}
 
-        // ВЫБРАТЬ меню пользователем
         [HttpPost("{menuId}/select/{userId}")]
         public async Task<ActionResult> SelectMenu(int menuId, int userId)
         {
             try
             {
-                // Проверяем, существует ли меню
                 var menu = await _context.Menus
                     .Include(m => m.Items)
                     .FirstOrDefaultAsync(m => m.Id == menuId);
@@ -67,12 +73,10 @@ namespace YP_API.Controllers
                 if (menu == null)
                     return NotFound(new { error = "Меню не найдено" });
 
-                // Проверяем, существует ли пользователь
                 var user = await _context.Users.FindAsync(userId);
                 if (user == null)
                     return NotFound(new { error = "Пользователь не найден" });
 
-                // Создаем копию меню для пользователя (или можно просто сохранить связь)
                 var userMenu = new Menu
                 {
                     UserId = userId,
@@ -106,13 +110,12 @@ namespace YP_API.Controllers
                 return BadRequest(new { error = ex.Message });
             }
         }
-        // POST api/menu/generate-week/{userId}
+
         [HttpPost("generate-week/{userId}")]
         public async Task<ActionResult> GenerateWeekMenu(int userId)
         {
             try
             {
-                // Get user's inventory ingredient ids
                 var inventoryIngredientIds = await _context.UserInventories
                     .Where(ui => ui.UserId == userId)
                     .Select(ui => ui.IngredientId)
@@ -120,23 +123,17 @@ namespace YP_API.Controllers
 
                 Console.WriteLine($"[GenerateWeekMenu] User {userId} inventory ingredients: {string.Join(", ", inventoryIngredientIds)}");
 
-                // Get user's allergy ingredient ids
                 var allergyIngredientIds = await _context.UserAllergies
                     .Where(a => a.UserId == userId)
                     .Select(a => a.IngredientId)
                     .ToListAsync();
 
-                // Find recipes that:
-                // 1. ALL ingredients are in the inventory (STRICT search)
-                // 2. Don't contain any allergy ingredients
                 var candidateRecipes = await _context.Recipes
                     .Include(r => r.RecipeIngredients)
                     .Where(r => 
-                        // STRICT: Все ингредиенты рецепта должны быть в холодильнике
+                       
                         r.RecipeIngredients.All(ri => inventoryIngredientIds.Contains(ri.IngredientId))
-                        // И рецепт должен содержать хотя бы один ингредиент
                         && r.RecipeIngredients.Count > 0
-                        // И не содержать запрещённых ингредиентов
                         && !r.RecipeIngredients.Any(ri => allergyIngredientIds.Contains(ri.IngredientId)))
                     .ToListAsync();
 
@@ -258,26 +255,34 @@ namespace YP_API.Controllers
             }
         }
 
-        // ПОЛУЧИТЬ все меню пользователя
         [HttpGet("user/{userId}/all")]
         public async Task<ActionResult> GetUserMenus(int userId)
         {
             try
             {
                 var menus = await _context.Menus
-                    .Include(m => m.Items)
-                        .ThenInclude(i => i.Recipe)
+                    .Include(i => i.Items)
+                    .ThenInclude(u => u.Recipe)
                     .Where(m => m.UserId == userId)
                     .OrderByDescending(m => m.CreatedAt)
-                    .Select(m => new
-                    {
-                        Id = m.Id,
-                        Name = m.Name,
-                        Description = $"Создано: {m.CreatedAt:dd.MM.yyyy}",
-                        RecipeCount = m.Items.Count,
-                        TotalDays = m.Items.Select(i => i.Date.Date).Distinct().Count()
-                    })
+                    .Select(m => new MenuDto
+                       {
+                           Id = m.Id,
+                           Name = m.Name,
+                           CreatedAt = m.CreatedAt,
+                           RecipeCount = m.Items.Count(),
+                           Dates = m.Items.Select(i => i.Date.Date)
+                       })
                     .ToListAsync();
+
+                var result = menus.Select(m => new
+                {
+                    m.Id,
+                    m.Name,
+                    Description = $"Создано: {m.CreatedAt:dd.MM.yyyy}",
+                    m.RecipeCount,
+                    TotalDays = m.Dates.Distinct().Count()
+                });
 
                 return Ok(menus);
             }
@@ -288,7 +293,6 @@ namespace YP_API.Controllers
             }
         }
 
-        // ПОЛУЧИТЬ детали конкретного меню
         [HttpGet("{menuId}")]
         public async Task<ActionResult> GetMenuDetails(int menuId)
         {
@@ -327,7 +331,6 @@ namespace YP_API.Controllers
             }
         }
 
-        // УДАЛИТЬ меню
         [HttpDelete("{menuId}")]
         public async Task<ActionResult> DeleteMenu(int menuId)
         {
@@ -342,10 +345,7 @@ namespace YP_API.Controllers
                 if (menu == null)
                     return NotFound(new { error = "Меню не найдено" });
 
-                // Удаляем все элементы меню
                 _context.MenuItems.RemoveRange(menu.Items);
-                
-                // Удаляем само меню
                 _context.Menus.Remove(menu);
                 
                 await _context.SaveChangesAsync();
