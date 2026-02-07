@@ -56,7 +56,7 @@ public class MainActivity extends AppCompatActivity {
 
         // В onCreate
         findViewById(R.id.btnGoToMenu).setOnClickListener(v -> {
-            startActivity(new Intent(MainActivity.this, com.example.androidupproject.MenuActivity.class));
+            startActivity(new Intent(MainActivity.this, com.example.androidupproject.models.MenuActivity.class));
         });
 
         loadFridge();

@@ -28,7 +28,7 @@ public class IngredientDto {
         this.name = name;
         this.unit = unit;
         this.category = "Разное";
-        this.id = 0;
+        this.id = 1;
     }
 
     // Вспомогательный метод для получения правильного ID при удалении

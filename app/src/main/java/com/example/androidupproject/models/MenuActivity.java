@@ -1,4 +1,4 @@
-package com.example.androidupproject;
+package com.example.androidupproject.models;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -12,6 +12,8 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.example.androidupproject.R;
 import com.example.androidupproject.models.MenuDto;
 import com.example.androidupproject.models.MenuItemDto;
 import com.example.androidupproject.models.SessionManager;
@@ -25,10 +27,12 @@ import retrofit2.Response;
 
 public class MenuActivity extends AppCompatActivity {
 
+    private List<MenuItemDto> menuItemsList = new ArrayList<>();
     private RecyclerView recyclerView;
     private MenuAdapter adapter;
     private SessionManager sessionManager;
     private int currentMenuId = 0;
+    private TextView tvMenuTitle;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,8 +40,12 @@ public class MenuActivity extends AppCompatActivity {
         setContentView(R.layout.activity_menu);
 
         sessionManager = new SessionManager(this);
+        tvMenuTitle = findViewById(R.id.tvMenuTitle);
         recyclerView = findViewById(R.id.rvMenu);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
+
+        loadMenuIntoList(sessionManager.getUserId(), menuItemsList, adapter);
+
 
         adapter = new MenuAdapter();
         recyclerView.setAdapter(adapter);
@@ -46,7 +54,9 @@ public class MenuActivity extends AppCompatActivity {
 
         loadMenu();
     }
-
+    private void refreshMenu() {
+        loadMenuIntoList(sessionManager.getUserId(), menuItemsList, adapter);
+    }
     private void loadMenu() {
         ApiClient.getService().getCurrentMenu(sessionManager.getUserId()).enqueue(new Callback<ApiResponse<MenuDto>>() {
             @Override
@@ -68,7 +78,7 @@ public class MenuActivity extends AppCompatActivity {
     }
 
     private void generateShoppingList() {
-        if (currentMenuId == 0) return;
+        if (currentMenuId == 1) return;
 
         ApiClient.getService().generateShoppingList(currentMenuId, sessionManager.getUserId()).enqueue(new Callback<ApiResponse<Void>>() {
             @Override
@@ -81,7 +91,61 @@ public class MenuActivity extends AppCompatActivity {
             public void onFailure(Call<ApiResponse<Void>> call, Throwable t) {}
         });
     }
+    private void loadMenuIntoList(int userId, final List<MenuItemDto> menuItemsList, final MenuAdapter adapter) {
+        // Очищаем существующие данные
+        if (menuItemsList != null) {
+            menuItemsList.clear();
+        }
 
+        // Выполняем запрос к API
+        ApiClient.getService().getCurrentMenu(userId).enqueue(new Callback<ApiResponse<MenuDto>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<MenuDto>> call, Response<ApiResponse<MenuDto>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().data != null) {
+                    MenuDto menu = response.body().data;
+
+                    // Заполняем локальный список
+                    if (menu.items != null && menuItemsList != null) {
+                        menuItemsList.addAll(menu.items);
+                    }
+
+                    // Обновляем адаптер, если он передан
+                    if (adapter != null) {
+                        adapter.setItems(menu.items != null ? menu.items : new ArrayList<>());
+                    }
+
+                    // Обновляем информацию о меню в UI
+                    runOnUiThread(() -> {
+                        tvMenuTitle.setText(menu.name != null ? menu.name : "Меню на неделю");
+                        Toast.makeText(MenuActivity.this,
+                                "Загружено " + (menu.items != null ? menu.items.size() : 0) + " блюд",
+                                Toast.LENGTH_SHORT).show();
+                    });
+
+                    System.out.println("[loadMenuIntoList] Успешно загружено " +
+                            (menu.items != null ? menu.items.size() : 0) + " элементов меню");
+                } else {
+                    runOnUiThread(() -> {
+                        Toast.makeText(MenuActivity.this,
+                                "Меню не найдено. Сгенерируйте новое.",
+                                Toast.LENGTH_LONG).show();
+                    });
+                    System.out.println("[loadMenuIntoList] Меню не найдено или пустое");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse<MenuDto>> call, Throwable t) {
+                runOnUiThread(() -> {
+                    Toast.makeText(MenuActivity.this,
+                            "Ошибка загрузки меню: " + t.getMessage(),
+                            Toast.LENGTH_SHORT).show();
+                });
+                System.err.println("[loadMenuIntoList] Ошибка сети: " + t.getMessage());
+                t.printStackTrace();
+            }
+        });
+    }
     // Адаптер
     class MenuAdapter extends RecyclerView.Adapter<MenuAdapter.ViewHolder> {
         // 1. Инициализируем пустым списком сразу, чтобы не было null при старте
